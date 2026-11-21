@@ -186,17 +186,47 @@ async function initCamera(){
 }
 
 function renderViewfinder(){
-  const cw = 640, ch = 480;
+  const cw = previewW, ch = Math.round(previewW * 0.75);
   if (vf.width !== cw){ vf.width = cw; vf.height = ch; }
   if (usingDemo) engine.process(demoCanvas, demoCanvas.width, demoCanvas.height);
   else if (video && video.videoWidth) engine.process(video, video.videoWidth, video.videoHeight);
 }
-function loop(){ renderViewfinder(); requestAnimationFrame(loop); }
+let frameMs = 16, previewW = 640;
+function loop(){
+  const t0 = performance.now();
+  renderViewfinder();
+  frameMs = frameMs * 0.8 + (performance.now() - t0) * 0.2;
+  // graceful degradation on slow phones: lower preview res, keep the frame smooth
+  if (frameMs > 60) previewW = 480; else if (frameMs < 30) previewW = 640;
+  requestAnimationFrame(loop);
+}
+
+/* shutter ritual: mechanical click (WebAudio noise bursts through bandpass =
+   mirror slap + snap) plus haptics where the device supports them. */
+function shutterSound(){
+  if (navigator.vibrate) navigator.vibrate([12, 40, 18]);
+  try{
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const t = ac.currentTime;
+    for (const [off, gain, freq] of [[0, 0.3, 1400], [0.07, 0.14, 700]]){
+      const buf = ac.createBuffer(1, Math.round(ac.sampleRate * 0.06), ac.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2 - 1) * Math.exp(-i / (d.length * 0.22));
+      const src = ac.createBufferSource(); src.buffer = buf;
+      const bi = ac.createBiquadFilter(); bi.type = 'bandpass'; bi.frequency.value = freq;
+      const g = ac.createGain(); g.gain.value = gain;
+      src.connect(bi); bi.connect(g); g.connect(ac.destination);
+      src.start(t + off);
+    }
+    setTimeout(() => ac.close(), 400);
+  } catch(e){ /* silent on browsers without WebAudio */ }
+}
 
 /* ---------- capture ---------- */
 function capture(){
   if (!state.film){ toast('load a film first'); return; }
   if (state.shotsLeft <= 0){ rewind(); return; }
+  shutterSound();
   const cap = document.createElement('canvas');
   const w = usingDemo ? 1280 : Math.min(1920, video.videoWidth || 1280);
   const h = usingDemo ? 960 : Math.round(w * (video.videoHeight / (video.videoWidth || 1)));
@@ -231,6 +261,7 @@ async function importPhoto(file){
 }
 function rewind(){
   $('doorInfo').textContent = 'rewinding…';
+  if (navigator.vibrate) navigator.vibrate([30, 80, 30, 80, 30]); // motor-sputter rewind feel
   setTimeout(() => {
     state.shotsLeft = 36; $('counter').textContent = '36';
     $('doorInfo').textContent = 'roll stays loaded when you swap cameras';

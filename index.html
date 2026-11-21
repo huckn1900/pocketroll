@@ -117,6 +117,22 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;
 
 footer{margin-top:12px;font-size:9px;letter-spacing:.06em;color:#8d8474;line-height:1.6;text-align:center}
 .demo-hint{font-size:10px;color:#7d7468;letter-spacing:.1em;margin-top:6px;text-transform:uppercase}
+
+/* phone-width adaptation: stack the panel, compact the counter, wrap actions */
+@media (max-width:480px){
+  .cam-body{margin:6px;padding:12px 12px 10px;border-radius:20px}
+  .brandline{padding:2px 2px 8px}
+  .brandline span:last-child{display:none}
+  .panel{grid-template-columns:1fr;gap:8px}
+  .counter{min-width:0;flex-direction:row;align-items:center;gap:10px;padding:8px 10px}
+  .counter .tiny{display:none}
+  .counter .led{font-size:26px}
+  .canister{flex:1}
+  .actions{flex-wrap:wrap;gap:8px}
+  .spacer{display:none}
+  .doorinfo{flex:100%;font-size:9px;letter-spacing:.08em}
+  .vf-label span:last-child{font-size:8px}
+}
 </style>
 </head>
 <body>
