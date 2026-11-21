@@ -342,8 +342,10 @@ async function boot(){
   loadFilm(fil);
   renderGallery();
   loop();
-  initCamera();
-  if (q.get('autoshot') === '1'){ capture(); capture(); capture(); }
+  // autoshot fires after the feed is settled (live camera if granted, demo otherwise)
+  initCamera().then(() => {
+    if (q.get('autoshot') === '1') setTimeout(() => { capture(); capture(); capture(); }, 900);
+  });
 
   $('shutter').onclick = capture;
   $('pickCamera').onclick = () => $('camModal').classList.add('open');
