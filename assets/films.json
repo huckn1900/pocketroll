@@ -1,0 +1,80 @@
+{
+  "note": "15 classic/representative film stocks. filter_params are app-side emulation parameters (approximations derived from documented character of each stock; see docs/research.md sources). status: 'current' still manufactured, 'discontinued' historical.",
+  "films": [
+    {
+      "id": "trix400", "brand": "Kodak", "name": "Tri-X 400", "type": "bw", "iso": 400, "status": "current",
+      "era": "1954", "story": "The film that documented the second half of the 20th century in America; grainy and contrasty = monochrome photojournalism.",
+      "filter_params": { "contrast": 1.18, "black_lift": 0.02, "white_point": 0.98, "saturation": 0, "grain_size": 1.6, "grain_strength": 0.55, "tint_highlights": "#f2efe6", "tint_shadows": "#101216", "halation": 0.10, "vignette": 0.05, "fade": 0.0 }
+    },
+    {
+      "id": "hp5plus", "brand": "Ilford", "name": "HP5 Plus", "type": "bw", "iso": 400, "status": "current",
+      "era": "HP lineage since 1960s", "story": "Britain's answer to Tri-X: softer midtones, finer grain, forgiving and endlessly pushable.",
+      "filter_params": { "contrast": 0.98, "black_lift": 0.07, "white_point": 0.96, "saturation": 0, "grain_size": 1.2, "grain_strength": 0.45, "tint_highlights": "#eeeae2", "tint_shadows": "#16181c", "halation": 0.08, "vignette": 0.05, "fade": 0.04 }
+    },
+    {
+      "id": "delta100", "brand": "Ilford", "name": "Delta 100", "type": "bw", "iso": 100, "status": "current",
+      "era": "modern B&W classic", "story": "Ultra-fine grain, high contrast, smooth tonal range — the crisp studio B&W.",
+      "filter_params": { "contrast": 1.25, "black_lift": 0.01, "white_point": 1.0, "saturation": 0, "grain_size": 0.6, "grain_strength": 0.20, "tint_highlights": "#f5f4f0", "tint_shadows": "#0c0d10", "halation": 0.05, "vignette": 0.04, "fade": 0.0 }
+    },
+    {
+      "id": "kentmere400", "brand": "Ilford", "name": "Kentmere 400", "type": "bw", "iso": 400, "status": "current",
+      "era": "budget classic", "story": "The cheap roll of film: honest, moderate contrast, visible grain — everyday B&W.",
+      "filter_params": { "contrast": 1.08, "black_lift": 0.06, "white_point": 0.94, "saturation": 0, "grain_size": 1.4, "grain_strength": 0.42, "tint_highlights": "#e9e5dc", "tint_shadows": "#1a1c20", "halation": 0.08, "vignette": 0.06, "fade": 0.06 }
+    },
+    {
+      "id": "portra160", "brand": "Kodak", "name": "Portra 160", "type": "color_negative", "iso": 160, "status": "current",
+      "era": "Portra lineage since 1980s, reissued 2012", "story": "The softest professional color film: pastel skin tones, gentle highlights, wide latitude.",
+      "filter_params": { "contrast": 0.88, "black_lift": 0.10, "white_point": 0.92, "saturation": 0.90, "grain_size": 0.8, "grain_strength": 0.22, "tint_highlights": "#f6e9d8", "tint_shadows": "#2e3a46", "halation": 0.12, "vignette": 0.05, "fade": 0.12 }
+    },
+    {
+      "id": "portra400", "brand": "Kodak", "name": "Portra 400", "type": "color_negative", "iso": 400, "status": "current",
+      "era": "reissued 2012", "story": "The most beloved film stock of the revival era: peachy highlights, olive shadows, forgiving latitude.",
+      "filter_params": { "contrast": 0.92, "black_lift": 0.08, "white_point": 0.94, "saturation": 0.88, "grain_size": 1.1, "grain_strength": 0.30, "tint_highlights": "#f7e3c8", "tint_shadows": "#37432e", "halation": 0.14, "vignette": 0.06, "fade": 0.08 }
+    },
+    {
+      "id": "gold200", "brand": "Kodak", "name": "Kodak Gold 200", "type": "color_negative", "iso": 200, "status": "current",
+      "era": "Gold lineage since 1970s", "story": "The consumer film of the supermarket shelf: warm yellow-gold, cheerful snapshots.",
+      "filter_params": { "contrast": 1.00, "black_lift": 0.05, "white_point": 0.95, "saturation": 0.95, "grain_size": 1.3, "grain_strength": 0.36, "tint_highlights": "#f8e3a8", "tint_shadows": "#2b2418", "halation": 0.12, "vignette": 0.07, "fade": 0.05 }
+    },
+    {
+      "id": "ektar100", "brand": "Kodak", "name": "Ektar 100", "type": "color_negative", "iso": 100, "status": "current",
+      "era": "1989", "story": "Maximum saturation, dense contrast, vivid reds and greens — the punchy consumer professional.",
+      "filter_params": { "contrast": 1.15, "black_lift": 0.02, "white_point": 0.97, "saturation": 1.25, "grain_size": 0.7, "grain_strength": 0.18, "tint_highlights": "#f9e8d2", "tint_shadows": "#181a12", "halation": 0.10, "vignette": 0.06, "fade": 0.0 }
+    },
+    {
+      "id": "colorplus", "brand": "Kodak", "name": "Kodak ColorPlus", "type": "color_negative", "iso": 200, "status": "current",
+      "era": "2017 budget revival", "story": "Cheap, faded, warm — the disposable-camera aesthetic made by hand.",
+      "filter_params": { "contrast": 0.95, "black_lift": 0.12, "white_point": 0.90, "saturation": 0.90, "grain_size": 1.5, "grain_strength": 0.40, "tint_highlights": "#f2ddbf", "tint_shadows": "#25201a", "halation": 0.16, "vignette": 0.10, "fade": 0.16 }
+    },
+    {
+      "id": "vision3-500t", "brand": "Kodak", "name": "Vision3 500T", "type": "motion_negative", "iso": 500, "status": "current",
+      "era": "motion picture negative", "story": "Tungsten-balanced cinema film: cyan shadows, warm highlights, the Hollywood look.",
+      "filter_params": { "contrast": 1.05, "black_lift": 0.06, "white_point": 0.96, "saturation": 0.92, "grain_size": 1.2, "grain_strength": 0.32, "tint_highlights": "#f8dfb6", "tint_shadows": "#1d2c38", "halation": 0.35, "vignette": 0.08, "fade": 0.04 }
+    },
+    {
+      "id": "cinestill800t", "brand": "Cinestill", "name": "Cinestill 800T", "type": "color_negative", "iso": 800, "status": "current",
+      "era": "2014, repackaged 500T", "story": "The Instagram-era cinema film: red halation glow around highlights, teal shadows.",
+      "filter_params": { "contrast": 1.00, "black_lift": 0.08, "white_point": 0.94, "saturation": 0.90, "grain_size": 1.5, "grain_strength": 0.45, "tint_highlights": "#f7d9a4", "tint_shadows": "#16283a", "halation": 0.55, "vignette": 0.10, "fade": 0.06 }
+    },
+    {
+      "id": "velvia50", "brand": "Fujifilm", "name": "Velvia 50", "type": "slide", "iso": 50, "status": "current",
+      "era": "1990", "story": "The legendary slide film: extreme saturation, deep blacks, cool punch — landscapes on steroids.",
+      "filter_params": { "contrast": 1.30, "black_lift": 0.00, "white_point": 1.0, "saturation": 1.35, "grain_size": 0.5, "grain_strength": 0.14, "tint_highlights": "#f4ecdf", "tint_shadows": "#0b1014", "halation": 0.05, "vignette": 0.05, "fade": 0.0 }
+    },
+    {
+      "id": "provia100f", "brand": "Fujifilm", "name": "Provia 100F", "type": "slide", "iso": 100, "status": "current",
+      "era": "1993", "story": "Neutral, accurate slide film: crisp, clean, true-to-life — the documentary transparency.",
+      "filter_params": { "contrast": 1.20, "black_lift": 0.02, "white_point": 1.0, "saturation": 1.05, "grain_size": 0.55, "grain_strength": 0.16, "tint_highlights": "#f6f3ea", "tint_shadows": "#101215", "halation": 0.06, "vignette": 0.05, "fade": 0.0 }
+    },
+    {
+      "id": "e100", "brand": "Kodak", "name": "Ektachrome E100", "type": "slide", "iso": 100, "status": "current",
+      "era": "revived 2018", "story": "The revived Ektachrome: clean whites, rich blacks, low grain, cool-neutral elegance.",
+      "filter_params": { "contrast": 1.22, "black_lift": 0.015, "white_point": 1.0, "saturation": 1.02, "grain_size": 0.55, "grain_strength": 0.15, "tint_highlights": "#eef0f4", "tint_shadows": "#0e1116", "halation": 0.05, "vignette": 0.05, "fade": 0.0 }
+    },
+    {
+      "id": "kodachrome64", "brand": "Kodak", "name": "Kodachrome 64", "type": "slide", "iso": 64, "status": "discontinued (2009)",
+      "era": "1950–2009", "story": "THE classic: warm neutrals, fine grain, the color of America's postwar memory. No longer made — kept here as a heritage look.",
+      "filter_params": { "contrast": 1.15, "black_lift": 0.03, "white_point": 0.97, "saturation": 1.10, "grain_size": 0.6, "grain_strength": 0.17, "tint_highlights": "#f6ecd6", "tint_shadows": "#141612", "halation": 0.08, "vignette": 0.06, "fade": 0.04 }
+    }
+  ]
+}
