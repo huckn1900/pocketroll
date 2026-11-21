@@ -3,6 +3,7 @@
 A phone camera that shoots 35mm film looks. The UI is the **back of a point-and-shoot camera** (cream plastic body, chrome viewfinder bezel, red LED frame counter, DX film canister label, filmstrip contact sheet); the filter engine emulates real camera × film-stock combinations from the material library in `assets/`.
 
 ## Run it
+Live: **https://huckn1900.github.io/pocketroll/** (open on your phone — HTTPS secure context = camera works; installable as PWA)
 ```
 python -m http.server 8765      # any static server works
 open http://127.0.0.1:8765/
