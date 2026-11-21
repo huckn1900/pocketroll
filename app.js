@@ -26,19 +26,29 @@ class FilmEngine {
     this.cam = cam; this.film = film;
     if (!film) return;
     this.lut = this.buildLUT(film);
-    this.noise = this.makeNoise(film.filter_params.grain_size || 1);
+    this.noise = this.makeNoise(film.filter_params);
   }
   buildLUT(f){
     const p = f.filter_params;
     const curve = new Uint8Array(256);
     const wH = new Float32Array(256), wS = new Float32Array(256);
     this.tintH = hexToRgb(p.tint_highlights); this.tintS = hexToRgb(p.tint_shadows);
+    // Color Science modules: white balance response, exposure response, channel-mix matrix
+    this.wb = p.wb || [1, 1, 1];
+    this.exposure = Math.pow(2, p.exposure || 0);
+    this.matrix = p.rgb_matrix || [1,0,0, 0,1,0, 0,0,1];
+    const sh = p.shadows ?? 0, hi = p.highlights ?? 0;
     for (let i = 0; i < 256; i++){
       let v = i/255;
-      // contrast stretch around midpoint
+      // midtone slope (film gamma)
       v = clamp01(0.5 + (v - 0.5) * p.contrast);
-      // black lift (fade): lifts shadows only
-      v = clamp01(v + p.black_lift * Math.pow(1 - v, 2));
+      // toe: characteristic-curve shadow response — crush (slide films) or lift (negative fade)
+      if (sh > 0) v = clamp01(v - sh * Math.max(0, 0.30 - v) * 0.85);
+      if (sh < 0) v = clamp01(v + (-sh) * Math.pow(1 - v, 2));
+      v = clamp01(v + (p.black_lift || 0) * Math.pow(1 - v, 2));
+      // shoulder: highlight rolloff — negatives roll off soft, slides clip harder
+      if (hi > 0) v = clamp01(v - hi * Math.max(0, v - 0.72) * 0.55);
+      if (hi < 0) v = clamp01(v + (-hi) * Math.max(0, v - 0.70) * 0.4);
       // white point compression
       v *= p.white_point;
       curve[i] = Math.round(v * 255);
@@ -48,23 +58,13 @@ class FilmEngine {
     }
     return { curve, wH, wS };
   }
-  makeNoise(grainSize){
-    const c = document.createElement('canvas');
-    const s = Math.max(128, Math.round(128 / grainSize));
-    c.width = c.height = 256;
-    const ctx = c.getContext('2d');
-    const img = ctx.createImageData(s, s);
-    for (let i = 0; i < img.data.length; i += 4){
-      const n = 128 + (Math.random()*2 - 1) * 90;
-      img.data[i] = img.data[i+1] = img.data[i+2] = n; img.data[i+3] = 255;
-    }
-    ctx.putImageData(img, 0, 0);
-    // scale fine grain up so grain_size<1 stays fine at capture res
-    const out = document.createElement('canvas'); out.width = out.height = 256;
-    const octx = out.getContext('2d');
-    octx.imageSmoothingEnabled = grainSize >= 1;
-    octx.drawImage(c, 0, 0, 256, 256);
-    return out;
+  makeNoise(p){
+    // 256×256 luminance noise field, sampled per-pixel so grain can follow
+    // the printed luminance and scale with output resolution (film grain is a
+    // fixed physical size on film: scans at higher res show finer grain per px).
+    const arr = new Uint8Array(256 * 256);
+    for (let i = 0; i < arr.length; i++) arr[i] = 128 + Math.round((Math.random()*2 - 1) * 90);
+    return arr;
   }
   process(src, srcW, srcH){
     if (!this.film) { this.ctx.drawImage(src, 0, 0, srcW, srcH); return; }
@@ -77,33 +77,65 @@ class FilmEngine {
     this.ctx.drawImage(src, 0, 0, srcW, srcH);
     this.ctx.filter = 'none';
 
-    // pixel pass: tone curve on luminance, chroma preserved & scaled by saturation,
-    // split-tone tint blended by highlight/shadow weights, camera color gain on chroma
+    // pixel pass — full film pipeline:
+    // color temperature (wb gains) + lens cast + exposure response
+    // → tone curve (toe / midtone gamma / shoulder) → chroma scaled by saturation
+    // → RGB color-response matrix → split-tone tint → luminance-dependent film grain
     const img = this.ctx.getImageData(0, 0, w, h);
     const d = img.data;
     const { curve, wH, wS } = this.lut;
     const sat = p.saturation;
+    const ex = this.exposure;
+    const g0 = this.wb[0]*cast.gain[0]*ex, g1 = this.wb[1]*cast.gain[1]*ex, g2 = this.wb[2]*cast.gain[2]*ex;
+    const m = this.matrix;
     const hR = this.tintH.r*255, hG = this.tintH.g*255, hB = this.tintH.b*255;
     const sR = this.tintS.r*255, sG = this.tintS.g*255, sB = this.tintS.b*255;
+    const grainOn = p.grain_strength > 0;
+    const cell = Math.max(1, (p.grain_size || 1) * (w / 720) * 1.7);
+    const grainColor = p.grain_color !== false; // B&W stocks get pure luminance grain
+    const noise = this.noise;
+    let col = 0, row = 0;
     for (let i = 0; i < d.length; i += 4){
-      const r = d[i], g = d[i+1], b = d[i+2];
-      const v = (r*0.299 + g*0.587 + b*0.114) | 0;
+      const r = d[i]*g0, g = d[i+1]*g1, b = d[i+2]*g2;
+      const v = Math.min(255, (r*0.299 + g*0.587 + b*0.114) | 0);
       const base = curve[v];
       const wh = wH[v], ws = wS[v], keep = 1 - wh - ws;
-      const cr = (r*cast.gain[0] - v) * sat, cg = (g*cast.gain[1] - v) * sat, cb = (b*cast.gain[2] - v) * sat;
-      d[i]   = clamp01(((base + cr) * keep + hR*wh + sR*ws) / 255) * 255;
-      d[i+1] = clamp01(((base + cg) * keep + hG*wh + sG*ws) / 255) * 255;
-      d[i+2] = clamp01(((base + cb) * keep + hB*wh + sB*ws) / 255) * 255;
+      const cr = (r - v) * sat, cg = (g - v) * sat, cb = (b - v) * sat;
+      const rr0 = (base + cr) * keep, rg0 = (base + cg) * keep, rb0 = (base + cb) * keep;
+      let rr = rr0*m[0] + rg0*m[1] + rb0*m[2];
+      let gg = rr0*m[3] + rg0*m[4] + rb0*m[5];
+      let bb = rr0*m[6] + rg0*m[7] + rb0*m[8];
+      rr = clamp01((rr + hR*wh + sR*ws) / 255) * 255;
+      gg = clamp01((gg + hG*wh + sG*ws) / 255) * 255;
+      bb = clamp01((bb + hB*wh + sB*ws) / 255) * 255;
+      if (grainOn){
+        // grain amplitude follows printed luminance: peaks in midtones/shadows,
+        // fades out in blown highlights — like real grain on a scan
+        const vo = (rr*0.299 + gg*0.587 + bb*0.114) / 255;
+        const bell = 1 - clamp01(Math.abs(vo - 0.42) / 0.45);
+        const amp = p.grain_strength * (0.30 + 0.80 * bell) * 34;
+        const nx = (col / cell | 0) & 255, ny = (row / cell | 0) & 255;
+        const nL = (noise[ny*256 + nx] - 128) / 90;
+        if (grainColor){ // mostly luminance grain + a little chromatic noise
+          const nr = (noise[((ny+53)&255)*256 + ((nx+91)&255)] - 128) / 90;
+          const ng = (noise[((ny+107)&255)*256 + ((nx+37)&255)] - 128) / 90;
+          const nb = (noise[((ny+171)&255)*256 + ((nx+13)&255)] - 128) / 90;
+          rr += nL*amp + nr*amp*0.35; gg += nL*amp + ng*amp*0.35; bb += nL*amp + nb*amp*0.35;
+        } else { rr += nL*amp; gg += nL*amp; bb += nL*amp; }
+      }
+      d[i] = rr; d[i+1] = gg; d[i+2] = bb;
+      col++; if (col >= w){ col = 0; row++; }
     }
     this.ctx.putImageData(img, 0, 0);
 
-    // halation: bright pass blurred & tinted, additive
+    // halation: bright pass blurred & tinted, additive; bloom scales with resolution
     const hal = (p.halation || 0) + (this.cam?.camera_character?.halation_bias ?? 0) * 0.4;
     if (hal > 0.03){
+      const resScale = Math.max(1, w / 720);
       const bw = Math.max(1, w>>2), bh = Math.max(1, h>>2);
       const bc = document.createElement('canvas'); bc.width = bw; bc.height = bh;
       const bctx = bc.getContext('2d');
-      bctx.filter = `contrast(2.4) brightness(1.35) blur(${(3 + hal*6).toFixed(1)}px)`;
+      bctx.filter = `contrast(2.4) brightness(1.35) blur(${((3 + hal*6) * resScale).toFixed(1)}px)`;
       bctx.drawImage(this.canvas, 0, 0, bw, bh);
       bctx.filter = 'none';
       bctx.globalCompositeOperation = 'multiply';
@@ -114,15 +146,7 @@ class FilmEngine {
       this.ctx.globalAlpha = 1; this.ctx.globalCompositeOperation = 'source-over';
     }
 
-    // grain
-    if (p.grain_strength > 0){
-      this.ctx.globalCompositeOperation = 'overlay';
-      this.ctx.globalAlpha = p.grain_strength * 0.45;
-      const tile = 256 * (p.grain_size || 1);
-      for (let x = 0; x < w; x += tile) for (let y = 0; y < h; y += tile)
-        this.ctx.drawImage(this.noise, x, y, tile, tile);
-      this.ctx.globalAlpha = 1; this.ctx.globalCompositeOperation = 'source-over';
-    }
+    // grain is handled inside the pixel pass (luminance-dependent, resolution-aware)
 
     // vignette: camera + film combined
     const vig = clamp01((p.vignette||0) + (this.cam?.camera_character?.vignette ?? 0));
@@ -176,7 +200,8 @@ function demoScene(){
 
 async function initCamera(){
   try{
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    // ask the sensor for its native resolution so exports are full-pixel, not 640×480
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
     video = document.createElement('video'); video.srcObject = stream; video.play();
     usingDemo = false; $('cameraHint').textContent = 'press space = shutter · live feed';
   }catch(e){
@@ -228,7 +253,8 @@ function capture(){
   if (state.shotsLeft <= 0){ rewind(); return; }
   shutterSound();
   const cap = document.createElement('canvas');
-  const w = usingDemo ? 1280 : Math.min(1920, video.videoWidth || 1280);
+  // export at the stream's native pixel size (cap guards 4K+ streams from huge pixel loops)
+  const w = usingDemo ? 1280 : Math.min(2560, video.videoWidth || 1280);
   const h = usingDemo ? 960 : Math.round(w * (video.videoHeight / (video.videoWidth || 1)));
   cap.width = w; cap.height = h;
   const tmp = new FilmEngine(cap); tmp.setCombo(state.cam, state.film);
@@ -248,7 +274,7 @@ async function importPhoto(file){
   const img = new Image(); img.src = url;
   try { await img.decode(); } catch { toast('could not read that image'); URL.revokeObjectURL(url); return; }
   const cap = document.createElement('canvas');
-  const w = Math.min(1600, img.naturalWidth);
+  const w = Math.min(2560, img.naturalWidth);
   const h = Math.round(w * img.naturalHeight / img.naturalWidth);
   cap.width = w; cap.height = h;
   const tmp = new FilmEngine(cap); tmp.setCombo(state.cam, state.film);

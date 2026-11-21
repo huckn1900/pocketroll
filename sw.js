@@ -1,7 +1,7 @@
 /* POCKETROLL service worker — offline-capable PWA shell.
    Cache-first for the app shell; test/ pages and query-param URLs bypass the cache
    so dev iteration (e.g. ?autoshot=1 screenshots) always gets fresh code. */
-const CACHE = 'pocketroll-v1';
+const CACHE = 'pocketroll-v2';
 const SHELL = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon.png', 'assets/cameras.json', 'assets/films.json'];
 
 self.addEventListener('install', e => {
