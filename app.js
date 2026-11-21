@@ -172,13 +172,42 @@ class FilmEngine {
   }
 }
 
+/* LCD finder readout per camera (plausible programmed values, UI prop only) */
+const CAMERA_HUD = {
+  trip35:     { flash: 'off',  shutter: 'PRGM 1/60' },
+  instamatic: { flash: 'on',   shutter: 'PRGM 1/60' },
+  af35m:      { flash: 'on',   shutter: 'PRGM' },
+  l35af:      { flash: 'off',  shutter: 'PRGM' },
+  t4:         { flash: 'none', shutter: '1/250' },
+  contaxt2:   { flash: 'none', shutter: '1/250' },
+  mju2:       { flash: 'none', shutter: '1/200' },
+  gr1v:       { flash: 'none', shutter: '1/500' },
+  tc01:       { flash: 'none', shutter: 'PRGM' },
+  lca:        { flash: 'off',  shutter: '1/125' },
+};
+
 /* ---------- app state ---------- */
-const state = { cameras: [], films: [], cam: null, film: null, shotsLeft: 36, gallery: [] };
+const state = { cameras: [], films: [], cam: null, film: null, shotsLeft: 36, gallery: [], battery: 92 };
 const vf = $('viewfinder');
 const engine = new FilmEngine(vf);
 let video = null, demoCanvas = null, usingDemo = false;
 
 function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); }
+
+/* LCD finder HUD: minimal by default (focus box + ISO), tap the finder for the
+   full readout (flash / battery / shutter / EV) — like a real camera saving power. */
+function renderHud(){
+  const h = state.cam ? (CAMERA_HUD[state.cam.id] || { flash: 'none', shutter: 'PRGM' }) : { flash: 'none', shutter: '' };
+  const fl = $('hudFlash');
+  fl.style.display = h.flash === 'none' ? 'none' : '';
+  fl.className = 'flash' + (h.flash === 'on' ? ' on' : '');
+  fl.textContent = '⚡ flash ' + (h.flash === 'on' ? 'on' : 'off');
+  $('hudIso').textContent = state.film ? 'ISO ' + state.film.iso : 'no film';
+  $('hudReadout').textContent = (h.shutter ? h.shutter : '—') + ' · +0.0 EV';
+  $('hudBattFill').style.width = state.battery + '%';
+  $('hudBattPct').textContent = state.battery + '%';
+  $('hudBatt').classList.toggle('low', state.battery < 20);
+}
 
 function demoScene(){
   // procedural fallback scene so filters can be tested without camera permission
@@ -203,7 +232,7 @@ async function initCamera(){
     // ask the sensor for its native resolution so exports are full-pixel, not 640×480
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
     video = document.createElement('video'); video.srcObject = stream; video.play();
-    usingDemo = false; $('cameraHint').textContent = 'press space = shutter · live feed';
+    usingDemo = false; $('cameraHint').textContent = 'press space = shutter · live feed · tap finder = full readout';
   }catch(e){
     usingDemo = true;
     $('cameraHint').textContent = 'camera unavailable — demo scene (still filterable)';
@@ -252,6 +281,11 @@ function capture(){
   if (!state.film){ toast('load a film first'); return; }
   if (state.shotsLeft <= 0){ rewind(); return; }
   shutterSound();
+  // focus box snaps to locked for a moment; battery sips down (flash shots draw more)
+  const focus = $('hudFocus');
+  focus.classList.add('lock'); setTimeout(() => focus.classList.remove('lock'), 350);
+  state.battery = Math.max(4, state.battery - (CAMERA_HUD[state.cam?.id]?.flash === 'on' ? 2 : 1));
+  renderHud();
   const cap = document.createElement('canvas');
   // export at the stream's native pixel size (cap guards 4K+ streams from huge pixel loops)
   const w = usingDemo ? 1280 : Math.min(2560, video.videoWidth || 1280);
@@ -315,6 +349,7 @@ function loadFilm(f){
   $('canisterIso').textContent = f.iso + ' ISO';
   $('counter').textContent = '36';
   $('comboTag').textContent = (state.cam ? state.cam.model.toUpperCase() : 'BODY') + ' + ' + f.name.toUpperCase();
+  renderHud();
   $('camBody').classList.add('open');
   setTimeout(() => $('camBody').classList.remove('open'), 600);
   toast(`loading roll · ${f.name}`);
@@ -324,6 +359,7 @@ function loadCamera(c){
   engine.setCombo(c, state.film);
   $('camLabel').textContent = `${c.brand} ${c.model} · ${c.year}`;
   $('comboTag').textContent = c.model.toUpperCase() + ' + ' + (state.film ? state.film.name.toUpperCase() : 'NO FILM');
+  renderHud();
   toast('camera swapped — roll untouched');
 }
 
@@ -366,6 +402,9 @@ async function boot(){
   const fil = state.films.find(f => f.id === q.get('film')) || state.films.find(f => f.id === 'gold200');
   loadCamera(cam);
   loadFilm(fil);
+  if (q.get('hud') === 'full') $('hud').classList.add('full');
+  $('vfStage').addEventListener('click', () => $('hud').classList.toggle('full'));
+  renderHud();
   renderGallery();
   loop();
   // autoshot fires after the feed is settled (live camera if granted, demo otherwise)

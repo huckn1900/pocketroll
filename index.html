@@ -44,12 +44,27 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;
 .vf-label{font-size:9px;letter-spacing:.18em;color:#7d7468;text-transform:uppercase;margin-bottom:6px;display:flex;justify-content:space-between}
 .vf-stage{position:relative;border-radius:8px;overflow:hidden;background:#000;aspect-ratio:4/3;}
 .vf-stage canvas{width:100%;height:100%;display:block}
-.frameline{position:absolute;inset:8%;border:1px solid rgba(255,255,255,.14);border-radius:4px;pointer-events:none}
-.frameline .corner{position:absolute;width:14px;height:14px;border:2px solid rgba(255,255,255,.5)}
-.frameline .c1{top:0;left:0;border-right:none;border-bottom:none}
-.frameline .c2{top:0;right:0;border-left:none;border-bottom:none}
-.frameline .c3{bottom:0;left:0;border-right:none;border-top:none}
-.frameline .c4{bottom:0;right:0;border-left:none;border-top:none}
+/* finder glass + LCD HUD (real point-and-shoot finder readout, not a video player) */
+.vf-glass{position:absolute;inset:0;pointer-events:none;border-radius:8px;
+  background:linear-gradient(115deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,0) 16%),
+             radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(5,4,3,.38) 100%);}
+.vf-glass::after{content:'';position:absolute;inset:0;border-radius:8px;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px);}
+.hud{position:absolute;inset:0;pointer-events:none;font-family:ui-monospace,monospace;
+  font-size:9px;letter-spacing:.14em;color:rgba(255,255,255,.75);text-transform:uppercase}
+.hud::before{content:'';position:absolute;inset:6%;border:1px solid rgba(255,255,255,.10);border-radius:3px}
+.hud .focus{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:16%;aspect-ratio:1;
+  border:1px solid rgba(255,255,255,.5);border-radius:3px;box-shadow:0 0 6px rgba(255,255,255,.15)}
+.hud .focus.lock{border-color:#9ef08a;box-shadow:0 0 10px rgba(150,240,140,.55)}
+.hud .isomin{position:absolute;left:10px;bottom:8px;opacity:.85}
+.hud .flash{position:absolute;left:10px;top:8px;display:none}
+.hud .batt{position:absolute;right:10px;top:8px;display:none;gap:6px;align-items:center}
+.hud .readout{position:absolute;right:10px;bottom:8px;display:none}
+.hud.full .flash,.hud.full .batt,.hud.full .readout{display:flex}
+.hud .flash.on{color:#ffcf7a}
+.hud .cell{width:16px;height:8px;border:1px solid rgba(255,255,255,.65);border-radius:2px}
+.hud .cell .fill{display:block;height:100%;background:#cfe3c8;border-radius:1px}
+.hud .batt.low{color:var(--led)} .hud .batt.low .fill{background:var(--led)}
 
 /* control panel */
 .panel{margin-top:14px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:stretch}
@@ -141,9 +156,16 @@ footer{margin-top:12px;font-size:9px;letter-spacing:.06em;color:#8d8474;line-hei
 
   <div class="vf-bezel">
     <div class="vf-label"><span>viewfinder / lcd playback</span><span id="comboTag">—</span></div>
-    <div class="vf-stage">
+    <div class="vf-stage" id="vfStage">
       <canvas id="viewfinder"></canvas>
-      <div class="frameline"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div></div>
+      <div class="vf-glass"></div>
+      <div class="hud" id="hud">
+        <div class="focus" id="hudFocus"></div>
+        <div class="isomin" id="hudIso">ISO —</div>
+        <div class="flash" id="hudFlash"></div>
+        <div class="batt" id="hudBatt"><span class="cell"><span class="fill" id="hudBattFill" style="width:92%"></span></span><span id="hudBattPct">92%</span></div>
+        <div class="readout" id="hudReadout"></div>
+      </div>
     </div>
   </div>
 
