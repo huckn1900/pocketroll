@@ -291,11 +291,26 @@ async function initCamera(){
   }
 }
 
+let vfAspect = 0;
 function renderViewfinder(){
-  const cw = previewW, ch = Math.round(previewW * 0.75);
-  if (vf.width !== cw){ vf.width = cw; vf.height = ch; }
-  if (usingDemo) engine.process(demoCanvas, demoCanvas.width, demoCanvas.height);
-  else if (video && video.videoWidth) engine.process(video, video.videoWidth, video.videoHeight);
+  // show the FULL frame, never crop or squash: canvas matches source aspect,
+  // and the stage's aspect follows the sensor so the LCD reads edge-to-edge
+  const src = usingDemo ? demoCanvas : (video && video.videoWidth ? video : null);
+  if (!src) return;
+  const sw = src.width || video.videoWidth;
+  const sh = src.height || video.videoHeight;
+  if (!sw || !sh) return;
+  const ar = sw / sh;
+  // follow the sensor aspect, clamped to a sane LCD box (real compact LCDs ~4:3);
+  // object-fit:contain keeps the FULL frame inside — never crop, never squash
+  const clamped = Math.min(1.34, Math.max(0.72, ar));
+  if (Math.abs(vfAspect - clamped) > 0.02){
+    vfAspect = clamped;
+    $('vfStage').style.aspectRatio = String(clamped);
+  }
+  const cw = previewW, ch = Math.max(2, Math.round(previewW * sh / sw));
+  if (vf.width !== cw || vf.height !== ch){ vf.width = cw; vf.height = ch; }
+  engine.process(src, sw, sh);
 }
 let frameMs = 16, previewW = 640;
 function loop(){

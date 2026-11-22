@@ -42,7 +42,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .vfmeta .filmname{color:#c9bda6}
 .vfmeta .exp{color:var(--led)}
 .vf-stage{position:relative;border-radius:8px;overflow:hidden;background:#0d0b09;aspect-ratio:4/3}
-.vf-stage canvas{display:block;width:100%;height:100%}
+.vf-stage canvas{display:block;width:100%;height:100%;object-fit:contain}
 /* glass: restrained vignette + faint reflection + scanlines */
 .vf-glass{position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(120% 90% at 50% 45%,rgba(0,0,0,0) 55%,rgba(0,0,0,.32) 100%),
@@ -146,6 +146,21 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   box-shadow:0 2px 0 #8f3524}
 .getpro:active{transform:translateY(2px);box-shadow:0 0 0 #8f3524}
 .prohint{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:#827763;text-align:center;margin-top:5px}
+/* landscape screens (rotated phones, tablets, desktops): split layout —
+   finder + shutter on the left (thumb zone under the finder),
+   status/roll/develop in a right column */
+@media (orientation:landscape){
+  body{max-width:100%;margin:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,340px);
+    gap:8px 14px;padding:8px 14px;align-content:start}
+  .head{grid-column:1/-1}
+  .vfbox{grid-column:1;grid-row:2;align-self:start;margin-top:0}
+  .vf-stage{aspect-ratio:auto;height:min(50vh,460px);width:min(100%,calc(50vh * 1.5));margin-inline:auto}
+  .status{grid-column:2;grid-row:2;margin-top:0;align-self:start}
+  .strip{grid-column:2;grid-row:3}
+  #developMain{grid-column:2;grid-row:4;margin-top:2px}
+  .actions{grid-column:1;grid-row:3;margin-top:0;justify-content:flex-start}
+  footer{display:none}
+}
 .roll-card{background:var(--dark);border-radius:10px;padding:10px 12px;margin-top:8px;cursor:pointer}
 .roll-card .meta{display:flex;justify-content:space-between;font-size:11px;color:#cfc5b4}
 .roll-card .sub{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:#8a8072}
