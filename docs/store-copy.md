@@ -3,12 +3,12 @@
 App name **POCKETROLL** is invented (no third-party trademark collision found in initial web checks; re-check exact name in Play Console / App Store search before committing). Brand/model names below are used **descriptively** (nominative use): no logos, no implied endorsement, disclaimer included — per docs/research.md trademark analysis (risk: LOW).
 
 ## Google Play
-- **Title (≤80):** `POCKETROLL — 35mm Film Filter Camera`
-- **Short description (≤80):** `Shoot classic film looks on your phone. 10 vintage cameras × 15 film stocks.`
+- **Title (≤80):** `POCKETROLL — 35mm Film Camera Experience`
+- **Short description (≤80):** `A real film camera on your phone: 36 frames per roll, develop later, keep the sheet.`
 - **Full description (≤4000):**
-  > POCKETROLL turns your phone into a 35mm film camera — the way a real one feels.
-  > Pick a body from 10 classic point-and-shoots (Olympus Trip 35, Canon AF35M, Yashica T4, Contax-style, Ricoh GR, Minolta TC-01, Lomo LC-A…) and load one of 15 legendary films (Ilford Tri-X & HP5+, Kodak Gold, Portra, Ektar, Fujifilm Velvia, Cinestill 800T…). Every look is built from real film behavior: tone curves, split-toning, halation glow around highlights, film grain, vignetting, and camera quirks like light leaks.
-  > The interface is the back of a compact camera: frame counter, DX canister label, film door, contact sheet. Your roll follows the film, not the camera — swapping bodies never resets it. 36 exposures, then rewind. Develop any photo from your gallery through the loaded film. Works offline. No account, no data leaves your device.
+  > POCKETROLL is not a filter app. It is the experience of shooting film — the look comes from the experience, not the other way around.
+  > Pick a body from 10 classic point-and-shoots (Olympus Trip 35, Canon AF35M, Yashica T4, Contax-style, Ricoh GR, Minolta TC-01, Lomo LC-A…) and load one of 15 legendary films (Ilford Tri-X & HP5+, Kodak Gold, Portra, Ektar, Fujifilm Velvia, Cinestill 800T…). Each stock has its own color science — tone curves, split-toning, halation, ISO-appropriate grain — and your roll keeps it from loading to archive.
+  > The ritual is the product: only 36 exposures per roll; shutter and film-advance feedback with every shot; frames stay LATENT until you develop the whole roll in the darkroom; every developed roll prints an automatic contact sheet and lands in a dated film archive. Opening the back door before developing fogs your frames — like a real camera. The interface is the back of a compact camera: LCD viewfinder readout, frame counter, DX canister label, film door. Your roll follows the film, not the camera — swapping bodies never resets it. Works offline. No account, no data leaves your device.
   > Full roll: unlock all 15 films with a one-time purchase.
   > *Kodak, Fujifilm, Ilford, Olympus, Canon, Nikon, Yashica, Contax, Ricoh, Minolta and Lomo are trademarks of their respective owners. POCKETROLL is independent and not affiliated with or endorsed by any brand; names are used descriptively only.*
 - **Category:** Apps for Entertainment → Photography. **Pricing:** free (6 films) + one-time in-app purchase for the full shelf.
@@ -16,9 +16,9 @@ App name **POCKETROLL** is invented (no third-party trademark collision found in
 
 ## App Store
 - **Title (≤30):** `POCKETROLL Film Camera`
-- **Subtitle (≤30):** `35mm film looks & grain`
-- **Promo text (≤170):** `10 classic point-and-shoots × 15 legendary films. Real halation, grain, tone curves — not just a filter preset.`
-- **Keywords:** film, analog, 35mm, grain, retro, camera, vintage, filter, halation, kodak
+- **Subtitle (≤30):** `Shoot film, not filters`
+- **Promo text (≤170):** `Only 36 exposures per roll. Frames stay latent until you develop the whole roll — then it prints a contact sheet and joins your film archive.`
+- **Keywords:** film, analog, 35mm, grain, retro, camera, vintage, roll, develop, halation, kodak
 - **Description:** same body as Play full description, trimmed to ~3 paragraphs + the trademark disclaimer line. Category: Photo & Video. Pricing: free + one-time "full film shelf" IAP.
 - Screenshots: use `test/calibration.html` grid crops + app UI shots (cream body, viewfinder, counter).
 

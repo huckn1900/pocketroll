@@ -1,6 +1,6 @@
-# POCKETROLL 35 — film filter camera
+# POCKETROLL 35 — the experience of shooting film, not just the look
 
-A phone camera that shoots 35mm film looks. The UI is the **back of a point-and-shoot camera** (cream plastic body, chrome viewfinder bezel, red LED frame counter, DX film canister label, filmstrip contact sheet); the filter engine emulates real camera × film-stock combinations from the material library in `assets/`.
+A phone camera that behaves like a real 35mm camera. Only 36 exposures per roll; frames stay **latent** until you develop the whole roll in the darkroom; every developed roll auto-prints a **contact sheet** and lands in a dated **film archive**; opening the back door before developing fogs your frames. The look (color science per film stock, ISO-appropriate grain, halation, light leaks by stock) comes from the experience, not from presets. The UI is the **back of a point-and-shoot camera** (cream plastic body, chrome viewfinder bezel, red LED frame counter, DX film canister label, filmstrip); the engine emulates real camera × film combinations from the material library in `assets/`. Avoid being another VSCO/Lightroom — the product is the ritual.
 
 ## Run it
 Live: **https://huckn1900.github.io/pocketroll/** (open on your phone — HTTPS secure context = camera works; installable as PWA)
@@ -9,8 +9,8 @@ python -m http.server 8765      # any static server works
 open http://127.0.0.1:8765/
 ```
 - It is a PWA: installable from Chrome on Android/desktop, works offline after first load (service worker caches the shell).
-- Controls: **SHUTTER** button or spacebar captures; **camera bag** / **film shelf** pick the combo; **develop photo** runs a gallery photo of yours through the loaded film (does not consume roll frames); **back door** animates the film door; frames auto-rewind at 0.
-- Test hooks: `?cam=<id>&film=<id>&autoshot=1`, and `test/calibration.html` (all 15 stocks on a real photo, for parameter tuning).
+- Controls: **SHUTTER** button or spacebar exposes a frame; **camera bag** / **film shelf** load gear (swapping cameras never resets the roll); **develop roll** runs the darkroom ritual (developer → stop bath → fixer → wash, then frames reveal and archive); **contact sheet ↓** downloads the lab proof sheet after developing; **scan in photo** lab-develops an external photo as a loose frame; **back door** opens the door — on an undeveloped roll this FOGS the exposed frames; tap the finder for the full LCD readout; tap a latent frame for a brief preview pulse only.
+- Test hooks: `?cam=<id>&film=<id>&autoshot=1&dev=1&date=1&hud=full`; `test/calibration.html` (all 15 stocks on a real photo, for parameter tuning); `sounds.html` (sound lab: film-advance lever/motor + focus chirp/whir variants for auditioning before integration); `test/features-check.mjs` / `test/export-check.mjs` / `test/pwa-check.mjs` / `test/sound-smoke.mjs` (CDP assertions).
 
 ## Architecture
 - `assets/cameras.json` — 10 classic point-and-shoots (Olympus Trip 35 … Ricoh GR1v, Minolta TC-01, Lomo LC-A). Each carries a `camera_character` (color cast gains, vignette, sharpness, halation bias, quirks like LC-A light leaks / AF35M flash pop).
