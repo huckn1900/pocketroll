@@ -42,7 +42,15 @@ const SCENE = `
   const cv = document.createElement('canvas'); cv.width = 1280; cv.height = 960;
   const cx2 = cv.getContext('2d');
   cx2.fillStyle = '#707070'; cx2.fillRect(0, 0, 1280, 960);
-  cx2.fillStyle = '#ffffff'; cx2.fillRect(300, 0, 8, 960); // vertical line at ~0.235W
+  cx2.fillStyle = '#ffffff'; cx2.fillRect(300, 0, 8, 960); // vertical line at 0.2344W
+  /* Two random effects would be mistaken for lens behaviour: the cheap-body light leaks the
+     finder seeps every frame, and the warm seep drawn at the moment of exposure. The analysis
+     path asks the engine for noLeak and zeroes this run's leak probability — the app never
+     does either. We still measure the EXPORTED frame, because the finder canvas is small and
+     grain breaks the line into sub-6px fragments there. */
+  const orig = engine.process.bind(engine);
+  engine.process = (s, sw, sh, o) => orig(s, sw, sh, { ...o, noLeak: true });
+  state.film.leak_prob = 0;
   video.srcObject = cv.captureStream(30); video.play();
   await new Promise(r => setTimeout(r, 450));
   capture();
@@ -52,25 +60,31 @@ const SCENE = `
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const ctx = c.getContext('2d'); ctx.drawImage(im, 0, 0);
   const full = ctx.getImageData(0, 0, W, H).data;
+  engine.process = orig;
   const cornerL = (() => { let l = 0, n = 0;
     for (let y = H - 60; y < H - 30; y++) for (let x = W - 120; x < W - 90; x++) { const i = (y * W + x) * 4; l += full[i] * .299 + full[i + 1] * .587 + full[i + 2] * .114; n++; }
     return Math.round(l / n); })();
   const lineAt = (yFrac) => {
-    // find the LONGEST contiguous bright run in the line band — grain noise
-    // produces short runs (<6px), the real line + its blur tails stay long
+    // The scene draws the line at x=300/1280, so track the run NEAREST that x. Light leaks
+    // are switched off for this run (see above), so no warm blob can beat the real line —
+    // and halation warms the line itself, which a chromatic filter would wrongly reject.
+    // Grain noise produces short runs (<6px); the real line plus its blur tails stay long.
     const y = Math.round(H * yFrac);
+    const want = Math.round(W * 300 / 1280);
     let best = null, mn = -1, mx = -1;
+    const take = (a, b) => {
+      const len = b - a + 1;
+      if (len < 6) return;
+      const c = (a + b) / 2, d = Math.abs(c - want);
+      if (!best || d < best.dist) best = { min: a, max: b, spread: len, centre: c, dist: d };
+    };
     for (let x = Math.round(W * 0.14); x <= Math.round(W * 0.36); x++) {
       const i = (y * W + x) * 4;
       const bright = full[i] * .299 + full[i + 1] * .587 + full[i + 2] * .114 > 150;
       if (bright) { if (mn < 0) mn = x; mx = x; }
-      else if (mn >= 0) {
-        const len = mx - mn + 1;
-        if (len >= 6 && (!best || len > best.spread)) best = { min: mn, max: mx, spread: len, centre: (mn + mx) / 2 };
-        mn = -1;
-      }
+      else if (mn >= 0) { take(mn, mx); mn = -1; }
     }
-    if (mn >= 0) { const len = mx - mn + 1; if (len >= 6 && (!best || len > best.spread)) best = { min: mn, max: mx, spread: len, centre: (mn + mx) / 2 }; }
+    if (mn >= 0) take(mn, mx);
     return best;
   };
   return JSON.stringify({ cornerL, top: lineAt(0.10), mid: lineAt(0.50), bot: lineAt(0.90) });`;

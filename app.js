@@ -94,6 +94,9 @@ class FilmEngine {
     // on-camera electronic flash at the moment of capture: brightens & slightly cools
     // the subject center, desaturates the lit area, and lets the background drop deeper.
     const flash = !!(opts && opts.flash);
+    // analysis/tests need the lens and colour science without the random light leaks the
+    // cheap bodies seep every frame; the app itself never passes this.
+    const noLeak = !!(opts && opts.noLeak);
     const w = this.canvas.width, h = this.canvas.height;
     // lens softness from camera character — scaled with resolution, so a plastic
     // lens stays soft at export size while sharp primes (T*, GR) never blur
@@ -214,7 +217,7 @@ class FilmEngine {
     }
 
     // quirk overlays
-    if (cast.leaks){ // LC-A light leaks
+    if (cast.leaks && !noLeak){ // LC-A light leaks
       const grd = this.ctx.createLinearGradient(w, 0, w*0.4, h*0.6);
       grd.addColorStop(0, 'rgba(255,120,40,0.30)'); grd.addColorStop(1, 'rgba(255,120,40,0)');
       this.ctx.globalCompositeOperation = 'screen'; this.ctx.fillStyle = grd; this.ctx.fillRect(0,0,w,h);
