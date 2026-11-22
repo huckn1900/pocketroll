@@ -357,7 +357,7 @@ function capture(){
   const g = $('stripFrames'); g.classList.remove('advance'); void g.offsetWidth; g.classList.add('advance'); // film-advance tick
   scrollStripToLast();
   renderRollPage();
-  if (state.shotsLeft === 0) toast('frame 36 exposed · open ROLL to develop');
+  if (state.shotsLeft === 0) toast('frame 36 exposed · ready to DEVELOP');
 }
 /* develop an imported photo through the loaded film — treated as a lab-developed
    scan (does not consume a frame from the roll; the roll counter stays honest). */
