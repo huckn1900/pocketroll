@@ -32,7 +32,7 @@ See `docs/store-copy.md` (listing copy) and `docs/research.md` (research + trade
 - The Film Archive is a **darkroom record**, not a photo dump: every developed roll keeps camera/film/ISO/date-loaded/date-developed/status + **Roll Notes** ("Weekend in Toronto — Autumn 2026").
 - Frames persist in **IndexedDB** across refresh, close, and offline; the archive exports/restores as a JSON backup file, and each roll exports as a `.zip` (full-res frames + roll.json). Export quality is q0.95 at native stream resolution — never silently downscaled.
 - Archive browsing is split: **BY ROLLS** (records, notes, contact sheet, batch download) vs **ALL FRAMES** (quick browse, ★ favorites filter, single-frame download with EXIF-like capture info).
-- Every camera body renders differently on the same film: per-body sharpness, vignette, barrel distortion, and flash behaviour profiles (`camera_character` in `assets/cameras.json`; verified by `test/camera-diff.mjs`).
+- Every camera body renders differently on the same film: per-body sharpness, vignette, and flash behaviour profiles (`camera_character` in `assets/cameras.json`; verified by `test/camera-diff.mjs`). Lens distortion ships at **0 for every body today** — the plastic fisheye bulge warped straight lines, so the viewfinder stays rectilinear; the barrel map in the engine is kept for a future wide-angle pack.
 - The GET PRO button in Settings links to Patreon — URL placeholder until the creator page exists.
 
 Native APK needs Android SDK/Java on the build machine (not installed on this Windows box yet) → Capacitor wrap later, or wrap the PWA as a TWA.

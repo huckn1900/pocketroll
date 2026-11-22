@@ -1,9 +1,10 @@
 /* test/camera-diff.mjs — Camera Bag: same film, different bodies must render visibly differently.
    Deterministic synthetic scene (gray bg + white vertical line at x=0.25W), captured through
-   the real pipeline on T4 (sharp prime) vs LC-A+ (plastic wide-angle):
+   the real pipeline on T4 (sharp prime) vs LC-A+ (soft plastic lens):
    1) vignette: LC-A corner must be deeper than T4 corner;
    2) softness: LC-A line edge must spread wider than T4;
-   3) barrel distortion: LC-A line must be closer to centre at top rows than mid rows; T4 flat.
+   3) rectilinear: every body ships distortion 0 today, so the vertical line must stay
+      straight on both — the fisheye bulge was removed on request (see scripts/patch-distortion.mjs).
    Usage: node test/camera-diff.mjs <base-url> */
 import { spawn } from 'node:child_process';
 
@@ -92,7 +93,9 @@ else {
   ok.push(lca.mid && t4.mid && lca.mid.spread > t4.mid.spread + 4 ? `PASS softness: LC-A line run ${lca.mid.spread}px > T4 ${t4.mid.spread}px` : `FAIL softness (${lca.mid?.spread} vs ${t4.mid?.spread})`);
   const pullL = Math.abs(lca.mid.centre - lca.top.centre);
   const pullT = Math.abs(t4.mid.centre - t4.top.centre);
-  ok.push(pullL > pullT + 6 ? `PASS barrel: LC-A line moves ${pullL}px toward centre at top, T4 ${pullT}px` : `FAIL barrel (${pullL} vs ${pullT})`);
+  // Bodies ship rectilinear today (distortion 0 for every profile): the plastic fisheye
+  // bulge read as warped buildings, so both bodies must keep a vertical line straight.
+  ok.push(pullL <= 2 && pullT <= 2 ? `PASS rectilinear: LC-A line drift ${pullL}px, T4 ${pullT}px (no bulge)` : `FAIL rectilinear (${pullL} vs ${pullT})`);
   console.log(ok.join('\n'));
 }
 ws.close(); proc.kill();
