@@ -932,17 +932,52 @@ function filmState(f){
 }
 const TYPE_TAG = { bw: 'b&w', slide: 'slide', motion_negative: 'cinema neg', color_negative: 'color neg' };
 const canInk = (hex) => { const c = hexToRgb(hex); return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b > 0.45 ? '#241f16' : '#efe6d2'; };
+/* The label is printed INSIDE the band: font size is derived from the band width and
+   textLength forces the exact run width, so long names wrap onto two lines like a real
+   can instead of being clipped at the edge. */
+const CAN_TEXT_BOX = 18;
+const monoFit = (t, box, maxFs, minFs) => {
+  const n = Math.max(1, String(t).length);
+  const fs = Math.max(minFs, Math.min(maxFs, box / (0.62 * n)));
+  return { fs, w: Math.min(box, Math.round(n * 0.62 * fs)) };
+};
+/* long names wrap onto a readable syllable boundary (KENT|MERE, CINE|STILL,
+   COLOR|PLUS, EKTA|CHROME) instead of being clipped at the band edge */
+const CAN_BREAKS = ['CHROME', 'PLUS', 'STILL', 'MERE'];
+const canLines = (label) => {
+  const s = String(label || '35').toUpperCase().slice(0, 12);
+  if (s.length <= 7) return [s];
+  for (const part of CAN_BREAKS) {
+    const i = s.indexOf(part);
+    if (i > 0 && i <= 5) return [s.slice(0, i), s.slice(i)];
+  }
+  const cut = Math.ceil(s.length / 2);
+  return [s.slice(0, cut), s.slice(cut)];
+};
 /* tiny 35mm canister built from the stock's own can colours — a collectible mark,
    not a photo of the film; the actual look is shown by the engine preview below */
 function canSvg(f){
   const c = f.can || { body: '#2b2723', band: '#d8c9a9', label: '35' };
-  const label = String(c.label || '').slice(0, 9);
-  return `<svg viewBox="0 0 26 34" width="26" height="34" aria-hidden="1">`
-    + `<rect x="4" y="7" width="18" height="24" rx="2.5" fill="${c.body}"/>`
-    + `<rect x="4.5" y="3.5" width="17" height="5" rx="2" fill="${c.body}" opacity=".7"/>`
-    + `<rect x="4" y="17" width="18" height="9" fill="${c.band}"/>`
-    + `<text x="13" y="24" text-anchor="middle" fill="${canInk(c.band)}" style="font-family:'PC Mono',ui-monospace,monospace;font-size:5.5px;font-weight:700;letter-spacing:.08em">${esc(label)}</text>`
-    + `<rect x="9" y="31" width="8" height="2" rx="1" fill="${c.band}" opacity=".55"/></svg>`;
+  const lines = canLines(c.label);
+  const ink = canInk(c.band);
+  const two = lines.length > 1;
+  let y = two ? 17.6 : 21.4;
+  const labelRuns = lines.map(l => {
+    const fit = monoFit(l, CAN_TEXT_BOX, 5.2, 3.4);
+    const run = `<text x="15" y="${y.toFixed(1)}" text-anchor="middle" fill="${ink}" textLength="${fit.w}" lengthAdjust="spacingAndGlyphs"`
+      + ` style="font-family:'PC Mono',ui-monospace,monospace;font-size:${fit.fs.toFixed(2)}px;font-weight:700">${esc(l)}</text>`;
+    y += two ? 5.2 : 0;
+    return run;
+  }).join('');
+  const isoFit = monoFit(String(f.iso || ''), 9, 4.2, 3.2);
+  return `<svg class="cansvg" viewBox="0 0 30 36" width="30" height="36" aria-hidden="1">`
+    + `<rect x="5" y="2.5" width="20" height="5" rx="2" fill="${c.body}" opacity=".72"/>`
+    + `<rect x="5" y="7" width="20" height="23" rx="2.5" fill="${c.body}"/>`
+    + `<rect x="5" y="12" width="20" height="13" fill="${c.band}"/>`
+    + labelRuns
+    + `<text x="15" y="28.4" text-anchor="middle" fill="${canInk(c.body)}" opacity=".85" textLength="${isoFit.w}" lengthAdjust="spacingAndGlyphs"`
+    + ` style="font-family:'PC Mono',ui-monospace,monospace;font-size:${isoFit.fs.toFixed(2)}px;font-weight:700">${esc(String(f.iso || ''))}</text>`
+    + `<rect x="9" y="30" width="12" height="1.6" rx="1" fill="${c.band}" opacity=".5"/></svg>`;
 }
 function stateChip(st){
   if (st === 'lock') return '<span class="stchip lock">&#128274; LOCKED</span>';
