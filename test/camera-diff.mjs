@@ -105,11 +105,14 @@ if (t4.error || lca.error) { console.log('FAIL boot', t4.error || lca.error); }
 else {
   ok.push(lca.cornerL < t4.cornerL - 5 ? `PASS vignette: LC-A corner ${lca.cornerL} < T4 ${t4.cornerL}` : `FAIL vignette (${lca.cornerL} vs ${t4.cornerL})`);
   ok.push(lca.mid && t4.mid && lca.mid.spread > t4.mid.spread + 4 ? `PASS softness: LC-A line run ${lca.mid.spread}px > T4 ${t4.mid.spread}px` : `FAIL softness (${lca.mid?.spread} vs ${t4.mid?.spread})`);
-  const pullL = Math.abs(lca.mid.centre - lca.top.centre);
-  const pullT = Math.abs(t4.mid.centre - t4.top.centre);
+  const pull = (s) => Math.max(Math.abs(s.mid.centre - s.top.centre), Math.abs(s.mid.centre - s.bot.centre));
+  const pullL = pull(lca);
+  const pullT = pull(t4);
   // Bodies ship rectilinear today (distortion 0 for every profile): the plastic fisheye
   // bulge read as warped buildings, so both bodies must keep a vertical line straight.
-  ok.push(pullL <= 2 && pullT <= 2 ? `PASS rectilinear: LC-A line drift ${pullL}px, T4 ${pullT}px (no bulge)` : `FAIL rectilinear (${pullL} vs ${pullT})`);
+  // Grain splits runs asymmetrically, so a few px of tracking jitter is expected — a real
+  // barrel bulge pulls the middle row tens of px away from the top and bottom rows.
+  ok.push(pullL <= 6 && pullT <= 6 ? `PASS rectilinear: LC-A line drift ${pullL}px, T4 ${pullT}px (no bulge)` : `FAIL rectilinear (${pullL} vs ${pullT})`);
   console.log(ok.join('\n'));
 }
 ws.close(); proc.kill();

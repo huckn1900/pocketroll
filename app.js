@@ -1105,8 +1105,13 @@ async function renderSamples(f){
 async function openFilmPreview(f){
   const st = filmState(f);
   $('pvTitle').textContent = `${f.brand} ${f.name}`;
+  /* The preview must say exactly what the shelf chip says. A finished Pro stock is not
+     "in production" — that phrasing reads as unfinished, which is the confusion the user
+     ruled out: LOCKED means finished and unlocked by buying Pro, COMING SOON means still
+     being made. */
   const statusLine = st === 'soon' ? 'IN DEVELOPMENT'
-    : f.status.startsWith('disc') ? f.status.toUpperCase() : 'IN PRODUCTION';
+    : st === 'lock' ? 'PRO STOCK · UNLOCKS IN THE PRO APK'
+    : f.status.startsWith('disc') ? f.status.toUpperCase() : 'AVAILABLE NOW';
   $('pvMeta').textContent = `${f.iso} · ${TYPE_TAG[f.type]} · ${statusLine} · samples rendered by the POCKETROLL engine on a neutral body`;
   $('pvStory').textContent = f.story || '';
   renderParamBars(f);
