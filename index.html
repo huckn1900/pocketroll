@@ -209,7 +209,9 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
    finder + shutter on the left (thumb zone under the finder),
    status/roll/develop in a right column */
 @media (orientation:landscape){
-  body{max-width:100%;margin:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,340px);
+  /* Two columns are a rotated phone, not a wide desktop sheet: the app stays capped and
+     centred so a browser window shows the same layout a rotated handset would. */
+  body{max-width:940px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,340px);
     gap:8px 14px;padding:8px 14px;align-content:start}
   .head{grid-column:1/-1}
   .vfbox{grid-column:1;grid-row:2;align-self:start;margin-top:0}
