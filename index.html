@@ -166,6 +166,34 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .roll-card .sub{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:#8a8072}
 .roll-card .mini{display:flex;gap:4px;margin-top:7px;overflow:hidden}
 .roll-card .mini img{width:52px;height:34px;object-fit:cover;border-radius:2px}
+.roll-card .rollmeta{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:#8a8072;margin-top:6px;letter-spacing:.03em}
+/* archive browsing tabs */
+.tabs{display:flex;gap:6px;margin:10px 0 4px}
+.tab{font-family:'PC Cond',sans-serif;font-size:10px;letter-spacing:.12em;padding:8px 12px;border-radius:8px;
+  background:#2e2822;border:1px solid #4a4238;color:#a99a82;cursor:pointer}
+.tab.on{background:var(--dark);border-color:#cfc5b4;color:#e8dcc9}
+.chip{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;padding:8px 10px;border-radius:8px;
+  background:#2e2822;border:1px solid #4a4238;color:#8a8072;cursor:pointer;margin-left:auto}
+.chip.on{border-color:var(--red);color:#ffd9c2}
+/* flattened frame grid (ALL FRAMES) */
+.framecell{position:relative;background:var(--dark);border-radius:8px;margin-top:8px;overflow:hidden}
+.framecell img{width:100%;display:block;cursor:zoom-in}
+.favbtn,.dlbtn{position:absolute;top:8px;font-size:13px;width:30px;height:30px;border-radius:8px;
+  background:rgba(36,33,29,.82);border:1px solid #4a4238;color:#a99a82;cursor:pointer;font-family:'PC Mono',monospace}
+.favbtn{right:8px}.dlbtn{right:42px}
+.favbtn.on{border-color:var(--red);color:#ffd9c2}
+.fmeta{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:#8a8072;padding:6px 10px;letter-spacing:.03em}
+/* roll record fields */
+.rollmeta{margin:8px 0 10px;border:1px solid #3a332b;border-radius:8px;padding:6px 10px}
+.rollmeta .mrow{display:flex;justify-content:space-between;font-family:'PC Mono',ui-monospace,monospace;
+  font-size:10px;color:#cfc5b4;padding:3px 0;letter-spacing:.04em}
+.rollmeta .mrow span:first-child{color:#8a8072}
+.rollnotes{width:100%;background:#2e2822;border:1px solid #4a4238;border-radius:8px;color:#e8dcc9;
+  font-family:'PC Mono',ui-monospace,monospace;font-size:11px;padding:9px 10px;margin:0 0 10px}
+.rollnotes:focus{border-color:#cfc5b4;outline:none}
+.rowbtns{display:flex;gap:8px}
+.rowbtns .darkbtn{flex:1}
+.storage{margin-top:10px;font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.05em}
 .rollgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
 .rollgrid img{width:100%;border-radius:3px;cursor:pointer}
 .optsw{display:flex;align-items:center;gap:10px;background:var(--dark);color:#a99a82;border-radius:10px;
@@ -265,13 +293,25 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   </div>
 </div>
 
-<!-- ── GALLERY page: look back ── -->
+<!-- ── ARCHIVE page: darkroom records; ALL FRAMES for quick browsing ── -->
 <div class="modal" id="galleryModal">
   <div class="sheet">
     <button class="closebtn" data-close>✕</button>
     <h2>FILM ARCHIVE</h2>
-    <div class="note">developed rolls, kept with their dates · tap a roll to view & print frames</div>
+    <div class="note">every developed roll is kept as a darkroom record: body, film, dates, notes</div>
+    <div class="tabs">
+      <button class="tab on" id="tabRolls">BY ROLLS</button>
+      <button class="tab" id="tabFrames">ALL FRAMES</button>
+      <button class="chip" id="favChip">★ FAVORITES</button>
+    </div>
     <div id="archive"></div>
+    <div class="note storage" id="storageNote"></div>
+    <div class="divide"></div>
+    <div class="rowbtns">
+      <button class="darkbtn small" id="backupBtn">BACKUP ARCHIVE (.json)</button>
+      <button class="darkbtn small" id="restoreBtn">RESTORE FROM BACKUP</button>
+    </div>
+    <input type="file" id="restoreInput" accept=".json,application/json" hidden>
     <div class="divide"></div>
     <button class="darkbtn small" id="loadPhoto">SCAN IN A PHOTO — lab-developed through the loaded film</button>
     <input type="file" id="fileInput" accept="image/*" hidden>
@@ -296,11 +336,14 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   </div>
 </div>
 
-<!-- archived roll detail -->
+<!-- archived roll detail: the darkroom record of one roll -->
 <div class="modal" id="rollViewer">
   <div class="sheet">
     <button class="closebtn" data-close>✕</button>
     <h2 id="rollTitle">roll</h2>
+    <div class="rollmeta" id="rollMeta"></div>
+    <input class="rollnotes" id="rollNotes" maxlength="120" placeholder="roll notes — e.g. &quot;Weekend in Toronto — Autumn 2026&quot;">
+    <button class="darkbtn small" id="zipBtn" style="display:none">DOWNLOAD ROLL (.zip) — full-res frames + roll.json</button>
     <div class="rollgrid" id="rollGrid"></div>
   </div>
 </div>

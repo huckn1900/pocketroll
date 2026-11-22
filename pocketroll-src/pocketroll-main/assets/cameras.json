@@ -1,0 +1,298 @@
+{
+ "note": "10 classic/fun point-and-shoot 35mm analog cameras. camera_character fields are app-side emulation parameters (color cast, vignette, softness, halation bias). Trademark status: brand/model names are third-party trademarks; used descriptively only (see docs/legal-notes.md).",
+ "cameras": [
+  {
+   "id": "trip35",
+   "brand": "Olympus",
+   "model": "Trip 35",
+   "year": 1969,
+   "format": "35mm (135)",
+   "lens": {
+    "focal_mm": 40,
+    "aperture": "f/2.8",
+    "elements": "4-element Zuiko"
+   },
+   "focus": "3-zone scale (red/yellow/green), no meter readout",
+   "exposure": "selenium-cell meter, binary: only f/11 or f/2.8 — no batteries",
+   "features": [
+    "no battery needed",
+    "sunny-17 rule",
+    "clamshell-adjacent pocket size",
+    "orange/black leatherette"
+   ],
+   "camera_character": {
+    "color_cast": "slight warm",
+    "vignette": 0.1,
+    "sharpness": 0.75,
+    "halation_bias": 0.15,
+    "quirk": "sunny-17: bright daylight only look, punchy midday contrast"
+   },
+   "price_usd": "40-80 used",
+   "vibe": "the holiday snapshot camera: sunny streets, beaches, grandma's album",
+   "story": "One of the world's most successful cameras; selenium meter means it still works 50 years later with no batteries.",
+   "tier": "free"
+  },
+  {
+   "id": "instamatic",
+   "brand": "Kodak",
+   "model": "Instamatic 100 series",
+   "year": 1963,
+   "format": "126 cartridge (drop-in film) — honorary point-and-shoot entry",
+   "lens": {
+    "focal_mm": 38,
+    "aperture": "f/4.3"
+   },
+   "focus": "zone scale",
+   "exposure": "fixed shutter/aperture pairs",
+   "features": [
+    "drop-in film cartridge — no rewinding",
+    "plastic body",
+    "half-frame variants exist"
+   ],
+   "camera_character": {
+    "color_cast": "warm faded",
+    "vignette": 0.22,
+    "sharpness": 0.55,
+    "halation_bias": 0.25,
+    "quirk": "cartridge edge + slight skew, snapshot fade"
+   },
+   "price_usd": "10-30 used",
+   "vibe": "grocery-store camera, birthday parties, cheap and joyful",
+   "story": "Made photography automatic for the mass market — 'you only have to press one button'.",
+   "tier": "free"
+  },
+  {
+   "id": "af35m",
+   "brand": "Canon",
+   "model": "AF35M",
+   "year": 1979,
+   "format": "35mm (135)",
+   "lens": {
+    "focal_mm": 35,
+    "aperture": "f/2.8"
+   },
+   "focus": "first autofocus camera ever (active IR AF)",
+   "exposure": "program AE + built-in flash",
+   "features": [
+    "world's first autofocus camera",
+    "built-in flash",
+    "red/black body"
+   ],
+   "camera_character": {
+    "color_cast": "flash-cool on subject, warm ambient",
+    "vignette": 0.12,
+    "sharpness": 0.7,
+    "halation_bias": 0.3,
+    "quirk": "on-camera flash look: hard shadows, subject pops, background falls off"
+   },
+   "price_usd": "60-150 used",
+   "vibe": "flash-lit night parties, 70s party snapshots",
+   "story": "The first camera that focused itself — a small revolution disguised as a toy.",
+   "tier": "free"
+  },
+  {
+   "id": "l35af",
+   "brand": "Nikon",
+   "model": "L35AF",
+   "year": 1983,
+   "format": "35mm (135)",
+   "lens": {
+    "focal_mm": 35,
+    "aperture": "f/2.8"
+   },
+   "focus": "autofocus",
+   "exposure": "program AE",
+   "features": [
+    "nicknamed 'the Fogger'",
+    "sharp Nikkor glass",
+    "compact silver body"
+   ],
+   "camera_character": {
+    "color_cast": "neutral cool",
+    "vignette": 0.08,
+    "sharpness": 0.8,
+    "halation_bias": 0.1,
+    "quirk": "clean 80s reportage"
+   },
+   "price_usd": "60-160 used",
+   "vibe": "street snapshots with Nikkor crispness",
+   "story": "Nikon's AF compact; a cult favorite for its sharp lens at low cost.",
+   "tier": "pro"
+  },
+  {
+   "id": "t4",
+   "brand": "Yashica",
+   "model": "T4 / T45",
+   "year": 1988,
+   "format": "35mm (135)",
+   "lens": {
+    "focal_mm": 35,
+    "aperture": "f/3.5 Carl Zeiss T*"
+   },
+   "focus": "autofocus",
+   "exposure": "program AE + DX coding",
+   "features": [
+    "tiny body",
+    "Zeiss T* coating",
+    "street-photo cult classic"
+   ],
+   "camera_character": {
+    "color_cast": "neutral warm, T* micro-contrast",
+    "vignette": 0.06,
+    "sharpness": 0.85,
+    "halation_bias": 0.08,
+    "quirk": "micro-contrast pop of T* coatings"
+   },
+   "price_usd": "150-300 used",
+   "vibe": "the stealth street camera",
+   "story": "A pocket camera with Zeiss glass — beloved by street photographers for its rendering.",
+   "tier": "free"
+  },
+  {
+   "id": "contaxt2",
+   "brand": "Contax",
+   "model": "T2",
+   "year": 1990,
+   "format": "35mm (135)",
+   "lens": {
+    "focal_mm": 38,
+    "aperture": "f/2.8 Carl Zeiss T* Sonnar"
+   },
+   "focus": "autofocus + manual override",
+   "exposure": "program AE + aperture priority",
+   "features": [
+    "titanium body",
+    "retracting lens",
+    "considered the best P&S ever made"
+   ],
+   "camera_character": {
+    "color_cast": "clean neutral, deep T* blacks",
+    "vignette": 0.05,
+    "sharpness": 0.95,
+    "halation_bias": 0.06,
+    "quirk": "premium rendering: clean whites, dense blacks"
+   },
+   "price_usd": "~1000 used (2026 eBay avg)",
+   "vibe": "editorial fashion, celebrity street film",
+   "story": "The camera everyone wants; titanium + Zeiss Sonnar, the gold standard of point-and-shoot.",
+   "tier": "pro"
+  },
+  {
+   "id": "mju2",
+   "brand": "Olympus",
+   "model": "STYLUS μ-II (MJU-II)",
+   "year": 1993,
+   "format": "35mm (135)",
+   "lens": {
+    "focal_mm": 35,
+    "aperture": "f/2.8"
+   },
+   "focus": "autofocus",
+   "exposure": "program AE",
+   "features": [
+    "weatherproof compact",
+    "stealth grey design",
+    "90s street legend"
+   ],
+   "camera_character": {
+    "color_cast": "neutral, slightly cool highlights",
+    "vignette": 0.09,
+    "sharpness": 0.8,
+    "halation_bias": 0.12,
+    "quirk": "rain/street mood: muted ambient"
+   },
+   "price_usd": "150-250 used",
+   "vibe": "rainy streets, underground clubs, grey 90s",
+   "story": "The first waterproof compact — the camera of the 90s street scene.",
+   "tier": "pro"
+  },
+  {
+   "id": "gr1v",
+   "brand": "Ricoh",
+   "model": "GR1v",
+   "year": 2001,
+   "format": "35mm (135)",
+   "lens": {
+    "focal_mm": 28,
+    "aperture": "f/3.5 multicoated GR"
+   },
+   "focus": "multi-point AF / preset 1-5m / manual",
+   "exposure": "aperture priority + manual ISO (DX 25-5000)",
+   "features": [
+    "28mm ultra-sharp",
+    "magnesium alloy",
+    "quiet shutter",
+    "street photography icon"
+   ],
+   "camera_character": {
+    "color_cast": "neutral sharp",
+    "vignette": 0.14,
+    "sharpness": 0.92,
+    "halation_bias": 0.05,
+    "quirk": "wide 28mm street framing, corner falloff"
+   },
+   "price_usd": "~800 used",
+   "vibe": "street photography, travel reportage",
+   "story": "The film ancestor of the digital GR — the 28mm street knife.",
+   "tier": "pro"
+  },
+  {
+   "id": "tc01",
+   "brand": "Minolta",
+   "model": "TC-01",
+   "year": 1996,
+   "format": "35mm (135)",
+   "lens": {
+    "focal_mm": 28,
+    "aperture": "f/3.5"
+   },
+   "focus": "autofocus",
+   "exposure": "program AE",
+   "features": [
+    "smallest 28mm camera of its era",
+    "brass/titanium precision",
+    "quiet and discreet"
+   ],
+   "camera_character": {
+    "color_cast": "neutral warm",
+    "vignette": 0.12,
+    "sharpness": 0.85,
+    "halation_bias": 0.08,
+    "quirk": "tiny-camera intimacy"
+   },
+   "price_usd": "200-350 used",
+   "vibe": "discreet travel companion",
+   "story": "Minolta's tiny masterpiece — a full 28mm camera that fits in a shirt pocket.",
+   "tier": "pro"
+  },
+  {
+   "id": "lca",
+   "brand": "Lomo",
+   "model": "LC-A",
+   "year": 1983,
+   "format": "35mm (135)",
+   "lens": {
+    "focal_mm": 32,
+    "aperture": "f/2.8 Leninopt"
+   },
+   "focus": "zone scale",
+   "exposure": "auto aperture with override button",
+   "features": [
+    "the cult toy camera",
+    "Lomo saturated & vignetted look",
+    "mini self-timer mirror"
+   ],
+   "camera_character": {
+    "color_cast": "saturated, warm/red bias",
+    "vignette": 0.45,
+    "sharpness": 0.55,
+    "halation_bias": 0.45,
+    "quirk": "Lomo look: heavy vignette, punchy saturation, light leaks"
+   },
+   "price_usd": "100-250 used",
+   "vibe": "lo-fi chaos, light leaks, saturated parties",
+   "story": "A Soviet compact turned into the cult toy camera that founded the Lomography movement.",
+   "tier": "free"
+  }
+ ]
+}

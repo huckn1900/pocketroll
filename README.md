@@ -27,6 +27,12 @@ See `docs/store-copy.md` (listing copy) and `docs/research.md` (research + trade
 - **Free Web Demo** — classic 5 films + 5 classic bodies (profiles tagged `tier:"free"` in `assets/`), full core ritual; this repo's site IS the demo. Locked Pro profiles show an amber `PRO` tag; tapping one hints the Pro APK.
 - **POCKETROLL 35 PRO — US$6.99 one-time via Patreon** — downloadable Android APK unlocking the full built-in library (all 15 films + all 10 cameras), permanent, no subscription. iOS needs its own Apple-compliant distribution later.
 - **Expansion Packs** (optional) — future Film Packs / Camera Packs, purchased individually, each permanently unlocked. New content = new profile files + entitlement only; engines keep reading configs (see `docs/architecture.md`).
+
+## Archive & persistence (Round⑨)
+- The Film Archive is a **darkroom record**, not a photo dump: every developed roll keeps camera/film/ISO/date-loaded/date-developed/status + **Roll Notes** ("Weekend in Toronto — Autumn 2026").
+- Frames persist in **IndexedDB** across refresh, close, and offline; the archive exports/restores as a JSON backup file, and each roll exports as a `.zip` (full-res frames + roll.json). Export quality is q0.95 at native stream resolution — never silently downscaled.
+- Archive browsing is split: **BY ROLLS** (records, notes, contact sheet, batch download) vs **ALL FRAMES** (quick browse, ★ favorites filter, single-frame download with EXIF-like capture info).
+- Every camera body renders differently on the same film: per-body sharpness, vignette, barrel distortion, and flash behaviour profiles (`camera_character` in `assets/cameras.json`; verified by `test/camera-diff.mjs`).
 - The GET PRO button in Settings links to Patreon — URL placeholder until the creator page exists.
 
 Native APK needs Android SDK/Java on the build machine (not installed on this Windows box yet) → Capacitor wrap later, or wrap the PWA as a TWA.

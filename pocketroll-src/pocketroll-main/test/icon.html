@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:#141311}canvas{display:block}</style></head>
+<body><canvas id="i" width="512" height="512"></canvas>
+<script>
+const c = document.getElementById('i'); const x = c.getContext('2d');
+// cream plastic body with rounded corners (maskable-safe padding)
+x.fillStyle = '#141311'; x.fillRect(0,0,512,512);
+x.fillStyle = '#d8cdb4';
+x.beginPath(); x.roundRect(40,40,432,432,56); x.fill();
+// subtle body gradient
+const g = x.createLinearGradient(0,40,512,472); g.addColorStop(0,'rgba(255,255,255,.25)'); g.addColorStop(1,'rgba(0,0,0,.12)');
+x.fillStyle = g; x.beginPath(); x.roundRect(40,40,432,432,56); x.fill();
+// dark viewfinder bezel
+x.fillStyle = '#0d0c0b'; x.beginPath(); x.roundRect(96,120,320,220,18); x.fill();
+x.strokeStyle = '#b9b2a2'; x.lineWidth = 4; x.beginPath(); x.roundRect(96,120,320,220,18); x.stroke();
+// frame corners inside bezel
+x.strokeStyle = 'rgba(255,255,255,.55)'; x.lineWidth = 5;
+for (const [cx,cy,dx,dy] of [[124,148,1,1],[388,148,-1,1],[124,312,1,-1],[388,312,-1,-1]]){
+  x.beginPath(); x.moveTo(cx+22*dx,cy); x.lineTo(cx,cy); x.lineTo(cx,cy+22*dy); x.stroke();
+}
+// red LED counter
+x.fillStyle = '#ff5a3c'; x.font = '700 64px ui-monospace,Menlo,monospace'; x.textAlign='left';
+x.fillText('36', 118, 402);
+// film canister slot
+x.fillStyle = '#f6f2e6'; x.beginPath(); x.roundRect(240,360,236,60,10); x.fill();
+x.fillStyle = '#35302a'; x.font = '700 26px ui-monospace,Menlo,monospace'; x.fillText('35', 262, 400);
+// red brand dot
+x.fillStyle = '#c8402e'; x.beginPath(); x.arc(120,84,16,0,7); x.fill();
+x.fillStyle = '#35302a'; x.font = '700 30px ui-monospace,Menlo,monospace'; x.fillText('POCKETROLL', 156, 96);
+</script></body></html>

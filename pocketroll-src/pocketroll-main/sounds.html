@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POCKETROLL — sound lab</title>
+<style>
+:root{--cream:#e9dfcd;--ink:#26211d;--red:#c8402e;--mono:ui-monospace,Consolas,monospace}
+*{box-sizing:border-box;margin:0}
+body{background:#efe7da;color:var(--ink);font-family:var(--mono);padding:26px 18px;max-width:640px;margin:0 auto}
+.head{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #26211d;padding-bottom:10px}
+.head h1{font-size:13px;letter-spacing:.22em}
+.head h1 b{color:var(--red)}
+.head .sub{font-size:10px;letter-spacing:.14em;color:#8d8474;text-transform:uppercase}
+.card{background:var(--cream);border:1px solid #4a4238;border-radius:12px;padding:16px;margin-top:16px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.card h2{font-size:12px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:4px}
+.card p{font-size:11px;color:#6f675a;line-height:1.5;margin-bottom:12px}
+.btn{background:#26211d;color:#e8dcc9;border:1px solid #4a4238;border-radius:8px;padding:9px 14px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.btn.hot{border-color:var(--red);color:#ffd9c2}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.rec{font-size:10px;letter-spacing:.1em;color:#b0522f;margin-top:10px;text-transform:uppercase}
+.note{font-size:10px;color:#8d8474;line-height:1.6;margin-top:18px;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div class="head"><h1>POCKET<b>ROLL</b> 35 · SOUND LAB</h1><span class="sub">audition & pick</span></div>
+
+<div class="card">
+  <h2>Film advance · 过片声</h2>
+  <p>拍完一张后胶片过片的声音。两种机型性格：<b>Lever</b> = 手动扳手/弹簧过片（Trip35、LC-A 那种机械棘轮感，咔-咔-咔-啪）；<b>Motor</b> = 电动过片（AF35M 那种顺滑齿轮嗡鸣 + 停住的一-click）。</p>
+  <div class="row">
+    <button class="btn hot" onclick="Sounds.advanceLever()">▶ lever wind</button>
+    <button class="btn" onclick="Sounds.advanceMotor()">▶ motor wind</button>
+  </div>
+  <div class="rec">我推荐：Lever 用于 trip35/lca/tc01 这类手动机身；Motor 用于 af35m/instamatic — 按机身选（数据已有）</div>
+</div>
+
+<div class="card">
+  <h2>Focus · 对焦声</h2>
+  <p>对焦框锁定瞬间的声音。<b>Chirp</b> = 取景器里安静的 AF 确认提示音（两声低音量电子音，像真 AF 相机的 beep）；<b>Whir</b> = 镜头马达调焦 + 锁定一轻击（更像物理机械）。</p>
+  <div class="row">
+    <button class="btn hot" onclick="Sounds.focusChirp()">▶ af chirp</button>
+    <button class="btn" onclick="Sounds.focusWhir()">▶ lens whir</button>
+  </div>
+  <div class="rec">我推荐：Chirp — 音量刻意很低，不该每次拍照都听见，只在对焦锁定时轻响一下</div>
+</div>
+
+<div class="card">
+  <h2>Real sequence · 真实顺序（快门→过片）</h2>
+  <p>实际拍摄时的完整声音序列：现有快门声（mirror slap + snap）之后接上过片声。听一下整体是否连贯。</p>
+  <div class="row">
+    <button class="btn hot" onclick="Sounds.combo('lever')">▶ shutter → lever</button>
+    <button class="btn" onclick="Sounds.combo('motor')">▶ shutter → motor</button>
+  </div>
+</div>
+
+<div class="note">
+  选定后我会并入 app.js：过片声挂在 capture() 的 advance 动画上（按 cameras.json 机身类型选 lever/motor），
+  focus 声挂在对焦框 .lock 的 350ms 锁定上；音量走现有 WebAudio 同一套 small-gain 约定，手机上带现有 haptics。
+  要改节奏/更响/更轻/加弹簧回卷声，跟我说具体哪里不对，我先改这里给你再听。
+</div>
+
+<script src="sounds.js"></script>
+</body>
+</html>

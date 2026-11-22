@@ -28,6 +28,27 @@ class FilmEngine {
     this.lut = this.buildLUT(film);
     this.noise = this.makeNoise(film.filter_params);
   }
+  distMap(w, h, d){
+    // barrel coefficient: dest pixel samples a src point pulled toward centre;
+    // edges stay pinned (no gaps), the centre magnifies — plastic wide-angle look
+    const key = w + 'x' + h + ':' + d.toFixed(3);
+    if (this._dm && this._dm.key === key) return this._dm.idx;
+    const idx = new Uint32Array(w * h);
+    for (let y = 0; y < h; y++){
+      const v = (y / h) * 2 - 1;
+      const sv = 1 - d * (1 - v * v);
+      for (let x = 0; x < w; x++){
+        const u = (x / w) * 2 - 1;
+        const s = sv * (1 - d * (1 - u * u));
+        let sx = (u * s * 0.5 + 0.5) * w, sy = (v * s * 0.5 + 0.5) * h;
+        sx = sx < 0 ? 0 : sx > w - 1 ? w - 1 : sx | 0;
+        sy = sy < 0 ? 0 : sy > h - 1 ? h - 1 : sy | 0;
+        idx[y * w + x] = sy * w + sx;
+      }
+    }
+    this._dm = { key, idx };
+    return idx;
+  }
   buildLUT(f){
     const p = f.filter_params;
     const curve = new Uint8Array(256);
@@ -74,9 +95,10 @@ class FilmEngine {
     // the subject center, desaturates the lit area, and lets the background drop deeper.
     const flash = !!(opts && opts.flash);
     const w = this.canvas.width, h = this.canvas.height;
-    // lens softness from camera character
-    const blur = (1 - (this.cam?.camera_character?.sharpness ?? 1)) * 2.2;
-    this.ctx.filter = blur > 0.2 ? `blur(${blur.toFixed(1)}px)` : 'none';
+    // lens softness from camera character — scaled with resolution, so a plastic
+    // lens stays soft at export size while sharp primes (T*, GR) never blur
+    const blur = (1 - (this.cam?.camera_character?.sharpness ?? 1)) * (2.0 + w / 420);
+    this.ctx.filter = blur > 0.35 ? `blur(${blur.toFixed(1)}px)` : 'none';
     this.ctx.drawImage(src, 0, 0, srcW, srcH);
     this.ctx.filter = 'none';
 
@@ -86,6 +108,18 @@ class FilmEngine {
     // → RGB color-response matrix → split-tone tint → luminance-dependent film grain
     const img = this.ctx.getImageData(0, 0, w, h);
     const d = img.data;
+    // lens distortion: plastic wide-angles bulge the centre (barrel), coated
+    // primes stay flat — sampling map cached per canvas size + coefficient
+    const dist = this.cam?.camera_character?.distortion ?? 0;
+    if (dist > 0.02){
+      const idx = this.distMap(w, h, dist);
+      const out = new Uint8ClampedArray(d.length);
+      for (let i = 0, p = 0; i < d.length; i += 4, p++){
+        const s = idx[p] * 4;
+        out[i] = d[s]; out[i + 1] = d[s + 1]; out[i + 2] = d[s + 2]; out[i + 3] = d[s + 3];
+      }
+      d.set(out);
+    }
     const { curve, wH, wS } = this.lut;
     const sat = p.saturation;
     const ex = this.exposure;
@@ -96,18 +130,24 @@ class FilmEngine {
     const grainOn = p.grain_strength > 0;
     // grain follows the stock: higher-ISO films have physically bigger grains,
     // underexposure makes grain more visible in shadows (like a pushed print)
-    const isoScale = Math.min(1.6, Math.max(0.8, Math.pow((p.iso || 100) / 100, 0.32)));
+    // (iso lives at the film profile top level; filter_params.iso is legacy)
+    const isoEff = this.film.iso || p.iso || 100;
+    const isoScale = Math.min(1.6, Math.max(0.8, Math.pow(isoEff / 100, 0.32)));
     const cell = Math.max(1, (p.grain_size || 1) * (w / 720) * 1.7 * isoScale);
     const ampMul = 0.75 + 0.5 * isoScale + Math.max(0, -(p.exposure || 0)) * 0.3;
     const grainColor = p.grain_color !== false; // B&W stocks get pure luminance grain
     const noise = this.noise;
+    const fl = this.cam?.camera_character?.flash || {};
+    const fGain = fl.gain ?? 0.68, fSpread = fl.spread ?? 0.14;
     let col = 0, row = 0;
     for (let i = 0; i < d.length; i += 4){
       let fg = 1, satEff = sat, cool = 0;
       if (flash){
         const dx = col / w - 0.5, dy = row / h - 0.54;
-        const fm = Math.exp(-(dx * dx + dy * dy) / 0.14); // flash coverage: center-weighted
-        fg = 0.86 + 0.68 * fm;               // subject pops, background drops deeper
+        // flash coverage follows the body: hot centre + hard falloff (AF-35M type)
+        // vs flat wide wash (Instamatic cube) — same film, different light
+        const fm = Math.exp(-(dx * dx + dy * dy) / fSpread);
+        fg = 0.86 + fGain * fm;              // subject pops, background drops deeper
         satEff = sat * (1 - 0.26 * fm);      // electronic flash neutralises the lit area
         cool = 0.05 * fm;                    // ~5500K flash: slight cool cast on lit parts
       }
@@ -364,7 +404,7 @@ function capture(){
   const cctx = cap.getContext('2d');
   rollLeak(cctx, w, h);            // per-frame chance, tuned by film stock + body
   if (state.opts.date) stampDate(cctx, w, h);
-  const url = cap.toDataURL('image/jpeg', 0.9);
+  const url = cap.toDataURL('image/jpeg', 0.95); // export quality: full-res, never silently compressed
   state.frames.push({ url });
   state.shotsLeft--;
   renderCounter();
@@ -388,7 +428,7 @@ async function importPhoto(file){
   const tmp = new FilmEngine(cap); tmp.setCombo(state.cam, state.film);
   tmp.process(img, img.naturalWidth, img.naturalHeight);
   if (state.opts.date) stampDate(cap.getContext('2d'), w, h); // lab print stamp on scans too
-  const out = cap.toDataURL('image/jpeg', 0.9);
+  const out = cap.toDataURL('image/jpeg', 0.95);
   state.frames.push({ url: out, developed: true }); // loose-frame scan: lab-developed on arrival
   URL.revokeObjectURL(url);
   renderStrip();
@@ -520,7 +560,7 @@ async function buildSheet(urls){
   for (let x = edge; x < c.width - edge - 22; x += 52) ctx.fillRect(x, c.height - bandBot + 8, 22, 13);
   ctx.fillStyle = '#8d8171'; ctx.font = '10px "PC Mono", ui-monospace, monospace';
   ctx.fillText(`POCKETROLL 35 · ${imgs.length} FRAMES DEVELOPED`, edge, c.height - 10);
-  return c.toDataURL('image/jpeg', 0.88);
+  return c.toDataURL('image/jpeg', 0.92);
 }
 function backDoor(){
   if (state.frames.length && !state.developed){
@@ -582,12 +622,66 @@ function ding(){ // darkroom timer bell when the roll comes out of the fixer
     setTimeout(() => ac.close(), 650);
   } catch(e){ /* silent */ }
 }
-/* ---------- film archive (localStorage shelf, downscaled contact prints) ---------- */
-const ARCHIVE_KEY = 'pocketroll-archive-v1';
-function loadArchives(){ try{ state.rolls = JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || []; } catch{ state.rolls = []; } }
-function saveArchives(){
-  try{ localStorage.setItem(ARCHIVE_KEY, JSON.stringify(state.rolls.slice(0, 6))); }
-  catch(e){ state.rolls = state.rolls.slice(0, 3); try{ localStorage.setItem(ARCHIVE_KEY, JSON.stringify(state.rolls)); } catch{} }
+/* ---------- darkroom archive (IndexedDB shelf: full-res frames + roll records) ---------- */
+const ARCHIVE_KEY = 'pocketroll-archive-v1'; // legacy shelf: migrated into IDB once
+const DB_NAME = 'pocketroll-db', DB_STORE = 'rolls';
+let db = null;
+function openDB(){
+  return new Promise((res, rej) => {
+    if (!('indexedDB' in window)) { rej(new Error('no indexedDB')); return; }
+    const rq = indexedDB.open(DB_NAME, 1);
+    rq.onupgradeneeded = () => { if (!rq.result.objectStoreNames.contains(DB_STORE)) rq.result.createObjectStore(DB_STORE, { keyPath: 'id' }); };
+    rq.onerror = () => rej(rq.error || new Error('db open failed'));
+    rq.onsuccess = () => res(rq.result);
+  });
+}
+function idbGetAll(){
+  return new Promise((res, rej) => {
+    const rq = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAll();
+    rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error);
+  });
+}
+function idbPut(rec){
+  return new Promise((res, rej) => {
+    const rq = db.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).put(rec);
+    rq.onsuccess = () => res(true); rq.onerror = () => rej(rq.error);
+  });
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function fmtDate(iso){ const d = new Date(iso); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
+function migrateRoll(r){
+  // old shelf record → full roll record (nothing is lost on migration)
+  const frames = (r.frames || []).map(u => typeof u === 'string' ? { u, t: u, fav: false } : { u: u.u, t: u.t || u.u, fav: !!u.fav });
+  return { id: r.id, status: 'developed', camId: r.camId || '', cam: r.cam || 'unknown body',
+    filmId: r.filmId || '', film: r.film || 'unknown stock', iso: r.iso || null,
+    loadedAt: r.loadedAt || r.date || Date.now(), developedAt: r.developedAt || r.date || Date.now(),
+    notes: r.notes || '', frames };
+}
+async function loadArchives(){
+  try {
+    db = await openDB();
+    let all = await idbGetAll();
+    if (!all.length) { // one-time migration of the legacy localStorage shelf
+      try {
+        const legacy = JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
+        for (const r of legacy) { const rec = migrateRoll(r); await idbPut(rec); all.push(rec); }
+        if (legacy.length) localStorage.removeItem(ARCHIVE_KEY);
+      } catch {}
+    }
+    state.rolls = all.sort((a, b) => b.id - a.id);
+  } catch (e) {
+    db = null; // degraded environment: fall back to the small localStorage shelf
+    try { state.rolls = JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || []; } catch { state.rolls = []; }
+  }
+}
+async function persistRoll(rec){
+  state.rolls.unshift(rec);
+  if (db) { try { await idbPut(rec); } catch (e) { state.rolls = state.rolls.slice(0, 6); toast('storage full · this roll kept for the session only'); } }
+  else { state.rolls = state.rolls.slice(0, 6); try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(state.rolls)); } catch {} }
+}
+async function updateRoll(rec){
+  if (db) { try { await idbPut(rec); } catch {} }
+  else { try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(state.rolls)); } catch {} }
 }
 function thumbOf(url){
   return new Promise(res => {
@@ -597,44 +691,194 @@ function thumbOf(url){
       const w = Math.min(320, img.naturalWidth);
       c.width = w; c.height = Math.round(w * img.naturalHeight / img.naturalWidth);
       c.getContext('2d').drawImage(img, 0, 0, w, c.height);
-      res(c.toDataURL('image/jpeg', 0.72));
+      res(c.toDataURL('image/jpeg', 0.75));
     };
     img.onerror = () => res(url);
   });
 }
 async function archiveRoll(){
-  const thumbs = [];
-  for (const f of state.frames) thumbs.push(await thumbOf(f.url));
-  state.rolls.unshift({
-    id: Date.now(),
-    film: state.film ? `${state.film.brand} ${state.film.name}` : 'unknown stock',
-    cam: state.cam ? `${state.cam.brand} ${state.cam.model}` : 'scan only',
-    date: new Date().toISOString(),
-    frames: thumbs,
-  });
-  saveArchives();
+  const frames = [];
+  for (const f of state.frames) frames.push({ u: f.url, t: await thumbOf(f.url), fav: false });
+  const rec = {
+    id: Date.now(), status: 'developed',
+    camId: state.cam ? state.cam.id : '', cam: state.cam ? `${state.cam.brand} ${state.cam.model}` : 'scanned prints',
+    filmId: state.film ? state.film.id : '', film: state.film ? `${state.film.brand} ${state.film.name}` : 'scanned prints',
+    iso: state.film ? (state.film.iso || state.film.filter_params.iso || null) : null,
+    loadedAt: state.loadedAt || Date.now(), developedAt: Date.now(),
+    notes: '', frames,
+  };
+  await persistRoll(rec);
   renderArchive();
 }
+let archTab = 'rolls', favOnly = false;
 function renderArchive(){
   const a = $('archive'); a.innerHTML = '';
-  state.rolls.forEach(r => {
-    const el = document.createElement('div'); el.className = 'roll-card';
-    const d = new Date(r.date);
-    el.innerHTML = `<div class="meta"><span>${r.film} · ${r.frames.length} frames</span><span class="sub">${r.cam} · ${d.toLocaleDateString()}</span></div>`
-      + `<div class="mini">${r.frames.slice(0, 8).map(u => `<img src="${u}" alt="">`).join('')}</div>`;
-    el.onclick = () => openRoll(r);
-    a.appendChild(el);
-  });
+  const t1 = $('tabRolls'), t2 = $('tabFrames'), chip = $('favChip');
+  if (t1) t1.classList.toggle('on', archTab === 'rolls');
+  if (t2) t2.classList.toggle('on', archTab === 'frames');
+  if (chip) chip.classList.toggle('on', favOnly);
+  if (!state.rolls.length) {
+    a.innerHTML = '<div class="note">no rolls developed yet — shoot a full roll, then DEVELOP it</div>';
+    renderStorage(); return;
+  }
+  if (archTab === 'rolls') {
+    state.rolls.forEach(r => {
+      const el = document.createElement('div'); el.className = 'roll-card';
+      const favs = r.frames.filter(f => f.fav).length;
+      el.innerHTML = `<div class="meta"><span>${esc(r.film)} · ${r.frames.length} frames</span><span class="sub">${esc(r.cam)} · ${fmtDate(r.loadedAt)}</span></div>`
+        + `<div class="rollmeta">LOADED ${fmtDate(r.loadedAt)} · DEVELOPED ${fmtDate(r.developedAt)} · STATUS DEVELOPED${r.iso ? ' · ISO ' + r.iso : ''}${favs ? ' · ★ ' + favs : ''}${r.notes ? ' · ' + esc(r.notes) : ''}</div>`
+        + `<div class="mini">${r.frames.slice(0, 8).map(f => `<img src="${f.t}" alt="">`).join('')}</div>`;
+      el.onclick = () => openRoll(r);
+      a.appendChild(el);
+    });
+  } else {
+    const rows = [];
+    state.rolls.forEach(r => r.frames.forEach((f, i) => rows.push({ r, f, i })));
+    const list = favOnly ? rows.filter(x => x.f.fav) : rows;
+    if (!list.length) { a.innerHTML = '<div class="note">no favorited frames yet — ★ marks a keeper</div>'; renderStorage(); return; }
+    list.forEach(x => {
+      const el = document.createElement('div'); el.className = 'framecell';
+      el.innerHTML = `<img src="${x.f.t}" alt="">`
+        + `<button class="favbtn${x.f.fav ? ' on' : ''}" title="favorite">★</button>`
+        + `<button class="dlbtn" title="download full frame">↓</button>`
+        + `<div class="fmeta">${esc(x.r.film)} · FRAME ${x.i + 1} · ${fmtDate(x.r.loadedAt)}${x.f.fav ? ' · ★' : ''}</div>`;
+      el.querySelector('.favbtn').onclick = async (e) => { e.stopPropagation(); x.f.fav = !x.f.fav; await updateRoll(x.r); renderArchive(); };
+      el.querySelector('.dlbtn').onclick = (e) => { e.stopPropagation(); download(x.f.u, `roll_${x.r.id}_frame_${x.i + 1}`); };
+      el.querySelector('img').onclick = () => openFrame(x.r, x.i);
+      a.appendChild(el);
+    });
+  }
+  renderStorage();
+}
+async function renderStorage(){
+  const el = $('storageNote'); if (!el) return;
+  let txt = `${state.rolls.length} rolls kept · frames persist across refresh and offline`;
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const est = await navigator.storage.estimate();
+      const mb = v => Math.round((v || 0) / 1048576);
+      txt = `${state.rolls.length} rolls · ~${mb(est.usage)} MB used${est.quota ? ' of ~' + mb(est.quota) + ' MB quota' : ''} · persists across refresh and offline`;
+    }
+  } catch {}
+  if (!db) txt += ' · degraded: small local shelf';
+  el.textContent = txt;
+}
+/* mini zip writer (stored, no compression) — batch download of a whole roll */
+function crc32(buf){
+  let c = ~0;
+  for (let i = 0; i < buf.length; i++){ c ^= buf[i]; for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xEDB88320 & -(c & 1)); }
+  return (~c) >>> 0;
+}
+function zipStore(entries){
+  const parts = [], central = [];
+  let offset = 0;
+  for (const e of entries){
+    const nb = new TextEncoder().encode(e.name);
+    const crc = crc32(e.data);
+    const local = new Uint8Array(30 + nb.length);
+    const dv = new DataView(local.buffer);
+    dv.setUint32(0, 0x04034b50, true); dv.setUint16(4, 20, true);
+    dv.setUint32(14, crc, true); dv.setUint32(18, e.data.length, true); dv.setUint32(22, e.data.length, true);
+    dv.setUint16(26, nb.length, true);
+    local.set(nb, 30);
+    parts.push(local, e.data);
+    const cen = new Uint8Array(46 + nb.length);
+    const cd = new DataView(cen.buffer);
+    cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true);
+    cd.setUint32(16, crc, true); cd.setUint32(20, e.data.length, true); cd.setUint32(24, e.data.length, true);
+    cd.setUint16(28, nb.length, true); cd.setUint32(42, offset, true);
+    cen.set(nb, 46);
+    central.push(cen);
+    offset += local.length + e.data.length;
+  }
+  const cenLen = central.reduce((s, c) => s + c.length, 0);
+  const end = new Uint8Array(22);
+  const ed = new DataView(end.buffer);
+  ed.setUint32(0, 0x06054b50, true); ed.setUint16(8, entries.length, true); ed.setUint16(10, entries.length, true);
+  ed.setUint32(12, cenLen, true); ed.setUint32(16, offset, true);
+  const total = new Uint8Array(offset + cenLen + 22);
+  let p = 0;
+  for (const b of parts){ total.set(b, p); p += b.length; }
+  for (const c of central){ total.set(c, p); p += c.length; }
+  total.set(end, p);
+  return total;
+}
+async function blobOf(dataUrl){ const r = await fetch(dataUrl); return new Uint8Array(await r.arrayBuffer()); }
+async function rollZip(r){
+  const entries = [];
+  for (let i = 0; i < r.frames.length; i++) entries.push({ name: `frame_${String(i + 1).padStart(2, '0')}.jpg`, data: await blobOf(r.frames[i].u) });
+  entries.push({ name: 'roll.json', data: new TextEncoder().encode(JSON.stringify({ camera: r.cam, film: r.film, iso: r.iso, frames: r.frames.length, loaded: r.loadedAt, developed: r.developedAt, notes: r.notes })) });
+  return zipStore(entries);
+}
+function downloadBytes(bytes, name){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([bytes])); a.download = name; a.click();
+}
+function backupAll(){
+  if (!state.rolls.length) { toast('nothing to back up yet'); return; }
+  const json = JSON.stringify({ app: 'pocketroll', version: 1, exported: new Date().toISOString(), rolls: state.rolls });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  a.download = 'pocketroll-archive-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  toast('archive exported · restore the file on any device');
+}
+async function restoreFile(file){
+  try {
+    const j = JSON.parse(await file.text());
+    if (!j || !Array.isArray(j.rolls) || !j.rolls.length) { toast('not a pocketroll backup file'); return; }
+    let added = 0;
+    for (const r of j.rolls) {
+      const rec = migrateRoll(r);
+      if (db) { try { await idbPut(rec); } catch { continue; } }
+      const i = state.rolls.findIndex(x => x.id === rec.id);
+      if (i >= 0) state.rolls[i] = rec; else state.rolls.push(rec);
+      added++;
+    }
+    state.rolls.sort((a, b) => b.id - a.id);
+    renderArchive();
+    toast(`restored ${added} roll${added === 1 ? '' : 's'} from backup`);
+  } catch { toast('backup file could not be read'); }
+}
+function rollMetaBlock(r){
+  return `<div class="mrow"><span>CAMERA</span><span>${esc(r.cam)}</span></div>`
+    + `<div class="mrow"><span>FILM</span><span>${esc(r.film)}${r.iso ? ' · ISO ' + r.iso : ''}</span></div>`
+    + `<div class="mrow"><span>FRAMES</span><span>${r.frames.length}</span></div>`
+    + `<div class="mrow"><span>DATE LOADED</span><span>${fmtDate(r.loadedAt)}</span></div>`
+    + `<div class="mrow"><span>DATE DEVELOPED</span><span>${fmtDate(r.developedAt)}</span></div>`
+    + `<div class="mrow"><span>STATUS</span><span>${r.status.toUpperCase()}</span></div>`;
 }
 function openRoll(r){
   $('rollTitle').textContent = `${r.film} · ${r.frames.length} frames`;
+  $('rollMeta').innerHTML = rollMetaBlock(r);
+  const n = $('rollNotes');
+  if (n) {
+    n.value = r.notes || '';
+    n.placeholder = 'roll notes — e.g. "Weekend in Toronto — Autumn 2026"';
+    n.onchange = async () => { r.notes = n.value.trim(); await updateRoll(r); renderArchive(); toast('roll notes saved with the archive'); };
+  }
+  const z = $('zipBtn');
+  if (z) { z.style.display = ''; z.onclick = async () => { downloadBytes(await rollZip(r), `roll_${r.id}.zip`); toast('roll exported as zip'); }; }
   const grid = $('rollGrid'); grid.innerHTML = '';
-  r.frames.forEach((u, i) => {
-    const img = document.createElement('img'); img.src = u;
-    img.title = `frame ${i + 1} · tap to download`;
-    img.onclick = () => { const a = document.createElement('a'); a.href = u; a.download = `roll_${r.id}_${i + 1}.jpg`; a.click(); };
+  r.frames.forEach((f, i) => {
+    const img = document.createElement('img'); img.src = f.t;
+    img.title = `frame ${i + 1} · tap to download full-res print`;
+    img.onclick = () => download(f.u, `roll_${r.id}_${i + 1}`);
     grid.appendChild(img);
   });
+  $('rollViewer').classList.add('open');
+}
+function openFrame(r, i){
+  $('rollTitle').textContent = `FRAME ${i + 1} · ${r.film}`;
+  $('rollMeta').innerHTML = rollMetaBlock(r)
+    + `<div class="mrow"><span>THIS FRAME</span><span>${esc(r.cam)} · frame ${i + 1} of ${r.frames.length}</span></div>`;
+  const n = $('rollNotes'); if (n) { n.value = r.notes || ''; n.onchange = async () => { r.notes = n.value.trim(); await updateRoll(r); renderArchive(); }; }
+  const z = $('zipBtn'); if (z) z.style.display = 'none';
+  const grid = $('rollGrid'); grid.innerHTML = '';
+  const img = document.createElement('img'); img.src = r.frames[i].u;
+  img.title = 'tap to download full-res print';
+  img.onclick = () => download(r.frames[i].u, `roll_${r.id}_${i + 1}`);
+  grid.appendChild(img);
   $('rollViewer').classList.add('open');
 }
 
@@ -642,6 +886,7 @@ function openRoll(r){
 function loadFilm(f){
   state.film = f; state.shotsLeft = 36;
   state.frames = []; state.developed = false;
+  state.loadedAt = Date.now(); // roll record: the date this roll was loaded
   engine.setCombo(state.cam, f);
   $('vfFilm').textContent = f.name.toUpperCase();
   $('filmLine').textContent = 'FILM · ' + f.name.toUpperCase();
@@ -720,7 +965,7 @@ async function boot(){
   if (q.get('hud') === 'full') $('hud').classList.add('full');
   $('vfStage').addEventListener('click', () => $('hud').classList.toggle('full'));
   renderHud();
-  loadArchives(); renderArchive(); renderStrip();
+  await loadArchives(); renderArchive(); renderStrip();
   loop();
   // autoshot fires after the feed is settled (live camera if granted, demo otherwise)
   initCamera().then(() => {
@@ -747,6 +992,13 @@ async function boot(){
   };
   $('loadPhoto').onclick = () => $('fileInput').click();
   $('fileInput').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) importPhoto(f); e.target.value = ''; };
+  // archive: split browsing (all frames vs by roll), favorites, backup/restore
+  $('tabRolls').onclick = () => { archTab = 'rolls'; renderArchive(); };
+  $('tabFrames').onclick = () => { archTab = 'frames'; renderArchive(); };
+  $('favChip').onclick = () => { favOnly = !favOnly; renderArchive(); };
+  $('backupBtn').onclick = backupAll;
+  $('restoreBtn').onclick = () => $('restoreInput').click();
+  $('restoreInput').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) restoreFile(f); e.target.value = ''; };
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.modal').classList.remove('open'));
   // test hook: ?page=roll|gallery|settings opens that page directly
   const page = q.get('page');

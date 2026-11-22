@@ -47,6 +47,13 @@ Every content item/pack carries:
 - Settings carries the **GET PRO APK · US$6.99 · PATREON** button + a one-time/Android/iOS-later hint. The Patreon page URL is a placeholder (`https://www.patreon.com/`) until the creator page exists — swap it then.
 - License state on the web is fixed to `free` (`state.license` concept); PurchaseVerification for the APK will validate the Patreon purchase and store entitlements locally (offline-capable).
 
+## Photo persistence & backup layer (Round⑨)
+
+- **Storage**: developed rolls are stored in **IndexedDB** (`pocketroll-db`, store `rolls`) as full roll records — full-resolution frames (JPEG q0.95, native stream size), thumbnails, favorites, and metadata (camera/film/ISO/loaded/developed/status/notes). The old localStorage shelf is migrated once and removed; environments without IndexedDB fall back to the small shelf (archive UI says "degraded").
+- **Roll record schema**: `{id, camId, cam, filmId, film, iso, loadedAt, developedAt, status, notes, frames:[{u,t,fav}]}` — this is the same record the Pro APK's RollManager/gallery will ship, so the archive format doubles as the interchange format.
+- **Backup & Restore**: the archive exports as one JSON file (`BACKUP ARCHIVE`) and `restoreFile()` re-imports it on any device/device-browser (id-dedup). A per-roll `.zip` export (frames + roll.json, tiny stored-zip writer) is the escape hatch for sharing a roll.
+- **Storage management**: the archive page shows roll count + approximate bytes used/quota (`navigator.storage.estimate()`) and states that frames persist across refresh and offline (SW caches the app; capture is local).
+
 ## Future content updates
 
 New film → new profile JSON only. New camera → same. New pack → pack folder + entitlement. FilmEngine/CameraEngine keep reading configs; no core rewrite.
