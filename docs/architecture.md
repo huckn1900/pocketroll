@@ -7,7 +7,7 @@
 | Tier | Price | Distribution | Contents |
 |---|---|---|---|
 | **Free Web Demo** | US$0 | https://huckn1900.github.io/pocketroll/ | classic 5 films + 5 cameras, full core ritual (shoot → latent → develop → contact sheet → archive) |
-| **POCKETROLL 35 PRO** | **US$6.99 one-time** | Patreon purchase → downloadable Android APK | full built-in library: all 15 film profiles + all 10 camera profiles, all Pro features, permanent — no subscription |
+| **POCKETROLL 35 PRO** | **US$6.99 one-time** | Patreon purchase → downloadable Android APK | full built-in library: all finished film profiles + all camera profiles, all Pro features, permanent — no subscription. Profiles still in development carry `status:"coming"` and show as COMING SOON (not included in Pro until released) |
 | **Expansion Packs** | per pack, optional | future, on demand | Film Packs (new stocks/color science/grain) & Camera Packs (new bodies/imaging character); each purchase permanently unlocks its pack |
 
 Flow: **TRY IT** (free web) → **OWN IT** (Pro APK via Patreon) → **EXPAND IT** (content packs).

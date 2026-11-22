@@ -1,6 +1,12 @@
-/* test/page-probe.mjs — CDP eval probe for debugging: node test/page-probe.mjs <url> <expression> */
+/* test/page-probe.mjs — CDP eval probe for debugging: node test/page-probe.mjs <url> <expression>
+   The expression may also be given as "@path/to/file.js" (or DSH_PROBE_EXPR_FILE) — PowerShell
+   strips quotes from native args, which breaks JS string literals, so a file is the reliable way. */
 import { spawn } from 'node:child_process';
-const url = process.argv[2], expr = process.argv[3];
+import { readFileSync } from 'node:fs';
+const url = process.argv[2];
+let expr = process.argv[3];
+if (process.env.DSH_PROBE_EXPR_FILE) expr = readFileSync(process.env.DSH_PROBE_EXPR_FILE, 'utf8');
+else if (expr && expr.startsWith('@')) expr = readFileSync(expr.slice(1), 'utf8');
 const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const port = 9333 + Math.floor(Math.random() * 60);
 const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox',

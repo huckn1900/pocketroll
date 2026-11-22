@@ -915,32 +915,162 @@ function loadCamera(c){
 function proHint(){
   toast('PRO content · the full library is in the Pro APK — GET PRO in ⚙ Settings');
 }
+
+/* ---------- shelf availability semantics ----------
+   Three states, never mixed: AVAILABLE (usable right now) / LOCKED (finished, needs
+   the Pro APK — lock icon on the right, PRO tag next to the name only) / COMING SOON
+   (still in development, not loadable). */
+function filmCat(f){
+  if (f.type === 'bw') return 'bw';
+  if (f.type === 'motion_negative' || f.brand === 'Cinestill') return 'cinema';
+  return 'color';
+}
+function filmState(f){
+  if (f.status === 'coming') return 'soon';
+  if (f.tier === 'pro' || f.tier === 'expansion') return 'lock';
+  return 'avail';
+}
+const TYPE_TAG = { bw: 'b&w', slide: 'slide', motion_negative: 'cinema neg', color_negative: 'color neg' };
+const canInk = (hex) => { const c = hexToRgb(hex); return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b > 0.45 ? '#241f16' : '#efe6d2'; };
+/* tiny 35mm canister built from the stock's own can colours — a collectible mark,
+   not a photo of the film; the actual look is shown by the engine preview below */
+function canSvg(f){
+  const c = f.can || { body: '#2b2723', band: '#d8c9a9', label: '35' };
+  const label = String(c.label || '').slice(0, 9);
+  return `<svg viewBox="0 0 26 34" width="26" height="34" aria-hidden="1">`
+    + `<rect x="4" y="7" width="18" height="24" rx="2.5" fill="${c.body}"/>`
+    + `<rect x="4.5" y="3.5" width="17" height="5" rx="2" fill="${c.body}" opacity=".7"/>`
+    + `<rect x="4" y="17" width="18" height="9" fill="${c.band}"/>`
+    + `<text x="13" y="24" text-anchor="middle" fill="${canInk(c.band)}" style="font-family:'PC Mono',ui-monospace,monospace;font-size:5.5px;font-weight:700;letter-spacing:.08em">${esc(label)}</text>`
+    + `<rect x="9" y="31" width="8" height="2" rx="1" fill="${c.band}" opacity=".55"/></svg>`;
+}
+function stateChip(st){
+  if (st === 'lock') return '<span class="stchip lock">&#128274; LOCKED</span>';
+  if (st === 'soon') return '<span class="stchip soon">COMING SOON</span>';
+  return '<span class="stchip avail">AVAILABLE</span>';
+}
+
+/* ---------- film shelf: category tabs + brand caption groups ----------
+   Built from profiles only, so it scales to dozens of expansion packs later. */
+let filmCatOn = 'all';
 function buildLists(){
   const cl = $('camList'); cl.innerHTML = '';
   state.cameras.forEach(c => {
-    const locked = c.tier === 'pro' || c.tier === 'expansion';
+    const st = (c.tier === 'pro' || c.tier === 'expansion') ? 'lock' : 'avail';
     const el = document.createElement('div');
-    el.className = 'item' + (state.cam?.id === c.id ? ' active' : '') + (locked ? ' locked' : '');
-    el.innerHTML = `<div><div class="t">${c.brand} ${c.model}${locked ? ' <span class="protag">PRO</span>' : ''}</div><div class="d">${c.year} · ${c.lens.focal_mm}mm ${c.lens.aperture} · ${c.vibe}</div></div><span class="badge">${c.format.includes('126') ? '126 cartridge' : '135'}</span>`;
+    el.className = 'item' + (state.cam?.id === c.id ? ' active' : '') + (st === 'lock' ? ' locked' : '');
+    el.innerHTML = `<div class="txt"><div class="t">${esc(c.brand)} ${esc(c.model)}${st === 'lock' ? ' <span class="protag">PRO</span>' : ''}</div><div class="d">${c.year} · ${c.lens.focal_mm}mm ${c.lens.aperture} · ${esc(c.vibe)}</div></div>${stateChip(st)}`;
     el.onclick = () => {
-      if (locked){ proHint(); return; }
+      if (st === 'lock'){ proHint(); return; }
       loadCamera(c); buildLists(); $('settingsModal').classList.remove('open');
     };
     cl.appendChild(el);
   });
+  buildFilmList();
+}
+function buildFilmList(){
   const fl = $('filmList'); fl.innerHTML = '';
-  state.films.forEach(f => {
-    const locked = f.tier === 'pro' || f.tier === 'expansion';
-    const el = document.createElement('div');
-    el.className = 'item' + (state.film?.id === f.id ? ' active' : '') + (locked ? ' locked' : '');
-    const typeTag = f.type === 'bw' ? 'b&w' : f.type === 'slide' ? 'slide' : 'color neg';
-    el.innerHTML = `<div><div class="t">${f.brand} ${f.name}${locked ? ' <span class="protag">PRO</span>' : ''}</div><div class="d">${f.iso} · ${typeTag} · ${f.story}</div></div><span class="badge${f.status.startsWith('disc') ? ' heritage' : ''}">${f.status.startsWith('disc') ? 'heritage' : 'in production'}</span>`;
-    el.onclick = () => {
-      if (locked){ proHint(); return; }
-      loadFilm(f); buildLists(); $('rollModal').classList.remove('open');
-    };
-    fl.appendChild(el);
+  document.querySelectorAll('#filmTabs .tab').forEach(t => t.classList.toggle('on', t.dataset.cat === filmCatOn));
+  const visible = state.films.filter(f => filmCatOn === 'all' || filmCat(f) === filmCatOn);
+  const byBrand = {};
+  visible.forEach(f => { (byBrand[f.brand] = byBrand[f.brand] || []).push(f); });
+  const brands = Object.keys(byBrand).sort((a, b) => byBrand[b].length - byBrand[a].length || a.localeCompare(b));
+  const count = $('filmCount');
+  if (count) count.textContent = `${visible.length} films · ${filmCatOn === 'all' ? 'all' : filmCatOn.toUpperCase()}`;
+  const capline = $('filmBrands');
+  if (capline) capline.textContent = brands.join(' · ');
+  brands.forEach(brand => {
+    const cap = document.createElement('div');
+    cap.className = 'brandcap'; cap.textContent = brand.toUpperCase();
+    fl.appendChild(cap);
+    byBrand[brand].forEach(f => {
+      const st = filmState(f);
+      const el = document.createElement('div');
+      el.className = 'item filmitem' + (state.film?.id === f.id ? ' active' : '') + (st === 'lock' ? ' locked' : '');
+      const extra = st === 'soon' ? ' · in development'
+        : f.status.startsWith('disc') ? ' · ' + f.status : '';
+      el.innerHTML = `<div class="ic">${canSvg(f)}</div>`
+        + `<div class="txt"><div class="t">${esc(f.brand)} ${esc(f.name)}${st === 'lock' ? ' <span class="protag">PRO</span>' : ''}</div>`
+        + `<div class="d">${f.iso} · ${TYPE_TAG[f.type]}${extra}</div></div>${stateChip(st)}`;
+      // tapping a stock opens its preview first — never loads silently
+      el.onclick = () => openFilmPreview(f);
+      fl.appendChild(el);
+    });
   });
+}
+
+/* ---------- film preview ----------
+   Samples are rendered by this engine on a neutral body, so the colour shown is the
+   film's own science with no camera cast mixed in — no stock photos from the web. */
+const NEUTRAL_CAM = { id: 'neutral', brand: 'Neutral', model: 'neutral body', lens: { focal_mm: 35, aperture: 'f/8' }, camera_character: {} };
+const PV_CROPS = [
+  { x: 0, y: 0, w: 1280, h: 960, cap: 'FULL FRAME' },
+  { x: 880, y: 470, w: 400, h: 300, cap: 'SUBJECT IN FRAME' },
+  { x: 60, y: 300, w: 400, h: 300, cap: 'SHADOW TEXTURE' },
+];
+let sampleImg = null;
+function loadSample(){
+  return new Promise((res, rej) => {
+    if (sampleImg) { res(sampleImg); return; }
+    const img = new Image();
+    img.onload = () => { sampleImg = img; res(img); };
+    img.onerror = () => rej(new Error('sample unavailable'));
+    img.src = 'assets/samples/street.jpg';
+  });
+}
+function renderParamBars(f){
+  const p = f.filter_params;
+  const bars = [
+    ['GRAIN', p.grain_strength],
+    ['CONTRAST', (p.contrast - 0.75) / 0.5],
+    ['SATURATION', p.saturation / 1.4],
+    ['FADE', (p.fade || 0) / 0.35],
+  ];
+  $('pvBars').innerHTML = bars.map(([k, v]) => {
+    const n = Math.round(clamp01(v) * 100);
+    return `<div class="pvbar"><span>${k}</span><span class="track"><i style="width:${n}%"></i></span><span>${n}</span></div>`;
+  }).join('');
+}
+async function renderSamples(f){
+  const row = $('pvSamples'); row.innerHTML = '';
+  let img;
+  try { img = await loadSample(); }
+  catch { row.innerHTML = '<div class="note">sample image unavailable offline</div>'; return; }
+  PV_CROPS.forEach(c => {
+    const cell = document.createElement('div'); cell.className = 'pvcell';
+    const cv = document.createElement('canvas'); cv.width = 320; cv.height = 240; cv.className = 'pvimg';
+    cv.getContext('2d').drawImage(img, c.x, c.y, c.w, c.h, 0, 0, 320, 240);
+    const eng = new FilmEngine(cv); eng.setCombo(NEUTRAL_CAM, f);
+    eng.process(cv, 320, 240);
+    const cap = document.createElement('div'); cap.className = 'pvcap'; cap.textContent = c.cap;
+    cell.appendChild(cv); cell.appendChild(cap);
+    row.appendChild(cell);
+  });
+}
+async function openFilmPreview(f){
+  const st = filmState(f);
+  $('pvTitle').textContent = `${f.brand} ${f.name}`;
+  const statusLine = st === 'soon' ? 'IN DEVELOPMENT'
+    : f.status.startsWith('disc') ? f.status.toUpperCase() : 'IN PRODUCTION';
+  $('pvMeta').textContent = `${f.iso} · ${TYPE_TAG[f.type]} · ${statusLine} · samples rendered by the POCKETROLL engine on a neutral body`;
+  $('pvStory').textContent = f.story || '';
+  renderParamBars(f);
+  const btn = $('pvLoad');
+  btn.classList.toggle('locked', st === 'lock');
+  if (st === 'avail'){
+    btn.textContent = 'LOAD FILM'; btn.disabled = false;
+    btn.onclick = () => { loadFilm(f); buildFilmList(); $('filmPreview').classList.remove('open'); };
+    $('pvHint').textContent = 'loads a fresh 36-frame roll · swapping bodies never resets it';
+  } else if (st === 'lock'){
+    btn.textContent = 'UNLOCK WITH PRO'; btn.disabled = false;
+    btn.onclick = proHint;
+    $('pvHint').textContent = 'finished stock · available in the Pro APK (GET PRO in ⚙ Settings)';
+  } else {
+    btn.textContent = 'COMING SOON'; btn.disabled = true; btn.onclick = null;
+    $('pvHint').textContent = 'preview of the current tuned version · not loadable yet';
+  }
+  $('filmPreview').classList.add('open');
+  await renderSamples(f);
 }
 
 /* ---------- wire up ---------- */
@@ -999,12 +1129,19 @@ async function boot(){
   $('backupBtn').onclick = backupAll;
   $('restoreBtn').onclick = () => $('restoreInput').click();
   $('restoreInput').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) restoreFile(f); e.target.value = ''; };
+  // film shelf: category tabs keep the list ready for dozens of expansion packs
+  document.querySelectorAll('#filmTabs .tab').forEach(t => {
+    t.onclick = () => { filmCatOn = t.dataset.cat; buildFilmList(); };
+  });
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.modal').classList.remove('open'));
   // test hook: ?page=roll|gallery|settings opens that page directly
   const page = q.get('page');
   if (page === 'roll') $('rollModal').classList.add('open');
   if (page === 'gallery') $('galleryModal').classList.add('open');
   if (page === 'settings') $('settingsModal').classList.add('open');
+  // test hook: ?preview=<film id> opens that stock's preview page (engine samples)
+  const pvId = q.get('preview');
+  if (pvId){ const pf = state.films.find(x => x.id === pvId); if (pf) openFilmPreview(pf); }
   // spacebar is the shutter — but never while a page (roll/gallery/settings) is open
   document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !document.querySelector('.modal.open')) { e.preventDefault(); capture(); } });
 }

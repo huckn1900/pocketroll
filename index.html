@@ -146,6 +146,32 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   box-shadow:0 2px 0 #8f3524}
 .getpro:active{transform:translateY(2px);box-shadow:0 0 0 #8f3524}
 .prohint{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:#827763;text-align:center;margin-top:5px}
+.darkbtn[disabled]{opacity:.55;cursor:default}
+.darkbtn.locked{background:#3a3126;border-color:#7a5a3a;color:#c9a45a;box-shadow:0 2px 0 #2a2118}
+/* film shelf: availability states must never read ambiguously —
+   AVAILABLE (usable now) / LOCKED (finished, needs Pro) / COMING SOON (in development) */
+.stchip{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.12em;padding:4px 7px;
+  border-radius:5px;align-self:center;white-space:nowrap;border:1px solid #4a4238;color:#8a8072}
+.stchip.avail{color:#93b87c;border-color:#4d6b3f}
+.stchip.lock{color:#c9a45a;border-color:#7a5a3a}
+.stchip.soon{color:#8a8072;border-color:#4a4238;background:#2e2822}
+.item .ic{align-self:center;flex:0 0 auto}
+.item .txt{flex:1 1 auto;min-width:0}
+/* brand caption: groups the shelf so dozens of expansion packs stay readable */
+.brandline{font-family:'PC Cond',sans-serif;font-size:9px;letter-spacing:.16em;color:var(--sub);margin:2px 0 8px}
+.brandcap{font-family:'PC Cond',sans-serif;font-size:9px;letter-spacing:.18em;color:var(--sub);
+  margin:14px 0 1px;border-top:1px solid #b8a88f;padding-top:8px}
+.brandcap:first-child{border-top:none;padding-top:0;margin-top:4px}
+/* film preview page: samples come from the POCKETROLL engine on a neutral body */
+.pvsamples{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}
+.pvcell{background:var(--dark);border-radius:8px;overflow:hidden}
+.pvimg{width:100%;display:block}
+.pvcap{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.12em;color:#8a8072;padding:5px 8px}
+.pvstory{font-size:11px;color:#5a5147;line-height:1.5;margin:10px 0}
+.pvbar{display:flex;align-items:center;gap:8px;font-family:'PC Mono',ui-monospace,monospace;font-size:9px;
+  letter-spacing:.1em;color:var(--sub);margin-top:5px}
+.pvbar .track{flex:1;height:5px;background:#c9bda6;border-radius:3px;overflow:hidden}
+.pvbar .track i{display:block;height:100%;background:var(--red)}
 /* landscape screens (rotated phones, tablets, desktops): split layout —
    finder + shutter on the left (thumb zone under the finder),
    status/roll/develop in a right column */
@@ -288,8 +314,30 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
     <button class="darkbtn small" id="doorBtn">OPEN BACK DOOR — spool out (undeveloped frames fog)</button>
     <div class="divide"></div>
     <h2>LOAD A FILM</h2>
-    <div class="note">each stock has its own color science; swapping bodies never resets the roll</div>
+    <div class="note">each stock has its own colour science; tapping a film opens its preview first</div>
+    <div class="tabs" id="filmTabs">
+      <button class="tab on" data-cat="all">ALL FILMS</button>
+      <button class="tab" data-cat="color">COLOR</button>
+      <button class="tab" data-cat="bw">B&amp;W</button>
+      <button class="tab" data-cat="cinema">CINEMA</button>
+      <span class="chip" id="filmCount">films</span>
+    </div>
+    <div class="brandline" id="filmBrands"></div>
     <div id="filmList"></div>
+  </div>
+</div>
+
+<!-- ── FILM PREVIEW page: what this stock actually does before you load it ── -->
+<div class="modal" id="filmPreview">
+  <div class="sheet">
+    <button class="closebtn" data-close>✕</button>
+    <h2 id="pvTitle">film</h2>
+    <div class="note" id="pvMeta"></div>
+    <div class="pvsamples" id="pvSamples"></div>
+    <div class="pvstory" id="pvStory"></div>
+    <div id="pvBars"></div>
+    <button class="darkbtn" id="pvLoad">LOAD FILM</button>
+    <div class="prohint" id="pvHint"></div>
   </div>
 </div>
 
@@ -327,7 +375,7 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
     <div id="camList"></div>
     <!-- business: free web demo → Pro APK (one-time, Patreon) → expansion packs later -->
     <a class="getpro" href="https://www.patreon.com/" target="_blank" rel="noopener">GET PRO APK · US$6.99 · PATREON</a>
-    <div class="prohint">one-time purchase · full 15 films + 10 cameras · Android APK · iOS coming later</div>
+    <div class="prohint">one-time purchase · unlocks all 15 finished stocks + 10 camera bodies · Android APK · iOS coming later</div>
     <div class="divide"></div>
     <h2>PRINT OPTIONS</h2>
     <div class="optsw" id="optDate"><span class="sw"></span>DATE STAMP</div>

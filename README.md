@@ -25,7 +25,7 @@ See `docs/store-copy.md` (listing copy) and `docs/research.md` (research + trade
 - PWA here is directly deployable (any static host).
 - ## Business model (Round⑦, user-defined)
 - **Free Web Demo** — classic 5 films + 5 classic bodies (profiles tagged `tier:"free"` in `assets/`), full core ritual; this repo's site IS the demo. Locked Pro profiles show an amber `PRO` tag; tapping one hints the Pro APK.
-- **POCKETROLL 35 PRO — US$6.99 one-time via Patreon** — downloadable Android APK unlocking the full built-in library (all 15 films + all 10 cameras), permanent, no subscription. iOS needs its own Apple-compliant distribution later.
+- **POCKETROLL 35 PRO — US$6.99 one-time via Patreon** — downloadable Android APK unlocking the full built-in library (all 15 finished film stocks + all 10 camera bodies), permanent, no subscription. iOS needs its own Apple-compliant distribution later. Stocks still in development show as COMING SOON and are not included.
 - **Expansion Packs** (optional) — future Film Packs / Camera Packs, purchased individually, each permanently unlocked. New content = new profile files + entitlement only; engines keep reading configs (see `docs/architecture.md`).
 
 ## Archive & persistence (Round⑨)

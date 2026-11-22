@@ -4,3 +4,4 @@ pocketroll-src*/
 *.zip
 test/out-*.png
 test/out-*.jpg
+test/probe-expr.txt
