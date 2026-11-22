@@ -29,6 +29,13 @@ ws.onmessage = (e) => {
 const send = (method, params = {}) => new Promise((res) => { const i = ++id; pend.set(i, res); ws.send(JSON.stringify({ id: i, method, params })); });
 await send('Page.enable');
 await send('Runtime.enable');
+// optional phone viewport: DSH_PROBE_W / DSH_PROBE_H (portrait layout checks)
+if (process.env.DSH_PROBE_W) {
+  await send('Emulation.setDeviceMetricsOverride', {
+    width: Number(process.env.DSH_PROBE_W), height: Number(process.env.DSH_PROBE_H || 844),
+    deviceScaleFactor: 2, mobile: true,
+  });
+}
 await send('Page.navigate', { url });
 await new Promise(r => setTimeout(r, Number(process.env.WAIT_MS || 2500)));
 const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });

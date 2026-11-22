@@ -997,7 +997,7 @@ function buildLists(){
     el.innerHTML = `<div class="txt"><div class="t">${esc(c.brand)} ${esc(c.model)}${st === 'lock' ? ' <span class="protag">PRO</span>' : ''}</div><div class="d">${c.year} · ${c.lens.focal_mm}mm ${c.lens.aperture} · ${esc(c.vibe)}</div></div>${stateChip(st)}`;
     el.onclick = () => {
       if (st === 'lock'){ proHint(); return; }
-      loadCamera(c); buildLists(); $('settingsModal').classList.remove('open');
+      loadCamera(c); buildLists(); $('cameraBagModal').classList.remove('open');
     };
     cl.appendChild(el);
   });
@@ -1145,6 +1145,7 @@ async function boot(){
   $('openRoll').onclick = () => $('rollModal').classList.add('open');
   $('openGallery').onclick = () => $('galleryModal').classList.add('open');
   $('openSettings').onclick = () => $('settingsModal').classList.add('open');
+  $('openBag').onclick = () => $('cameraBagModal').classList.add('open');
   $('doorBtn').onclick = backDoor;
   $('developRoll').onclick = developRoll;
   $('developMain').onclick = developRoll;
@@ -1169,11 +1170,12 @@ async function boot(){
     t.onclick = () => { filmCatOn = t.dataset.cat; buildFilmList(); };
   });
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.modal').classList.remove('open'));
-  // test hook: ?page=roll|gallery|settings opens that page directly
+  // test hook: ?page=roll|gallery|settings|bag opens that page directly
   const page = q.get('page');
   if (page === 'roll') $('rollModal').classList.add('open');
   if (page === 'gallery') $('galleryModal').classList.add('open');
   if (page === 'settings') $('settingsModal').classList.add('open');
+  if (page === 'bag') $('cameraBagModal').classList.add('open');
   // test hook: ?preview=<film id> opens that stock's preview page (engine samples)
   const pvId = q.get('preview');
   if (pvId){ const pf = state.films.find(x => x.id === pvId); if (pf) openFilmPreview(pf); }
