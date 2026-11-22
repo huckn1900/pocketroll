@@ -2,7 +2,7 @@
    Code/assets are NETWORK-FIRST with cache fallback: deployed code is never stale,
    offline still works (install pre-caches the shell). Icons stay cache-first.
    Test pages and query-param URLs bypass the SW entirely. */
-const CACHE = 'pocketroll-v6';
+const CACHE = 'pocketroll-v7';
 const SHELL = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon.png', 'assets/cameras.json', 'assets/films.json', 'assets/fonts/roboto-condensed-700.woff2', 'assets/fonts/ibm-plex-mono-400.woff2'];
 const CODE = [/\/app\.js$/, /\/sounds\.js$/, /\/assets\/.*\.json$/, /\/index\.html$/, /\/sounds\.html$/, /\/$/];
 

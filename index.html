@@ -137,6 +137,15 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .item .d{font-size:10px;color:#8a8072;margin-top:2px;font-family:'PC Mono',ui-monospace,monospace}
 .badge{font-size:8px;letter-spacing:.1em;color:#a99a82;border:1px solid #4a4238;border-radius:4px;padding:3px 6px;align-self:center;white-space:nowrap}
 .badge.heritage{color:#ff8a3d;border-color:#7a5a3a}
+/* license tiers: free demo shows 5+5; locked profiles preview but need the Pro APK */
+.item.locked{opacity:.7}
+.protag{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.12em;color:#241f16;background:#c9a45a;
+  padding:2px 5px;border-radius:4px;margin-left:6px}
+.getpro{display:block;width:100%;margin-top:12px;background:var(--red);color:#fff;border-radius:10px;padding:12px;
+  text-align:center;text-decoration:none;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.14em;
+  box-shadow:0 2px 0 #8f3524}
+.getpro:active{transform:translateY(2px);box-shadow:0 0 0 #8f3524}
+.prohint{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:#827763;text-align:center;margin-top:5px}
 .roll-card{background:var(--dark);border-radius:10px;padding:10px 12px;margin-top:8px;cursor:pointer}
 .roll-card .meta{display:flex;justify-content:space-between;font-size:11px;color:#cfc5b4}
 .roll-card .sub{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:#8a8072}
@@ -261,6 +270,9 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
     <h2>CAMERA BAG</h2>
     <div class="note">the body changes lens character; your roll keeps the film</div>
     <div id="camList"></div>
+    <!-- business: free web demo → Pro APK (one-time, Patreon) → expansion packs later -->
+    <a class="getpro" href="https://www.patreon.com/" target="_blank" rel="noopener">GET PRO APK · US$6.99 · PATREON</a>
+    <div class="prohint">one-time purchase · full 15 films + 10 cameras · Android APK · iOS coming later</div>
     <div class="divide"></div>
     <h2>PRINT OPTIONS</h2>
     <div class="optsw" id="optDate"><span class="sw"></span>DATE STAMP</div>

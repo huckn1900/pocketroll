@@ -650,22 +650,35 @@ function loadCamera(c){
 }
 
 /* ---------- modals ---------- */
+/* License gating: the free web demo exposes the classic 5+5; Pro content is shown
+   but locked — the full library lives in the paid Pro APK (one-time, via Patreon). */
+function proHint(){
+  toast('PRO content · the full library is in the Pro APK — GET PRO in ⚙ Settings');
+}
 function buildLists(){
   const cl = $('camList'); cl.innerHTML = '';
   state.cameras.forEach(c => {
+    const locked = c.tier === 'pro' || c.tier === 'expansion';
     const el = document.createElement('div');
-    el.className = 'item' + (state.cam?.id === c.id ? ' active' : '');
-    el.innerHTML = `<div><div class="t">${c.brand} ${c.model}</div><div class="d">${c.year} · ${c.lens.focal_mm}mm ${c.lens.aperture} · ${c.vibe}</div></div><span class="badge">${c.format.includes('126') ? '126 cartridge' : '135'}</span>`;
-    el.onclick = () => { loadCamera(c); buildLists(); $('settingsModal').classList.remove('open'); };
+    el.className = 'item' + (state.cam?.id === c.id ? ' active' : '') + (locked ? ' locked' : '');
+    el.innerHTML = `<div><div class="t">${c.brand} ${c.model}${locked ? ' <span class="protag">PRO</span>' : ''}</div><div class="d">${c.year} · ${c.lens.focal_mm}mm ${c.lens.aperture} · ${c.vibe}</div></div><span class="badge">${c.format.includes('126') ? '126 cartridge' : '135'}</span>`;
+    el.onclick = () => {
+      if (locked){ proHint(); return; }
+      loadCamera(c); buildLists(); $('settingsModal').classList.remove('open');
+    };
     cl.appendChild(el);
   });
   const fl = $('filmList'); fl.innerHTML = '';
   state.films.forEach(f => {
+    const locked = f.tier === 'pro' || f.tier === 'expansion';
     const el = document.createElement('div');
-    el.className = 'item' + (state.film?.id === f.id ? ' active' : '');
+    el.className = 'item' + (state.film?.id === f.id ? ' active' : '') + (locked ? ' locked' : '');
     const typeTag = f.type === 'bw' ? 'b&w' : f.type === 'slide' ? 'slide' : 'color neg';
-    el.innerHTML = `<div><div class="t">${f.brand} ${f.name}</div><div class="d">${f.iso} · ${typeTag} · ${f.story}</div></div><span class="badge${f.status.startsWith('disc') ? ' heritage' : ''}">${f.status.startsWith('disc') ? 'heritage' : 'in production'}</span>`;
-    el.onclick = () => { loadFilm(f); buildLists(); $('rollModal').classList.remove('open'); };
+    el.innerHTML = `<div><div class="t">${f.brand} ${f.name}${locked ? ' <span class="protag">PRO</span>' : ''}</div><div class="d">${f.iso} · ${typeTag} · ${f.story}</div></div><span class="badge${f.status.startsWith('disc') ? ' heritage' : ''}">${f.status.startsWith('disc') ? 'heritage' : 'in production'}</span>`;
+    el.onclick = () => {
+      if (locked){ proHint(); return; }
+      loadFilm(f); buildLists(); $('rollModal').classList.remove('open');
+    };
     fl.appendChild(el);
   });
 }
