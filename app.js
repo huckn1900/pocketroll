@@ -108,8 +108,10 @@ class FilmEngine {
     // → RGB color-response matrix → split-tone tint → luminance-dependent film grain
     const img = this.ctx.getImageData(0, 0, w, h);
     const d = img.data;
-    // lens distortion: plastic wide-angles bulge the centre (barrel), coated
-    // primes stay flat — sampling map cached per canvas size + coefficient
+    // lens distortion: every body ships rectilinear today (distortion 0 in cameras.json —
+    // the user asked for the plastic fisheye bulge gone, straight lines stay straight).
+    // The map stays available for a future wide-angle pack that opts in with a small value;
+    // sampling map is cached per canvas size + coefficient
     const dist = this.cam?.camera_character?.distortion ?? 0;
     if (dist > 0.02){
       const idx = this.distMap(w, h, dist);

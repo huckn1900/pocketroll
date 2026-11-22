@@ -1,5 +1,7 @@
 /* test/mobile-check.mjs — render a URL at a real mobile viewport via Chrome DevTools Protocol.
    Usage: node test/mobile-check.mjs <url> <outPng> [width=390] [height=844]
+   Optional: DSH_CLIP="x,y,w,h,scale" — capture one region zoomed (inspecting a control's
+   mark, a ring, a corner badge, without shrinking the whole page into the image).
    Why: headless --window-size floors viewport at ~500px, so phone-width layouts
    cannot be verified with plain screenshots; CDP device emulation is the reliable way. */
 import { spawn } from 'node:child_process';
@@ -43,7 +45,12 @@ await send('Page.enable');
 await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 2, mobile: true });
 await send('Page.navigate', { url });
 await new Promise(r => setTimeout(r, parseInt(process.env.WAIT_MS || '2500'))); // boot + asset fetch + a few rAF frames
-const shot = await send('Page.captureScreenshot', { format: 'png' });
+const shotParams = { format: 'png' };
+if (process.env.DSH_CLIP) {
+  const [x, y, w, h, scale] = process.env.DSH_CLIP.split(',').map(Number);
+  shotParams.clip = { x, y, width: w, height: h, scale: scale || 2 };
+}
+const shot = await send('Page.captureScreenshot', shotParams);
 writeFileSync(out, Buffer.from(shot.result.data, 'base64'));
 console.log(`mobile ${width}x${height} → ${out}`);
 ws.close(); proc.kill();

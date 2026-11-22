@@ -26,7 +26,7 @@
     "sharpness": 0.75,
     "halation_bias": 0.15,
     "quirk": "sunny-17: bright daylight only look, punchy midday contrast",
-    "distortion": 0.05
+    "distortion": 0
    },
    "price_usd": "40-80 used",
    "vibe": "the holiday snapshot camera: sunny streets, beaches, grandma's album",
@@ -56,7 +56,7 @@
     "sharpness": 0.55,
     "halation_bias": 0.25,
     "quirk": "cartridge edge + slight skew, snapshot fade",
-    "distortion": 0.1,
+    "distortion": 0,
     "flash": {
      "gain": 0.55,
      "spread": 0.3
@@ -90,7 +90,7 @@
     "sharpness": 0.7,
     "halation_bias": 0.3,
     "quirk": "on-camera flash look: hard shadows, subject pops, background falls off",
-    "distortion": 0.06,
+    "distortion": 0,
     "flash": {
      "gain": 0.85,
      "spread": 0.1
@@ -124,7 +124,7 @@
     "sharpness": 0.8,
     "halation_bias": 0.1,
     "quirk": "clean 80s reportage",
-    "distortion": 0.03
+    "distortion": 0
    },
    "price_usd": "60-160 used",
    "vibe": "street snapshots with Nikkor crispness",
@@ -154,7 +154,7 @@
     "sharpness": 0.92,
     "halation_bias": 0.08,
     "quirk": "micro-contrast pop of T* coatings",
-    "distortion": 0.015
+    "distortion": 0
    },
    "price_usd": "150-300 used",
    "vibe": "the stealth street camera",
@@ -184,7 +184,7 @@
     "sharpness": 0.96,
     "halation_bias": 0.06,
     "quirk": "premium rendering: clean whites, dense blacks",
-    "distortion": 0.012
+    "distortion": 0
    },
    "price_usd": "~1000 used (2026 eBay avg)",
    "vibe": "editorial fashion, celebrity street film",
@@ -214,7 +214,7 @@
     "sharpness": 0.8,
     "halation_bias": 0.12,
     "quirk": "rain/street mood: muted ambient",
-    "distortion": 0.022
+    "distortion": 0
    },
    "price_usd": "150-250 used",
    "vibe": "rainy streets, underground clubs, grey 90s",
@@ -245,7 +245,7 @@
     "sharpness": 0.94,
     "halation_bias": 0.05,
     "quirk": "wide 28mm street framing, corner falloff",
-    "distortion": 0.01
+    "distortion": 0
    },
    "price_usd": "~800 used",
    "vibe": "street photography, travel reportage",
@@ -275,7 +275,7 @@
     "sharpness": 0.85,
     "halation_bias": 0.08,
     "quirk": "tiny-camera intimacy",
-    "distortion": 0.03
+    "distortion": 0
    },
    "price_usd": "200-350 used",
    "vibe": "discreet travel companion",
@@ -305,7 +305,7 @@
     "sharpness": 0.55,
     "halation_bias": 0.45,
     "quirk": "Lomo look: heavy vignette, punchy saturation, light leaks",
-    "distortion": 0.16
+    "distortion": 0
    },
    "price_usd": "100-250 used",
    "vibe": "lo-fi chaos, light leaks, saturated parties",

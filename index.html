@@ -21,8 +21,8 @@ html,body{height:100%}
 body{
   background:var(--cream);color:var(--ink);
   font-family:'PC Cond','Roboto Condensed',system-ui,sans-serif;
-  /* bottom padding reserves the fixed dock so the filmstrip is never hidden behind it */
-  padding:14px 14px 136px;max-width:560px;margin:0 auto;
+  /* bottom padding reserves the dock bar so nothing scrolls under it */
+  padding:14px 14px 112px;max-width:560px;margin:0 auto;
   -webkit-tap-highlight-color:transparent;
 }
 /* faint paper texture, same grain as before but lighter */
@@ -75,34 +75,38 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .counter .lbl{font-size:8px;letter-spacing:.18em;color:#a99a82}
 .counter .num{font-family:'PC Mono',ui-monospace,monospace;font-size:20px;color:var(--led);line-height:1.1}
 
-/* ── 4. controls ── a fixed thumb dock pinned at the bottom of the screen:
-   archive left, shutter dead-centred, roll right. The two 1fr columns are equal by
-   definition, so the auto middle column (the shutter) is centred no matter how wide the
-   side buttons are. The camera bag is its own, deliberately quieter control underneath. */
+/* ── 4. controls ── one thumb row pinned at the bottom of the screen. Solid cream bar with
+   a hairline top — never a translucent overlay that collides with the filmstrip behind it.
+   The two 1fr columns are equal by definition, so the auto middle column (the shutter) is
+   centred no matter how wide the side buttons are. */
 .dock{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:560px;z-index:30;
-  padding:12px 14px 12px;background:linear-gradient(180deg,rgba(216,201,169,0),var(--cream) 28%)}
+  padding:10px 14px 14px;background:var(--cream);border-top:1px solid #b8a88f}
 .dockrow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
 .dockrow .sidebtn{justify-self:start}
-.dockrow #openRoll{justify-self:end}
-.shutter{width:84px;height:84px;border-radius:50%;border:none;background:var(--red);color:#fff;cursor:pointer;flex:none;
-  box-shadow:0 3px 0 #8f3524, inset 0 2px 5px rgba(255,255,255,.28), 0 0 0 3px #efe6d3, 0 0 0 7px rgba(57,52,45,.14)}
-.shutter:active{transform:translateY(3px);box-shadow:0 0 0 #8f3524, inset 0 2px 5px rgba(255,255,255,.28), 0 0 0 3px #efe6d3}
-.shutter svg{width:32px;height:32px;display:block;margin:0 auto}
-.sidebtn{background:var(--dark);color:#e8dcc9;border:1px solid #4a4238;border-radius:12px;padding:9px 12px;cursor:pointer;
-  min-width:62px;display:flex;flex-direction:column;align-items:center;gap:3px}
-.sidebtn svg{width:22px;height:22px;display:block}
+/* camera-side entries share the right cell: the roll you loaded, and the bag of bodies */
+.dockrow .camgroup{justify-self:end;display:flex;gap:8px}
+/* the cream ring is symmetric, so the red dome sits in its exact centre; press feedback is
+   a small travel plus a deeper inner shadow, no offset drop shadow that reads as off-centre */
+.shutter{width:84px;height:84px;border-radius:50%;border:none;background:var(--red);color:#fff;cursor:pointer;
+  box-shadow:inset 0 2px 5px rgba(255,255,255,.26), inset 0 -3px 7px rgba(120,40,28,.3),
+             0 0 0 4px #efe6d3, 0 0 0 8px rgba(57,52,45,.12)}
+.shutter:active{transform:translateY(2px);
+  box-shadow:inset 0 2px 7px rgba(120,40,28,.35), 0 0 0 4px #efe6d3, 0 0 0 8px rgba(57,52,45,.12)}
+.shutter svg{width:34px;height:34px;display:block;margin:0 auto}
+.sidebtn{background:var(--dark);color:#e8dcc9;border:1px solid #4a4238;border-radius:11px;padding:8px 10px;cursor:pointer;
+  min-width:56px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.sidebtn svg{width:20px;height:20px;display:block}
 .sidebtn .cap{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.16em;color:#a99a82}
 .sidebtn:active{transform:translateY(1px)}
 .sidebtn.ready{border-color:var(--red);animation:pulse 1.6s infinite}
 .sidebtn.ready .cap{color:#ffd9c2}
 @keyframes pulse{50%{box-shadow:0 0 0 3px rgba(217,75,55,.35)}}
-/* camera bag: a separate entry, third in the hierarchy — cream outline, no card */
-.bagbtn{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px auto 0;padding:7px 12px;
-  background:none;border:1px solid #b3a184;border-radius:9px;color:var(--ink);cursor:pointer;
-  font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.16em}
-.bagbtn svg{width:16px;height:16px;display:block}
+/* camera bag: third in the hierarchy — same footprint, cream outline instead of a dark card */
+.bagbtn{background:none;border:1px solid #b3a184;color:var(--ink);border-radius:11px;padding:8px 10px;cursor:pointer;
+  min-width:56px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.16em}
+.bagbtn svg{width:20px;height:20px;display:block}
 .bagbtn:active{background:#c9b795}
-.bagbtn .bagnote{color:var(--sub);letter-spacing:.1em}
 /* the one main-screen action that appears when the roll is done — shoot → develop is the ritual */
 .developbtn{display:block;width:100%;margin-top:12px;background:var(--red);color:#fff;border:none;border-radius:10px;
   padding:13px;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.16em;cursor:pointer;
@@ -110,14 +114,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .developbtn:active{transform:translateY(2px);box-shadow:0 0 0 #8f3524}
 
 /* ── 5. the loaded roll (filmstrip) ── */
-.strip{background:var(--dark);border-radius:12px;margin-top:14px;padding:10px 12px;position:relative}
+.strip{background:var(--dark);border-radius:12px;margin-top:12px;padding:10px 12px;position:relative}
 .strip::before,.strip::after{content:'';position:absolute;left:12px;right:12px;height:6px;
   background:repeating-linear-gradient(90deg,#0d0b09 0 14px,transparent 14px 22px);opacity:.5}
 .strip::before{top:3px}.strip::after{bottom:3px}
 .frames{display:flex;gap:6px;overflow-x:auto;scroll-behavior:smooth;padding:4px 0}
 .frames::-webkit-scrollbar{height:3px}
 .frames::-webkit-scrollbar-thumb{background:#4a4238}
-.frame{width:104px;height:66px;flex:none;border-radius:3px;background:#17120d;position:relative;cursor:pointer}
+.frame{width:96px;height:58px;flex:none;border-radius:3px;background:#17120d;position:relative;cursor:pointer}
 .frame.latent{background:linear-gradient(160deg,#2b2013,#221a12);box-shadow:inset 0 0 24px rgba(255,140,60,.08)}
 .frame.developed{background-size:cover;background-position:center}
 .frame .num{position:absolute;left:4px;top:3px;font-family:'PC Mono',ui-monospace,monospace;font-size:8px;color:#ff8a3d}
@@ -201,12 +205,10 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   .status{grid-column:2;grid-row:2;margin-top:0;align-self:start}
   .strip{grid-column:2;grid-row:3}
   #developMain{grid-column:2;grid-row:4;margin-top:2px}
-  /* rotated phones are short: the dock is in-flow under the finder, not pinned over content,
-     and the bag sits beside the row instead of adding a second clipped line */
-  .dock{position:static;transform:none;width:100%;max-width:none;padding:0;background:none;grid-column:1;grid-row:3;
-    display:flex;align-items:center;gap:10px}
-  .dockrow{flex:1;gap:8px}
-  .bagbtn{margin:0;justify-content:flex-start;flex:none}
+  /* rotated phones are short: the row lives in-flow under the finder, no pinned bar */
+  .dock{position:static;transform:none;width:100%;max-width:none;padding:0;background:none;border-top:none;
+    grid-column:1;grid-row:3}
+  .dockrow{gap:8px}
   .toast{bottom:22px}
   footer{display:none}
 }
@@ -261,7 +263,7 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .devbar i{display:block;height:100%;width:0;background:#ff8a3d;border-radius:3px;transition:.6s}
 
 /* toast — above the dock so it never covers the shutter */
-.toast{position:fixed;left:50%;bottom:132px;transform:translateX(-50%);background:#24211d;color:#e8dcc9;
+.toast{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);background:#24211d;color:#e8dcc9;
   font-family:'PC Mono',ui-monospace,monospace;font-size:11px;padding:9px 16px;border-radius:8px;
   opacity:0;pointer-events:none;transition:.25s;z-index:60;letter-spacing:.06em;max-width:90vw}
 .toast.show{opacity:1}
@@ -309,31 +311,35 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 <!-- the one main-screen action that appears when the roll is done — shoot → develop is the ritual -->
 <button class="developbtn" id="developMain" style="display:none">DEVELOP ROLL · 36 EXPOSURES DONE</button>
 
-<!-- controls: fixed thumb dock — archive left, shutter centred, roll right, camera bag below -->
+<!-- controls: one thumb row — archive left, shutter centred, the loaded roll + camera bag right -->
 <div class="dock">
   <div class="dockrow">
     <button class="sidebtn" id="openGallery" title="film archive">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
       <span class="cap">ARCHIVE</span>
     </button>
-    <!-- shutter mark: an aperture ring with one blade seam — quiet, vintage, no camera sketch -->
+    <!-- shutter mark: an aperture iris — barrel ring plus three blade chords closing to a
+       triangular opening. Reads as a lens stop at 34px, and it is three strokes, not a sketch. -->
     <button class="shutter" id="shutter" title="shutter">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round">
-        <circle cx="12" cy="12" r="7.6"/>
-        <path d="M12 4.4 L16.6 9.1"/>
-        <circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+        <circle cx="12" cy="12" r="8.2"/>
+        <path d="M19.5 14.6 L4.5 14.6"/>
+        <path d="M6 17.2 L13.3 4.1"/>
+        <path d="M10.7 4.1 L18 17.2"/>
       </svg>
     </button>
-    <button class="sidebtn" id="openRoll" title="the loaded roll">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="8" x2="21" y2="8"/><line x1="3" y1="16" x2="21" y2="16"/></svg>
-      <span class="cap">ROLL</span>
-    </button>
+    <div class="camgroup">
+      <button class="sidebtn" id="openRoll" title="the loaded roll">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="8" x2="21" y2="8"/><line x1="3" y1="16" x2="21" y2="16"/></svg>
+        <span class="cap">ROLL</span>
+      </button>
+      <!-- the camera bag used to be buried inside settings; it is its own entry now -->
+      <button class="bagbtn" id="openBag" title="camera bodies">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="12" rx="2.5"/><circle cx="12" cy="13" r="3.4"/><rect x="6" y="4.4" width="6" height="2.6" rx="1"/></svg>
+        <span>BAG</span>
+      </button>
+    </div>
   </div>
-  <!-- the camera bag used to be buried inside settings; it is its own entry now -->
-  <button class="bagbtn" id="openBag" title="camera bodies">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="12" rx="2.5"/><circle cx="12" cy="13" r="3.4"/><rect x="6" y="4.4" width="6" height="2.6" rx="1"/></svg>
-    CAMERA BAG <span class="bagnote">· swap bodies</span>
-  </button>
 </div>
 
 <!-- ── ROLL page: everything about the current roll ── -->
