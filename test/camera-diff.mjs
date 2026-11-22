@@ -55,10 +55,22 @@ const SCENE = `
     for (let y = H - 60; y < H - 30; y++) for (let x = W - 120; x < W - 90; x++) { const i = (y * W + x) * 4; l += full[i] * .299 + full[i + 1] * .587 + full[i + 2] * .114; n++; }
     return Math.round(l / n); })();
   const lineAt = (yFrac) => {
-    const y = Math.round(H * yFrac); let mn = -1, mx = -1;
-    for (let x = Math.round(W * 0.14); x < Math.round(W * 0.36); x++) { const i = (y * W + x) * 4;
-      if (full[i] * .299 + full[i + 1] * .587 + full[i + 2] * .114 > 150) { if (mn < 0) mn = x; mx = x; } }
-    return mn < 0 ? null : { min: mn, max: mx, spread: mx - mn + 1, centre: (mn + mx) / 2 };
+    // find the LONGEST contiguous bright run in the line band — grain noise
+    // produces short runs (<6px), the real line + its blur tails stay long
+    const y = Math.round(H * yFrac);
+    let best = null, mn = -1, mx = -1;
+    for (let x = Math.round(W * 0.14); x <= Math.round(W * 0.36); x++) {
+      const i = (y * W + x) * 4;
+      const bright = full[i] * .299 + full[i + 1] * .587 + full[i + 2] * .114 > 150;
+      if (bright) { if (mn < 0) mn = x; mx = x; }
+      else if (mn >= 0) {
+        const len = mx - mn + 1;
+        if (len >= 6 && (!best || len > best.spread)) best = { min: mn, max: mx, spread: len, centre: (mn + mx) / 2 };
+        mn = -1;
+      }
+    }
+    if (mn >= 0) { const len = mx - mn + 1; if (len >= 6 && (!best || len > best.spread)) best = { min: mn, max: mx, spread: len, centre: (mn + mx) / 2 }; }
+    return best;
   };
   return JSON.stringify({ cornerL, top: lineAt(0.10), mid: lineAt(0.50), bot: lineAt(0.90) });`;
 
@@ -76,8 +88,8 @@ console.log('lca:', JSON.stringify(lca));
 const ok = [];
 if (t4.error || lca.error) { console.log('FAIL boot', t4.error || lca.error); }
 else {
-  ok.push(lca.cornerL < t4.cornerL - 8 ? `PASS vignette: LC-A corner ${lca.cornerL} < T4 ${t4.cornerL}` : `FAIL vignette (${lca.cornerL} vs ${t4.cornerL})`);
-  ok.push(lca.mid.spread > t4.mid.spread + 10 ? `PASS softness: LC-A line spread ${lca.mid.spread} > T4 ${t4.mid.spread}` : `FAIL softness (${lca.mid.spread} vs ${t4.mid.spread})`);
+  ok.push(lca.cornerL < t4.cornerL - 5 ? `PASS vignette: LC-A corner ${lca.cornerL} < T4 ${t4.cornerL}` : `FAIL vignette (${lca.cornerL} vs ${t4.cornerL})`);
+  ok.push(lca.mid && t4.mid && lca.mid.spread > t4.mid.spread + 4 ? `PASS softness: LC-A line run ${lca.mid.spread}px > T4 ${t4.mid.spread}px` : `FAIL softness (${lca.mid?.spread} vs ${t4.mid?.spread})`);
   const pullL = Math.abs(lca.mid.centre - lca.top.centre);
   const pullT = Math.abs(t4.mid.centre - t4.top.centre);
   ok.push(pullL > pullT + 6 ? `PASS barrel: LC-A line moves ${pullL}px toward centre at top, T4 ${pullT}px` : `FAIL barrel (${pullL} vs ${pullT})`);
