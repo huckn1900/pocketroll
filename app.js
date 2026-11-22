@@ -891,7 +891,10 @@ function loadFilm(f){
   state.loadedAt = Date.now(); // roll record: the date this roll was loaded
   engine.setCombo(state.cam, f);
   $('vfFilm').textContent = f.name.toUpperCase();
-  $('filmLine').textContent = 'FILM · ' + f.name.toUpperCase();
+  // the nameplate prints the same noun in the same face; ISO is a number, so it stays mono
+  $('filmLine').textContent = f.name.toUpperCase();
+  $('filmIso').textContent = 'ISO ' + f.iso;
+  $('filmMark').innerHTML = canMark(f);
   renderCounter();
   $('openRoll').classList.remove('ready');
   state.sheet = null;
@@ -980,6 +983,18 @@ function canSvg(f){
     + `<text x="15" y="28.4" text-anchor="middle" fill="${canInk(c.body)}" opacity=".85" textLength="${isoFit.w}" lengthAdjust="spacingAndGlyphs"`
     + ` style="font-family:'PC Mono',ui-monospace,monospace;font-size:${isoFit.fs.toFixed(2)}px;font-weight:700">${esc(String(f.iso || ''))}</text>`
     + `<rect x="9" y="30" width="12" height="1.6" rx="1" fill="${c.band}" opacity=".5"/></svg>`;
+}
+/* the same canister at 18px for the nameplate chip: no text at that size (it would be
+   unreadable), so the colour band is the identity; a hairline rim keeps dark cans legible
+   on the dark plate */
+function canMark(f){
+  const c = f.can || { body: '#2b2723', band: '#d8c9a9', label: '35' };
+  return `<svg viewBox="0 0 30 36" width="18" height="22" aria-hidden="1">`
+    + `<rect x="5" y="2.5" width="20" height="5" rx="2" fill="${c.body}" opacity=".72"/>`
+    + `<rect x="5" y="7" width="20" height="23" rx="2.5" fill="${c.body}"/>`
+    + `<rect x="5" y="12" width="20" height="13" fill="${c.band}"/>`
+    + `<rect x="9" y="30" width="12" height="1.6" rx="1" fill="${c.band}" opacity=".5"/>`
+    + `<rect x="5" y="2.5" width="20" height="30" rx="2.5" fill="none" stroke="rgba(233,223,205,.22)" stroke-width="1"/></svg>`;
 }
 function stateChip(st){
   if (st === 'lock') return '<span class="stchip lock">&#128274; LOCKED</span>';
