@@ -32,6 +32,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 /* ── 1. header ── */
 .head{display:flex;justify-content:space-between;align-items:baseline}
 .brand{font-size:15px;font-weight:700;letter-spacing:.06em}
+/* the format number is the accent, same token as the shutter — never body ink */
+.brand .num{color:var(--red)}
 .head .right{display:flex;align-items:baseline;gap:12px}
 .head .tag{font-size:9px;letter-spacing:.16em;color:var(--sub)}
 /* one labelled entry instead of a glyph nobody knows: settings lives in the header */
@@ -272,7 +274,7 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 <body>
 
 <div class="head">
-  <div class="brand">POCKETROLL 35</div>
+  <div class="brand">POCKETROLL <span class="num">35</span></div>
   <div class="right"><button class="headbtn" id="openSettings">SETTINGS</button></div>
 </div>
 
