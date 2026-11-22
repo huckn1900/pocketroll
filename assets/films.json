@@ -42,7 +42,9 @@
           1
         ],
         "grain_color": false
-      }
+      },
+      "leak_prob": 0.12,
+      "leak_strength": 0.55
     },
     {
       "id": "hp5plus",
@@ -85,7 +87,9 @@
           1
         ],
         "grain_color": false
-      }
+      },
+      "leak_prob": 0.14,
+      "leak_strength": 0.6
     },
     {
       "id": "delta100",
@@ -128,7 +132,9 @@
           1
         ],
         "grain_color": false
-      }
+      },
+      "leak_prob": 0.05,
+      "leak_strength": 0.35
     },
     {
       "id": "kentmere400",
@@ -171,7 +177,9 @@
           1
         ],
         "grain_color": false
-      }
+      },
+      "leak_prob": 0.09,
+      "leak_strength": 0.5
     },
     {
       "id": "portra160",
@@ -214,7 +222,9 @@
           0.92
         ],
         "grain_color": true
-      }
+      },
+      "leak_prob": 0.06,
+      "leak_strength": 0.4
     },
     {
       "id": "portra400",
@@ -257,7 +267,9 @@
           0.92
         ],
         "grain_color": true
-      }
+      },
+      "leak_prob": 0.07,
+      "leak_strength": 0.45
     },
     {
       "id": "gold200",
@@ -300,7 +312,9 @@
           0.92
         ],
         "grain_color": true
-      }
+      },
+      "leak_prob": 0.12,
+      "leak_strength": 0.6
     },
     {
       "id": "ektar100",
@@ -343,7 +357,9 @@
           0.92
         ],
         "grain_color": true
-      }
+      },
+      "leak_prob": 0.08,
+      "leak_strength": 0.5
     },
     {
       "id": "colorplus",
@@ -386,7 +402,9 @@
           0.92
         ],
         "grain_color": true
-      }
+      },
+      "leak_prob": 0.22,
+      "leak_strength": 0.75
     },
     {
       "id": "vision3-500t",
@@ -429,7 +447,9 @@
           0.92
         ],
         "grain_color": true
-      }
+      },
+      "leak_prob": 0.12,
+      "leak_strength": 0.55
     },
     {
       "id": "cinestill800t",
@@ -472,7 +492,9 @@
           0.94
         ],
         "grain_color": true
-      }
+      },
+      "leak_prob": 0.18,
+      "leak_strength": 0.7
     },
     {
       "id": "velvia50",
@@ -515,7 +537,9 @@
           0.95
         ],
         "grain_color": true
-      }
+      },
+      "leak_prob": 0.08,
+      "leak_strength": 0.45
     },
     {
       "id": "provia100f",
@@ -558,7 +582,9 @@
           0.96
         ],
         "grain_color": true
-      }
+      },
+      "leak_prob": 0.06,
+      "leak_strength": 0.4
     },
     {
       "id": "e100",
@@ -601,7 +627,9 @@
           0.96
         ],
         "grain_color": true
-      }
+      },
+      "leak_prob": 0.1,
+      "leak_strength": 0.5
     },
     {
       "id": "kodachrome64",
@@ -644,7 +672,9 @@
           0.94
         ],
         "grain_color": true
-      }
+      },
+      "leak_prob": 0.12,
+      "leak_strength": 0.55
     }
   ]
 }

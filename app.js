@@ -66,10 +66,13 @@ class FilmEngine {
     for (let i = 0; i < arr.length; i++) arr[i] = 128 + Math.round((Math.random()*2 - 1) * 90);
     return arr;
   }
-  process(src, srcW, srcH){
+  process(src, srcW, srcH, opts){
     if (!this.film) { this.ctx.drawImage(src, 0, 0, srcW, srcH); return; }
     const p = this.film.filter_params;
     const cast = (this.cam && CAMERA_CAST[this.cam.id]) || { gain:[1,1,1] };
+    // on-camera electronic flash at the moment of capture: brightens & slightly cools
+    // the subject center, desaturates the lit area, and lets the background drop deeper.
+    const flash = !!(opts && opts.flash);
     const w = this.canvas.width, h = this.canvas.height;
     // lens softness from camera character
     const blur = (1 - (this.cam?.camera_character?.sharpness ?? 1)) * 2.2;
@@ -91,16 +94,28 @@ class FilmEngine {
     const hR = this.tintH.r*255, hG = this.tintH.g*255, hB = this.tintH.b*255;
     const sR = this.tintS.r*255, sG = this.tintS.g*255, sB = this.tintS.b*255;
     const grainOn = p.grain_strength > 0;
-    const cell = Math.max(1, (p.grain_size || 1) * (w / 720) * 1.7);
+    // grain follows the stock: higher-ISO films have physically bigger grains,
+    // underexposure makes grain more visible in shadows (like a pushed print)
+    const isoScale = Math.min(1.6, Math.max(0.8, Math.pow((p.iso || 100) / 100, 0.32)));
+    const cell = Math.max(1, (p.grain_size || 1) * (w / 720) * 1.7 * isoScale);
+    const ampMul = 0.75 + 0.5 * isoScale + Math.max(0, -(p.exposure || 0)) * 0.3;
     const grainColor = p.grain_color !== false; // B&W stocks get pure luminance grain
     const noise = this.noise;
     let col = 0, row = 0;
     for (let i = 0; i < d.length; i += 4){
-      const r = d[i]*g0, g = d[i+1]*g1, b = d[i+2]*g2;
+      let fg = 1, satEff = sat, cool = 0;
+      if (flash){
+        const dx = col / w - 0.5, dy = row / h - 0.54;
+        const fm = Math.exp(-(dx * dx + dy * dy) / 0.14); // flash coverage: center-weighted
+        fg = 0.86 + 0.68 * fm;               // subject pops, background drops deeper
+        satEff = sat * (1 - 0.26 * fm);      // electronic flash neutralises the lit area
+        cool = 0.05 * fm;                    // ~5500K flash: slight cool cast on lit parts
+      }
+      const r = d[i] * g0 * fg, g = d[i+1] * g1 * fg, b = d[i+2] * g2 * fg * (1 + cool);
       const v = Math.min(255, (r*0.299 + g*0.587 + b*0.114) | 0);
       const base = curve[v];
       const wh = wH[v], ws = wS[v], keep = 1 - wh - ws;
-      const cr = (r - v) * sat, cg = (g - v) * sat, cb = (b - v) * sat;
+      const cr = (r - v) * satEff, cg = (g - v) * satEff, cb = (b - v) * satEff;
       const rr0 = (base + cr) * keep, rg0 = (base + cg) * keep, rb0 = (base + cb) * keep;
       let rr = rr0*m[0] + rg0*m[1] + rb0*m[2];
       let gg = rr0*m[3] + rg0*m[4] + rb0*m[5];
@@ -113,7 +128,7 @@ class FilmEngine {
         // fades out in blown highlights — like real grain on a scan
         const vo = (rr*0.299 + gg*0.587 + bb*0.114) / 255;
         const bell = 1 - clamp01(Math.abs(vo - 0.42) / 0.45);
-        const amp = p.grain_strength * (0.30 + 0.80 * bell) * 34;
+        const amp = p.grain_strength * (0.30 + 0.80 * bell) * 34 * ampMul;
         const nx = (col / cell | 0) & 255, ny = (row / cell | 0) & 255;
         const nL = (noise[ny*256 + nx] - 128) / 90;
         if (grainColor){ // mostly luminance grain + a little chromatic noise
@@ -186,8 +201,17 @@ const CAMERA_HUD = {
   lca:        { flash: 'off',  shutter: '1/125' },
 };
 
+/* Light leaks: stray light seeping into the chamber between frames — probability
+   & strength follow the film stock (cheap/expired stocks leak more) multiplied by
+   the camera body (LC-A / cheap point-and-shoots leak through the door seal). */
+const CAMERA_LEAK = { lca: 2.2, trip35: 1.4, instamatic: 1.2, af35m: 1.2, tc01: 1.3, t4: 0.45, contaxt2: 0.4, mju2: 0.45, gr1v: 0.4, l35af: 0.5 };
+
+const OPTS_KEY = 'pocketroll-opts-v1';
+function loadOpts(){ try{ return Object.assign({ date: false, flash: true }, JSON.parse(localStorage.getItem(OPTS_KEY)) || {}); }catch{ return { date: false, flash: true }; } }
+function saveOpts(){ try{ localStorage.setItem(OPTS_KEY, JSON.stringify(state.opts)); }catch{} }
+
 /* ---------- app state ---------- */
-const state = { cameras: [], films: [], cam: null, film: null, shotsLeft: 36, frames: [], developed: false, rolls: [], battery: 92 };
+const state = { cameras: [], films: [], cam: null, film: null, shotsLeft: 36, frames: [], developed: false, rolls: [], battery: 92, opts: loadOpts(), sheet: null };
 const vf = $('viewfinder');
 const engine = new FilmEngine(vf);
 let video = null, demoCanvas = null, usingDemo = false;
@@ -199,14 +223,21 @@ function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add(
 function renderHud(){
   const h = state.cam ? (CAMERA_HUD[state.cam.id] || { flash: 'none', shutter: 'PRGM' }) : { flash: 'none', shutter: '' };
   const fl = $('hudFlash');
-  fl.style.display = h.flash === 'none' ? 'none' : '';
-  fl.className = 'flash' + (h.flash === 'on' ? ' on' : '');
-  fl.textContent = '⚡ flash ' + (h.flash === 'on' ? 'on' : 'off');
+  const capable = h.flash === 'on'; // only bodies with a built-in flash can fire one
+  fl.style.display = capable ? '' : 'none';
+  fl.className = 'flash' + (capable && state.opts.flash ? ' on' : '');
+  fl.textContent = '⚡ flash ' + (capable && state.opts.flash ? 'on' : 'off');
   $('hudIso').textContent = state.film ? 'ISO ' + state.film.iso : 'no film';
   $('hudReadout').textContent = (h.shutter ? h.shutter : '—') + ' · +0.0 EV';
   $('hudBattFill').style.width = state.battery + '%';
   $('hudBattPct').textContent = state.battery + '%';
   $('hudBatt').classList.toggle('low', state.battery < 20);
+}
+function renderOpts(){
+  $('optDate').classList.toggle('on', state.opts.date);
+  const capable = state.cam ? CAMERA_HUD[state.cam.id]?.flash === 'on' : false;
+  $('optFlash').classList.toggle('disabled', !capable);
+  $('optFlash').classList.toggle('on', capable && state.opts.flash);
 }
 
 function demoScene(){
@@ -284,7 +315,8 @@ function capture(){
   // focus box snaps to locked for a moment; battery sips down (flash shots draw more)
   const focus = $('hudFocus');
   focus.classList.add('lock'); setTimeout(() => focus.classList.remove('lock'), 350);
-  state.battery = Math.max(4, state.battery - (CAMERA_HUD[state.cam?.id]?.flash === 'on' ? 2 : 1));
+  const flashShot = state.opts.flash && CAMERA_HUD[state.cam?.id]?.flash === 'on';
+  state.battery = Math.max(4, state.battery - (flashShot ? 2 : 1));
   renderHud();
   const cap = document.createElement('canvas');
   // export at the stream's native pixel size (cap guards 4K+ streams from huge pixel loops)
@@ -292,7 +324,10 @@ function capture(){
   const h = usingDemo ? 960 : Math.round(w * (video.videoHeight / (video.videoWidth || 1)));
   cap.width = w; cap.height = h;
   const tmp = new FilmEngine(cap); tmp.setCombo(state.cam, state.film);
-  tmp.process(usingDemo ? demoCanvas : video, usingDemo ? demoCanvas.width : video.videoWidth, usingDemo ? demoCanvas.height : video.videoHeight);
+  tmp.process(usingDemo ? demoCanvas : video, usingDemo ? demoCanvas.width : video.videoWidth, usingDemo ? demoCanvas.height : video.videoHeight, { flash: flashShot });
+  const cctx = cap.getContext('2d');
+  rollLeak(cctx, w, h);            // per-frame chance, tuned by film stock + body
+  if (state.opts.date) stampDate(cctx, w, h);
   const url = cap.toDataURL('image/jpeg', 0.9);
   state.frames.push({ url });
   state.shotsLeft--;
@@ -321,6 +356,7 @@ async function importPhoto(file){
   cap.width = w; cap.height = h;
   const tmp = new FilmEngine(cap); tmp.setCombo(state.cam, state.film);
   tmp.process(img, img.naturalWidth, img.naturalHeight);
+  if (state.opts.date) stampDate(cap.getContext('2d'), w, h); // lab print stamp on scans too
   const out = cap.toDataURL('image/jpeg', 0.9);
   state.frames.push({ url: out, developed: true }); // loose-frame scan: lab-developed on arrival
   URL.revokeObjectURL(url);
@@ -373,6 +409,65 @@ function download(url, n){
   const a = document.createElement('a'); a.href = url;
   a.download = `${(state.film?.id || 'frame')}_${String(n).padStart(2, '0')}.jpg`; a.click();
 }
+/* light leak: 1–2 warm red/orange seeps drawn only at exposure (never in the
+   live finder — leaks happen when light sneaks past the door seal between frames) */
+function rollLeak(ctx, w, h){
+  const film = state.film;
+  const prob = ((film?.leak_prob) ?? 0.12) * (CAMERA_LEAK[state.cam?.id] || 1);
+  if (Math.random() > prob) return;
+  const s = film?.leak_strength ?? 0.5;
+  ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 1 + Math.floor(Math.random() * 2); k++){
+    const x = Math.random() * w, y = Math.random() * h;
+    const r = (0.25 + Math.random() * 0.5) * w;
+    const hue = Math.random() < 0.55 ? '255,84,28' : '255,150,52';
+    const grd = ctx.createRadialGradient(x, y, r * 0.08, x, y, r);
+    grd.addColorStop(0, `rgba(${hue},${(0.38 * s).toFixed(2)})`);
+    grd.addColorStop(1, 'rgba(255,120,40,0)');
+    ctx.fillStyle = grd; ctx.fillRect(0, 0, w, h);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+/* date stamp: retro orange LCD-back print, e.g. "26 11 '26" bottom-right */
+function stampDate(ctx, w, h){
+  const d = new Date();
+  const txt = `${String(d.getDate()).padStart(2, '0')} ${String(d.getMonth() + 1).padStart(2, '0')} '${String(d.getFullYear()).slice(2)}`;
+  ctx.font = `bold ${Math.round(w * 0.024)}px ui-monospace, monospace`;
+  const tw = ctx.measureText(txt).width;
+  ctx.shadowColor = 'rgba(255,120,40,.75)'; ctx.shadowBlur = w * 0.006;
+  ctx.fillStyle = 'rgba(255,138,61,.92)';
+  ctx.fillText(txt, w - tw - w * 0.035, h - h * 0.045);
+  ctx.shadowBlur = 0;
+}
+/* contact sheet: lab-style proof sheet of the developed roll — film base with
+   sprocket holes, edge printing, frames in a grid with orange frame numbers */
+async function buildSheet(urls){
+  const imgs = [];
+  for (const u of urls){
+    const im = new Image(); im.src = u;
+    try { await im.decode(); imgs.push(im); } catch { /* skip unreadable frame */ }
+  }
+  if (!imgs.length) return null;
+  const cols = 3, cw = 340, ch = Math.round(cw * 0.66), gap = 24, edge = 46;
+  const rows = Math.ceil(imgs.length / cols);
+  const c = document.createElement('canvas');
+  c.width = cols * cw + edge * 2; c.height = rows * (ch + gap) + edge * 2 + 26;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#17110c'; ctx.fillRect(0, 0, c.width, c.height); // film base
+  ctx.fillStyle = '#c9bda6';
+  for (let x = edge; x < c.width - edge - 26; x += 64){ ctx.fillRect(x, 10, 26, 16); ctx.fillRect(x, c.height - 26, 26, 16); }
+  const f = state.film;
+  ctx.fillStyle = '#c9a45a'; ctx.font = 'bold 20px ui-monospace, monospace';
+  ctx.fillText(`POCKETROLL LAB · ${(f ? f.brand + ' ' + f.name + ' ' + f.iso : 'CONTACT PRINT').toUpperCase()} · ${(state.cam?.model || 'SCAN').toUpperCase()}`, edge, edge - 12);
+  imgs.forEach((im, i) => {
+    const x = edge + (i % cols) * (cw + gap), y = edge + Math.floor(i / cols) * (ch + gap) + 6;
+    ctx.fillStyle = '#000'; ctx.fillRect(x - 3, y - 3, cw + 6, ch + 6);
+    ctx.drawImage(im, x, y, cw, ch);
+    ctx.fillStyle = '#ff8a3d'; ctx.font = 'bold 15px ui-monospace, monospace';
+    ctx.fillText(String(i + 1).padStart(2, '0'), x + 6, y + ch + 15);
+  });
+  return c.toDataURL('image/jpeg', 0.88);
+}
 function backDoor(){
   if (state.frames.length && !state.developed){
     // opening the door on an undeveloped roll fogs the exposed frames — real and ruthless
@@ -413,6 +508,9 @@ function developRoll(){
     $('doorInfo').textContent = 'roll developed · archived · load a fresh roll';
     $('camBody').classList.add('open'); setTimeout(() => $('camBody').classList.remove('open'), 800);
     await archiveRoll();
+    // the ritual closes with a lab contact sheet of the whole roll
+    const sheet = await buildSheet(state.frames.map(f => f.url));
+    if (sheet){ state.sheet = sheet; $('sheetBtn').style.display = ''; }
     toast('roll developed · tap frames to print');
     ding();
   }
@@ -495,6 +593,7 @@ function loadFilm(f){
   $('counter').textContent = '36';
   $('doorInfo').textContent = 'roll loaded · 36 frames';
   $('developRoll').classList.remove('ready');
+  $('sheetBtn').style.display = 'none'; state.sheet = null;
   renderStrip();
   const g = $('gallery'); g.classList.remove('slidein'); void g.offsetWidth; g.classList.add('slidein'); // film threading in
   $('stripWrap').scrollLeft = 0;
@@ -510,6 +609,7 @@ function loadCamera(c){
   $('camLabel').textContent = `${c.brand} ${c.model} · ${c.year}`;
   $('comboTag').textContent = c.model.toUpperCase() + ' + ' + (state.film ? state.film.name.toUpperCase() : 'NO FILM');
   renderHud();
+  renderOpts();
   toast('camera swapped — roll untouched');
 }
 
@@ -550,6 +650,7 @@ async function boot(){
   const q = new URLSearchParams(location.search);
   const cam = state.cameras.find(c => c.id === q.get('cam')) || state.cameras.find(c => c.id === 'trip35');
   const fil = state.films.find(f => f.id === q.get('film')) || state.films.find(f => f.id === 'gold200');
+  if (q.get('date') === '1') state.opts.date = true; // test hook: force date stamp for this run
   loadCamera(cam);
   loadFilm(fil);
   if (q.get('hud') === 'full') $('hud').classList.add('full');
@@ -568,6 +669,13 @@ async function boot(){
   $('pickFilm').onclick = () => $('filmModal').classList.add('open');
   $('doorBtn').onclick = backDoor;
   $('developRoll').onclick = developRoll;
+  $('sheetBtn').onclick = () => { if (state.sheet) download(state.sheet, 'sheet'); else toast('develop a roll first'); };
+  $('optDate').onclick = () => { state.opts.date = !state.opts.date; saveOpts(); renderOpts(); toast(state.opts.date ? "date stamp on · prints stamped at exposure" : 'date stamp off'); };
+  $('optFlash').onclick = () => {
+    if (!state.cam || CAMERA_HUD[state.cam.id]?.flash !== 'on'){ toast('this body has no built-in flash'); return; }
+    state.opts.flash = !state.opts.flash; saveOpts(); renderHud(); renderOpts();
+    toast(state.opts.flash ? 'flash on · fires at the shutter' : 'flash off');
+  };
   $('downloadBtn').onclick = () => { const last = state.frames[state.frames.length - 1]; if (last) download(last.url, state.frames.length); else toast('no frames yet'); };
   $('loadPhoto').onclick = () => $('fileInput').click();
   $('fileInput').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) importPhoto(f); e.target.value = ''; };
