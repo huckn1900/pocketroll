@@ -262,7 +262,7 @@
     {
       "id": "gold200",
       "brand": "Kodak",
-      "name": "Kodak Gold 200",
+      "name": "Gold 200",
       "type": "color_negative",
       "iso": 200,
       "status": "current",
@@ -348,7 +348,7 @@
     {
       "id": "colorplus",
       "brand": "Kodak",
-      "name": "Kodak ColorPlus",
+      "name": "ColorPlus",
       "type": "color_negative",
       "iso": 200,
       "status": "current",

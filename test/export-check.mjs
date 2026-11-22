@@ -34,12 +34,12 @@ await send('Page.navigate', { url });
 await new Promise(r => setTimeout(r, 4000)); // boot + autoshot fires ~900ms after feed settles
 const probe = await send('Runtime.evaluate', {
   expression: `(async () => {
-    if (!state.gallery.length) return 'NO SHOTS';
-    const img = new Image(); img.src = state.gallery[0].url; await img.decode();
+    if (!state.frames.length) return 'NO SHOTS';
+    const img = new Image(); img.src = state.frames[0].url; await img.decode();
     return JSON.stringify({
       stream: video && video.videoWidth ? video.videoWidth + 'x' + video.videoHeight : 'no-camera',
       export: img.naturalWidth + 'x' + img.naturalHeight,
-      shots: state.gallery.length,
+      shots: state.frames.length,
     });
   })()`,
   awaitPromise: true, returnByValue: true,

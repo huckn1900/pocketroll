@@ -42,7 +42,7 @@ const send = (method, params = {}) => new Promise((res) => { const i = ++id; pen
 await send('Page.enable');
 await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 2, mobile: true });
 await send('Page.navigate', { url });
-await new Promise(r => setTimeout(r, 2500)); // boot + asset fetch + a few rAF frames
+await new Promise(r => setTimeout(r, parseInt(process.env.WAIT_MS || '2500'))); // boot + asset fetch + a few rAF frames
 const shot = await send('Page.captureScreenshot', { format: 'png' });
 writeFileSync(out, Buffer.from(shot.result.data, 'base64'));
 console.log(`mobile ${width}x${height} → ${out}`);

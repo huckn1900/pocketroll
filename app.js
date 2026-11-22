@@ -187,7 +187,7 @@ const CAMERA_HUD = {
 };
 
 /* ---------- app state ---------- */
-const state = { cameras: [], films: [], cam: null, film: null, shotsLeft: 36, gallery: [], battery: 92 };
+const state = { cameras: [], films: [], cam: null, film: null, shotsLeft: 36, frames: [], developed: false, rolls: [], battery: 92 };
 const vf = $('viewfinder');
 const engine = new FilmEngine(vf);
 let video = null, demoCanvas = null, usingDemo = false;
@@ -279,7 +279,7 @@ function shutterSound(){
 /* ---------- capture ---------- */
 function capture(){
   if (!state.film){ toast('load a film first'); return; }
-  if (state.shotsLeft <= 0){ rewind(); return; }
+  if (state.shotsLeft <= 0){ toast('roll finished · develop it'); return; }
   shutterSound();
   // focus box snaps to locked for a moment; battery sips down (flash shots draw more)
   const focus = $('hudFocus');
@@ -294,11 +294,19 @@ function capture(){
   const tmp = new FilmEngine(cap); tmp.setCombo(state.cam, state.film);
   tmp.process(usingDemo ? demoCanvas : video, usingDemo ? demoCanvas.width : video.videoWidth, usingDemo ? demoCanvas.height : video.videoHeight);
   const url = cap.toDataURL('image/jpeg', 0.9);
-  state.gallery.push({ url, name: `${state.film.brand} ${state.film.name} · ${state.cam ? state.cam.model : 'no cam'} · frame ${36 - state.shotsLeft + 1}` });
+  state.frames.push({ url });
   state.shotsLeft--;
   $('counter').textContent = String(state.shotsLeft).padStart(2, '0');
-  renderGallery();
-  if (state.shotsLeft === 0) rewind();
+  renderStrip();
+  const g = $('gallery'); g.classList.remove('advance'); void g.offsetWidth; g.classList.add('advance'); // film-advance tick
+  scrollStripToLast();
+  if (state.shotsLeft === 0){
+    $('doorInfo').textContent = 'roll finished · develop it';
+    $('developRoll').classList.add('ready');
+    toast('frame 36 exposed · develop the roll');
+  } else {
+    $('doorInfo').textContent = `${state.frames.length} frames exposed · latent until developed`;
+  }
 }
 /* develop an imported photo through the loaded film — treated as a lab-developed
    scan (does not consume a frame from the roll; the roll counter stays honest). */
@@ -314,40 +322,182 @@ async function importPhoto(file){
   const tmp = new FilmEngine(cap); tmp.setCombo(state.cam, state.film);
   tmp.process(img, img.naturalWidth, img.naturalHeight);
   const out = cap.toDataURL('image/jpeg', 0.9);
-  state.gallery.push({ url: out, name: `${state.film.brand} ${state.film.name} · developed · ${state.cam ? state.cam.model : 'scan only'}` });
+  state.frames.push({ url: out, developed: true }); // loose-frame scan: lab-developed on arrival
   URL.revokeObjectURL(url);
-  renderGallery();
-  toast('developed your photo');
+  renderStrip();
+  scrollStripToLast();
+  toast('loose frame developed · does not consume the roll');
 }
-function rewind(){
-  $('doorInfo').textContent = 'rewinding…';
-  if (navigator.vibrate) navigator.vibrate([30, 80, 30, 80, 30]); // motor-sputter rewind feel
-  setTimeout(() => {
-    state.shotsLeft = 36; $('counter').textContent = '36';
-    $('doorInfo').textContent = 'roll stays loaded when you swap cameras';
-    toast('rewound · fresh roll');
-  }, 700);
-}
-function renderGallery(){
+/* ---------- film roll system ----------
+   Exposed frames stay LATENT (dark, numbered, edge marks) until the whole roll
+   is developed — the ritual the user asked for; tapping a latent frame only gives
+   a brief preview pulse, never a full reveal. */
+function renderStrip(){
   const g = $('gallery'); g.innerHTML = '';
-  state.gallery.slice(-8).forEach(item => {
-    const el = document.createElement('div'); el.className = 'frame';
-    el.style.backgroundImage = `url(${item.url})`; el.style.backgroundSize = 'cover';
-    el.title = item.name + ' — tap to download';
-    el.onclick = () => { const a = document.createElement('a'); a.href = item.url; a.download = item.name.replace(/[^\w.-]+/g,'_') + '.jpg'; a.click(); };
+  for (let i = 0; i < 36; i++){
+    const el = document.createElement('div');
+    const f = state.frames[i];
+    const dev = f && (f.developed || state.developed); // developing the roll reveals every exposed frame
+    el.className = 'frame' + (f ? (dev ? ' developed' : ' latent') : '');
+    const num = document.createElement('span'); num.className = 'num'; num.textContent = String(i + 1).padStart(2, '0');
+    el.appendChild(num);
+    if (state.film){
+      const edge = document.createElement('span'); edge.className = 'edge';
+      edge.textContent = (state.film.brand.split(' ')[0] || state.film.brand).toUpperCase().slice(0, 7) + ' ' + state.film.iso;
+      el.appendChild(edge);
+    }
+    if (f && dev){
+      el.style.backgroundImage = `url(${f.url})`;
+      el.title = `${state.film?.name || 'frame'} · frame ${i + 1} — tap to print`;
+      el.onclick = () => download(f.url, i + 1);
+    } else if (f){
+      el.title = 'latent image · develop the roll to reveal';
+      el.onclick = () => previewFrame(el, f.url);
+    } else {
+      el.title = `frame ${i + 1} · not exposed`;
+    }
     g.appendChild(el);
+  }
+}
+function previewFrame(el, url){
+  el.style.backgroundImage = `url(${url})`;
+  el.classList.add('preview');
+  toast('latent preview · develop the roll to reveal');
+  setTimeout(() => { el.classList.remove('preview'); el.style.backgroundImage = ''; }, 1250);
+}
+function scrollStripToLast(){
+  const el = $('gallery').children[state.frames.length - 1];
+  if (el) $('stripWrap').scrollLeft = Math.max(0, el.offsetLeft - $('stripWrap').clientWidth / 2 + el.clientWidth / 2);
+}
+function download(url, n){
+  const a = document.createElement('a'); a.href = url;
+  a.download = `${(state.film?.id || 'frame')}_${String(n).padStart(2, '0')}.jpg`; a.click();
+}
+function backDoor(){
+  if (state.frames.length && !state.developed){
+    // opening the door on an undeveloped roll fogs the exposed frames — real and ruthless
+    state.frames = []; renderStrip();
+    $('counter').textContent = '—';
+    $('developRoll').classList.remove('ready');
+    $('doorInfo').textContent = 'door opened · exposed frames fogged';
+    toast('oops — light fogged the undeveloped roll');
+  } else {
+    state.frames = []; state.developed = false; renderStrip();
+    $('counter').textContent = '—';
+    $('doorInfo').textContent = 'empty spool out · load a fresh roll';
+    toast('empty spool out');
+  }
+  $('camBody').classList.add('open');
+  if (navigator.vibrate) navigator.vibrate([30, 80, 30, 80, 30]); // motor-sputter
+  setTimeout(() => $('camBody').classList.remove('open'), 700);
+}
+function developRoll(){
+  if (!state.frames.length){ toast('no exposed frames to develop'); return; }
+  if (state.developed){ toast('this roll is already developed'); return; }
+  const mask = $('devMask'), step = $('devStep'), bar = $('devBar');
+  mask.classList.add('on');
+  const phases = [['in developer · 68°F', 30], ['stop bath', 55], ['fixer', 80], ['wash · drying', 100]];
+  let i = 0;
+  (function next(){
+    if (i < phases.length){ step.textContent = phases[i][0]; bar.style.width = phases[i][1] + '%'; setTimeout(next, 950); i++; }
+    else finish();
+  })();
+  async function finish(){
+    mask.classList.remove('on'); bar.style.width = '0';
+    state.developed = true;
+    renderStrip();
+    [...$('gallery').children].forEach((el, idx) => {
+      if (el.className.includes('developed')){ el.style.animationDelay = (idx * 0.045) + 's'; el.classList.add('reveal'); }
+    });
+    $('developRoll').classList.remove('ready');
+    $('doorInfo').textContent = 'roll developed · archived · load a fresh roll';
+    $('camBody').classList.add('open'); setTimeout(() => $('camBody').classList.remove('open'), 800);
+    await archiveRoll();
+    toast('roll developed · tap frames to print');
+    ding();
+  }
+}
+function ding(){ // darkroom timer bell when the roll comes out of the fixer
+  try{
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(); const g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = 880;
+    g.gain.setValueAtTime(0.12, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.5);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.5);
+    setTimeout(() => ac.close(), 650);
+  } catch(e){ /* silent */ }
+}
+/* ---------- film archive (localStorage shelf, downscaled contact prints) ---------- */
+const ARCHIVE_KEY = 'pocketroll-archive-v1';
+function loadArchives(){ try{ state.rolls = JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || []; } catch{ state.rolls = []; } }
+function saveArchives(){
+  try{ localStorage.setItem(ARCHIVE_KEY, JSON.stringify(state.rolls.slice(0, 6))); }
+  catch(e){ state.rolls = state.rolls.slice(0, 3); try{ localStorage.setItem(ARCHIVE_KEY, JSON.stringify(state.rolls)); } catch{} }
+}
+function thumbOf(url){
+  return new Promise(res => {
+    const img = new Image(); img.src = url;
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      const w = Math.min(320, img.naturalWidth);
+      c.width = w; c.height = Math.round(w * img.naturalHeight / img.naturalWidth);
+      c.getContext('2d').drawImage(img, 0, 0, w, c.height);
+      res(c.toDataURL('image/jpeg', 0.72));
+    };
+    img.onerror = () => res(url);
   });
-  for (let i = state.gallery.length; i < 8; i++){ const el = document.createElement('div'); el.className = 'empty'; g.appendChild(el); }
+}
+async function archiveRoll(){
+  const thumbs = [];
+  for (const f of state.frames) thumbs.push(await thumbOf(f.url));
+  state.rolls.unshift({
+    id: Date.now(),
+    film: state.film ? `${state.film.brand} ${state.film.name}` : 'unknown stock',
+    cam: state.cam ? `${state.cam.brand} ${state.cam.model}` : 'scan only',
+    date: new Date().toISOString(),
+    frames: thumbs,
+  });
+  saveArchives();
+  renderArchive();
+}
+function renderArchive(){
+  const a = $('archive'); a.innerHTML = '';
+  state.rolls.forEach(r => {
+    const el = document.createElement('div'); el.className = 'roll-card';
+    const d = new Date(r.date);
+    el.innerHTML = `<div class="meta"><span>${r.film} · ${r.frames.length} frames</span><span class="sub">${r.cam} · ${d.toLocaleDateString()}</span></div>`
+      + `<div class="mini">${r.frames.slice(0, 8).map(u => `<img src="${u}" alt="">`).join('')}</div>`;
+    el.onclick = () => openRoll(r);
+    a.appendChild(el);
+  });
+}
+function openRoll(r){
+  $('rollTitle').textContent = `${r.film} · ${r.frames.length} frames`;
+  const grid = $('rollGrid'); grid.innerHTML = '';
+  r.frames.forEach((u, i) => {
+    const img = document.createElement('img'); img.src = u;
+    img.title = `frame ${i + 1} · tap to download`;
+    img.onclick = () => { const a = document.createElement('a'); a.href = u; a.download = `roll_${r.id}_${i + 1}.jpg`; a.click(); };
+    grid.appendChild(img);
+  });
+  $('rollModal').classList.add('open');
 }
 
 /* ---------- loading gear ---------- */
 function loadFilm(f){
   state.film = f; state.shotsLeft = 36;
+  state.frames = []; state.developed = false;
   engine.setCombo(state.cam, f);
   $('filmLabel').textContent = `${f.brand} ${f.name} · ${f.iso}`;
   $('canisterName').textContent = f.name.toUpperCase();
   $('canisterIso').textContent = f.iso + ' ISO';
   $('counter').textContent = '36';
+  $('doorInfo').textContent = 'roll loaded · 36 frames';
+  $('developRoll').classList.remove('ready');
+  renderStrip();
+  const g = $('gallery'); g.classList.remove('slidein'); void g.offsetWidth; g.classList.add('slidein'); // film threading in
+  $('stripWrap').scrollLeft = 0;
   $('comboTag').textContent = (state.cam ? state.cam.model.toUpperCase() : 'BODY') + ' + ' + f.name.toUpperCase();
   renderHud();
   $('camBody').classList.add('open');
@@ -405,18 +555,20 @@ async function boot(){
   if (q.get('hud') === 'full') $('hud').classList.add('full');
   $('vfStage').addEventListener('click', () => $('hud').classList.toggle('full'));
   renderHud();
-  renderGallery();
+  loadArchives(); renderArchive(); renderStrip();
   loop();
   // autoshot fires after the feed is settled (live camera if granted, demo otherwise)
   initCamera().then(() => {
     if (q.get('autoshot') === '1') setTimeout(() => { capture(); capture(); capture(); }, 900);
+    if (q.get('dev') === '1') setTimeout(developRoll, 2600); // test hook: develop the roll after autoshots
   });
 
   $('shutter').onclick = capture;
   $('pickCamera').onclick = () => $('camModal').classList.add('open');
   $('pickFilm').onclick = () => $('filmModal').classList.add('open');
-  $('doorBtn').onclick = () => $('camBody').classList.toggle('open');
-  $('downloadBtn').onclick = () => { const last = state.gallery[state.gallery.length-1]; if (last){ const a = document.createElement('a'); a.href = last.url; a.download = last.name.replace(/[^\w.-]+/g,'_') + '.jpg'; a.click(); } else toast('no frames yet'); };
+  $('doorBtn').onclick = backDoor;
+  $('developRoll').onclick = developRoll;
+  $('downloadBtn').onclick = () => { const last = state.frames[state.frames.length - 1]; if (last) download(last.url, state.frames.length); else toast('no frames yet'); };
   $('loadPhoto').onclick = () => $('fileInput').click();
   $('fileInput').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) importPhoto(f); e.target.value = ''; };
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.modal').classList.remove('open'));

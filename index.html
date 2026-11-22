@@ -98,13 +98,43 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;
 .spacer{flex:1}
 .doorinfo{font-size:10px;color:#6b6154;letter-spacing:.1em;text-transform:uppercase}
 
-/* filmstrip gallery */
-.strip{margin-top:14px;background:#0d0c0b;border-radius:10px;padding:10px 14px;position:relative;overflow-x:auto}
-.strip::before,.strip::after{content:"";display:block;height:8px;
+/* film roll system: 36-frame strip; shots stay latent until the roll is developed */
+.strip{margin-top:14px;background:#0d0c0b;border-radius:10px;padding:14px 8px;position:relative;overflow-x:auto}
+.strip::before,.strip::after{content:"";position:absolute;left:0;right:0;height:8px;
   background:repeating-linear-gradient(90deg,transparent 0 10px,#2b2620 10px 20px);}
-.frames{display:flex;gap:6px;padding:6px 0}
-.frames .frame{width:64px;height:48px;border-radius:2px;background:#111;flex:none;cursor:pointer}
-.frames .empty{width:64px;height:48px;border:1px dashed #3a332b;flex:none}
+.strip::before{top:3px}.strip::after{bottom:3px}
+.frames{display:flex;gap:5px;width:max-content}
+.frames.slidein{animation:slidein .7s ease}
+@keyframes slidein{from{transform:translateX(60%);opacity:.15}to{transform:none;opacity:1}}
+.frames.advance{animation:advance .34s ease}
+@keyframes advance{0%{transform:translateX(0)}45%{transform:translateX(-8px)}100%{transform:translateX(0)}}
+.frame{width:64px;height:48px;border-radius:2px;flex:none;position:relative;background:#141009;border:1px solid #342c24}
+.frame .num{position:absolute;left:4px;top:3px;font:8px/1 ui-monospace,monospace;color:#c9a45a;opacity:.7}
+.frame .edge{position:absolute;right:4px;top:3px;font:7px ui-monospace,monospace;color:#7b6b52;letter-spacing:.05em}
+.frame.latent{background:linear-gradient(160deg,#2b2013,#150f09);box-shadow:inset 0 0 14px rgba(255,140,60,.10)}
+.frame.developed{cursor:pointer;border-color:#55483a;background-size:cover;background-position:center}
+.frame.reveal{animation:reveal .55s ease both}
+@keyframes reveal{from{opacity:.04}to{opacity:1}}
+.frame.preview{animation:preview 1.2s ease;background-size:cover;background-position:center}
+@keyframes preview{0%,100%{filter:brightness(.22)}50%{filter:brightness(.85)}}
+.dev-mask{position:absolute;inset:0;background:rgba(9,8,7,.94);border-radius:10px;display:none;
+  align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:5}
+.dev-mask.on{display:flex}
+.dev-mask .step{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#ffd9c2}
+.dev-mask .bar{width:210px;height:6px;background:#2b2620;border-radius:3px;overflow:hidden}
+.dev-mask .bar i{display:block;height:100%;width:0;background:#c8522e;transition:width .9s linear}
+.smallbtn.ready{border-color:var(--red);color:#ffd9c2;box-shadow:0 0 10px rgba(200,64,46,.4)}
+
+/* film archive: developed rolls kept on the shelf */
+.archive{margin-top:14px;display:grid;gap:8px}
+.roll-card{background:#0d0c0b;border:1px solid #453d34;border-radius:10px;padding:10px 12px;cursor:pointer}
+.roll-card:hover{border-color:#6b5f50}
+.roll-card .meta{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#e8dcc9;letter-spacing:.05em}
+.roll-card .sub{color:#7d7468;font-size:9px;letter-spacing:.14em;text-transform:uppercase;margin-top:3px}
+.roll-card .mini{display:flex;gap:4px;margin-top:8px;overflow:hidden}
+.roll-card .mini img{height:32px;border-radius:2px;flex:none;opacity:.85}
+.rollgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rollgrid img{width:100%;border-radius:4px;cursor:pointer}
 
 /* modals */
 .modal{position:fixed;inset:0;background:rgba(10,9,8,.82);display:none;align-items:center;justify-content:center;z-index:50}
@@ -186,19 +216,25 @@ footer{margin-top:12px;font-size:9px;letter-spacing:.06em;color:#8d8474;line-hei
   <div class="actions">
     <button class="shutter" id="shutter">SHUTTER</button>
     <button class="smallbtn" id="doorBtn">back door</button>
-    <button class="smallbtn" id="loadPhoto">develop photo</button>
+    <button class="smallbtn" id="developRoll">develop roll</button>
+    <button class="smallbtn" id="loadPhoto">scan in photo</button>
     <button class="smallbtn" id="downloadBtn">last frame ↓</button>
     <div class="spacer"></div>
     <div class="doorinfo" id="doorInfo">roll stays loaded when you swap cameras</div>
   </div>
 
-  <div class="strip"><div class="frames" id="gallery"></div></div>
+  <div class="strip" id="stripWrap">
+    <div class="frames" id="gallery"></div>
+    <div class="dev-mask" id="devMask"><span class="step" id="devStep">in developer</span><span class="bar"><i id="devBar"></i></span></div>
+  </div>
+  <div class="archive" id="archive"></div>
   <div class="demo-hint" id="cameraHint">press space = shutter · camera feed pending</div>
   <footer>Kodak · Olympus · Contax · Ricoh · Minolta · Nikon · Yashica · Fujifilm · Ilford · Lomo and film names are trademarks of their owners — used descriptively. POCKETROLL is not affiliated with or endorsed by any brand.</footer>
   <div class="door" id="door"></div>
 </div>
 
 <div class="modal" id="camModal"><div class="sheet"><h2>camera bag</h2><div id="camList"></div><div class="closebar"><button class="smallbtn" data-close>close</button></div></div></div>
+<div class="modal" id="rollModal"><div class="sheet"><h2 id="rollTitle">film roll</h2><div id="rollGrid" class="rollgrid"></div><div class="closebar"><button class="smallbtn" data-close>close</button></div></div></div>
 <div class="modal" id="filmModal"><div class="sheet"><h2>film shelf</h2><div id="filmList"></div><div class="closebar"><button class="smallbtn" data-close>close</button></div></div></div>
 <div class="toast" id="toast"></div>
 
