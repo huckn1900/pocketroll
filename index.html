@@ -83,6 +83,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .widebtn:active{transform:translateY(1px)}
 .widebtn.ready{border-color:var(--red);color:#ffd9c2;animation:pulse 1.6s infinite}
 @keyframes pulse{50%{box-shadow:0 0 0 3px rgba(217,75,55,.35)}}
+/* the one main-screen action that appears when the roll is done — shoot → develop is the ritual */
+.developbtn{display:block;width:100%;margin-top:12px;background:var(--red);color:#fff;border:none;border-radius:10px;
+  padding:13px;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.16em;cursor:pointer;
+  box-shadow:0 2px 0 #8f3524}
+.developbtn:active{transform:translateY(2px);box-shadow:0 0 0 #8f3524}
 
 /* ── 5. the loaded roll (filmstrip) ── */
 .strip{background:var(--dark);border-radius:12px;margin-top:14px;padding:10px 12px;position:relative}
@@ -202,6 +207,9 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   <button class="widebtn" id="openRoll">ROLL</button>
   <button class="widebtn" id="openGallery">GALLERY</button>
 </div>
+
+<!-- standalone develop action — appears only after the roll is fully exposed -->
+<button class="developbtn" id="developMain" style="display:none">DEVELOP ROLL · 36 EXPOSURES DONE</button>
 
 <!-- the loaded roll itself -->
 <div class="strip"><div class="frames" id="stripFrames"></div></div>

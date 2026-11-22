@@ -1,9 +1,10 @@
 /* test/features-check.mjs — assert Round-11 feature behaviour on a live page:
    1) flash simulation: same fake scene captured with flash ON vs OFF — the centre
-      must be brighter and the corner (background) must stay deep;
+      must be brighter and the corner (background) must stay deep; needs a
+      flash-capable body: pass ?cam=af35m (trip35/lca etc. have no built-in flash);
    2) date stamp: bottom-right corner pixels must carry the orange stamp tint;
    3) contact sheet: after develop, state.sheet is a real decodable image; saved to disk.
-   Usage: node test/features-check.mjs <url-with-autoshot-date> [out-sheet.jpg] */
+   Usage: node test/features-check.mjs <url-with-autoshot-date+cam> [out-sheet.jpg] */
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 

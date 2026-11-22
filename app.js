@@ -257,6 +257,8 @@ function renderRollPage(){
   $('developRoll').classList.toggle('ready', state.shotsLeft === 0 && has && !state.developed);
   $('sheetBtn').style.display = state.sheet ? '' : 'none';
   $('openRoll').classList.toggle('ready', state.shotsLeft === 0 && has && !state.developed);
+  // standalone develop action on the main screen: shoot → develop, right here
+  $('developMain').style.display = state.shotsLeft === 0 && has && !state.developed ? '' : 'none';
 }
 
 function demoScene(){
@@ -520,14 +522,15 @@ function developRoll(){
     [...$('stripFrames').children].forEach((el, idx) => {
       if (el.className.includes('developed')){ el.style.animationDelay = (idx * 0.045) + 's'; el.classList.add('reveal'); }
     });
-    $('openRoll').classList.remove('ready');
+    renderRollPage(); // the develop action disappears the moment the photos appear
+    ding();
+    toast('roll developed · tap frames to print');
+    // quiet wrap-up: archive shelf + lab contact sheet land a few seconds later
     await archiveRoll();
-    // the ritual closes with a lab contact sheet of the whole roll
     const sheet = await buildSheet(state.frames.map(f => f.url));
     if (sheet) state.sheet = sheet;
     renderRollPage();
-    toast('roll developed · archived · tap frames to print');
-    ding();
+    toast('archived · contact sheet ready');
   }
 }
 function ding(){ // darkroom timer bell when the roll comes out of the fixer
@@ -670,7 +673,10 @@ async function boot(){
   loop();
   // autoshot fires after the feed is settled (live camera if granted, demo otherwise)
   initCamera().then(() => {
-    if (q.get('autoshot') === '1') setTimeout(() => { capture(); capture(); capture(); }, 900);
+    if (q.get('autoshot') === '1') {
+      const shots = Math.max(1, Number(q.get('shots')) || 3); // ?shots=36 to expose a whole roll
+      setTimeout(() => { for (let i = 0; i < shots; i++) capture(); }, 900);
+    }
     if (q.get('dev') === '1') setTimeout(developRoll, 2600); // test hook: develop the roll after autoshots
   });
 
@@ -680,6 +686,7 @@ async function boot(){
   $('openSettings').onclick = () => $('settingsModal').classList.add('open');
   $('doorBtn').onclick = backDoor;
   $('developRoll').onclick = developRoll;
+  $('developMain').onclick = developRoll;
   $('sheetBtn').onclick = () => { if (state.sheet) download(state.sheet, 'sheet'); else toast('develop a roll first'); };
   $('optDate').onclick = () => { state.opts.date = !state.opts.date; saveOpts(); renderOpts(); toast(state.opts.date ? "date stamp on · prints stamped at exposure" : 'date stamp off'); };
   $('optFlash').onclick = () => {
