@@ -464,24 +464,47 @@ async function buildSheet(urls){
     try { await im.decode(); imgs.push(im); } catch { /* skip unreadable frame */ }
   }
   if (!imgs.length) return null;
-  const cols = 3, cw = 340, ch = Math.round(cw * 0.66), gap = 24, edge = 46;
+  // the sheet follows the film: portrait phone frames get portrait cells —
+  // frames are never squashed into a wrong aspect ratio.
+  const ar = Math.min(1.6, Math.max(0.5, imgs[0].naturalWidth / imgs[0].naturalHeight));
+  const cols = 3;
+  const cw = ar >= 1 ? 320 : 244;
+  const ch = Math.round(cw / ar);
+  const gap = 12, edge = 36, bandTop = 56, bandBot = 42;
   const rows = Math.ceil(imgs.length / cols);
   const c = document.createElement('canvas');
-  c.width = cols * cw + edge * 2; c.height = rows * (ch + gap) + edge * 2 + 26;
+  c.width = edge * 2 + cols * cw + gap * (cols - 1);
+  c.height = bandTop + rows * (ch + gap) + bandBot;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#17110c'; ctx.fillRect(0, 0, c.width, c.height); // film base
-  ctx.fillStyle = '#c9bda6';
-  for (let x = edge; x < c.width - edge - 26; x += 64){ ctx.fillRect(x, 10, 26, 16); ctx.fillRect(x, c.height - 26, 26, 16); }
+  // clean label strip on top: type only — sprocket holes live in the bottom band,
+  // so the print never collides with them.
+  try { await document.fonts.load('bold 15px "PC Mono"'); } catch {}
   const f = state.film;
-  ctx.fillStyle = '#c9a45a'; ctx.font = 'bold 20px ui-monospace, monospace';
-  ctx.fillText(`POCKETROLL LAB · ${(f ? f.brand + ' ' + f.name + ' ' + f.iso : 'CONTACT PRINT').toUpperCase()} · ${(state.cam?.model || 'SCAN').toUpperCase()}`, edge, edge - 12);
+  const filmLabel = f ? f.brand + ' ' + f.name + (String(f.name).includes(String(f.iso)) ? '' : ' ' + f.iso) : 'CONTACT PRINT';
+  ctx.fillStyle = '#c9a45a'; ctx.font = 'bold 15px "PC Mono", ui-monospace, monospace';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
+  ctx.fillText(`POCKETROLL LAB · ${filmLabel.toUpperCase()}`, edge, 34);
+  const meta = `${(state.cam?.model || 'SCAN').toUpperCase()} · ${imgs.length} FRAMES`;
+  ctx.font = '12px "PC Mono", ui-monospace, monospace';
+  ctx.fillStyle = '#9a8a6e';
+  ctx.fillText(meta, c.width - edge - ctx.measureText(meta).width, 34);
+  ctx.fillStyle = '#3b332a'; ctx.fillRect(edge, bandTop - 8, c.width - edge * 2, 1);
   imgs.forEach((im, i) => {
-    const x = edge + (i % cols) * (cw + gap), y = edge + Math.floor(i / cols) * (ch + gap) + 6;
-    ctx.fillStyle = '#000'; ctx.fillRect(x - 3, y - 3, cw + 6, ch + 6);
+    const x = edge + (i % cols) * (cw + gap), y = bandTop + Math.floor(i / cols) * (ch + gap);
+    ctx.fillStyle = '#000'; ctx.fillRect(x - 2, y - 2, cw + 4, ch + 4);
     ctx.drawImage(im, x, y, cw, ch);
-    ctx.fillStyle = '#ff8a3d'; ctx.font = 'bold 15px ui-monospace, monospace';
-    ctx.fillText(String(i + 1).padStart(2, '0'), x + 6, y + ch + 15);
+    // frame number rides inside the print, like a lab border marking
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.85)'; ctx.shadowBlur = 5;
+    ctx.fillStyle = '#ff8a3d'; ctx.font = 'bold 13px "PC Mono", ui-monospace, monospace';
+    ctx.fillText(String(i + 1).padStart(2, '0'), x + 7, y + 18);
+    ctx.restore();
   });
+  // film-base edge: sprocket holes + tiny print along the bottom
+  ctx.fillStyle = '#c9bda6';
+  for (let x = edge; x < c.width - edge - 22; x += 52) ctx.fillRect(x, c.height - bandBot + 8, 22, 13);
+  ctx.fillStyle = '#8d8171'; ctx.font = '10px "PC Mono", ui-monospace, monospace';
+  ctx.fillText(`POCKETROLL 35 · ${imgs.length} FRAMES DEVELOPED`, edge, c.height - 10);
   return c.toDataURL('image/jpeg', 0.88);
 }
 function backDoor(){
