@@ -4,7 +4,7 @@
    Test pages and query-param URLs bypass the SW entirely. */
 const CACHE = 'pocketroll-v5';
 const SHELL = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon.png', 'assets/cameras.json', 'assets/films.json'];
-const CODE = [/\/app\.js$/, /\/assets\/.*\.json$/, /\/index\.html$/, /\/$/];
+const CODE = [/\/app\.js$/, /\/sounds\.js$/, /\/assets\/.*\.json$/, /\/index\.html$/, /\/sounds\.html$/, /\/$/];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
