@@ -54,14 +54,21 @@ const probe = await send('Runtime.evaluate', {
     });
     const w = new Image(); w.src = state.frames[0].url; await w.decode();
     const W = w.naturalWidth, H = w.naturalHeight;
-    const on = await patch(state.frames[0].url, Math.round(W * .40), Math.round(H * .42), 40);
-    state.opts.flash = false; capture();
+    // deterministic scene for the flash delta: the fake-device blob changes shape
+    // every shot, so cross-frame brightness compares are flaky — swap the stream to
+    // a uniform gray canvas (same capture pipeline, no moving content).
+    const cv = document.createElement('canvas'); cv.width = 1280; cv.height = 960;
+    const cx2 = cv.getContext('2d'); cx2.fillStyle = '#808080'; cx2.fillRect(0, 0, 1280, 960);
+    video.srcObject = cv.captureStream(30); video.play();
+    await new Promise(r => setTimeout(r, 400));
+    state.opts.flash = true; capture(); await new Promise(r => setTimeout(r, 350));
+    state.opts.flash = false; capture(); await new Promise(r => setTimeout(r, 350));
+    const on = await patch(state.frames[3].url, Math.round(W * .40), Math.round(H * .42), 40);
+    const off = await patch(state.frames[4].url, Math.round(W * .40), Math.round(H * .42), 40);
+    const corner = await patch(state.frames[3].url, W - 140, H - 55, 30);
+    state.opts.date = false; capture(); // same gray scene, no stamp — control frame
     await new Promise(r => setTimeout(r, 350));
-    const off = await patch(state.frames[3].url, Math.round(W * .40), Math.round(H * .42), 40);
-    const corner = await patch(state.frames[0].url, W - 140, H - 55, 30);
-    state.opts.date = false; capture(); // same fake scene, no stamp — control frame
-    await new Promise(r => setTimeout(r, 350));
-    const cornerNo = await patch(state.frames[4].url, W - 140, H - 55, 30);
+    const cornerNo = await patch(state.frames[5].url, W - 140, H - 55, 30);
     // count orange stamp pixels in the bottom-right stamp zone of both frames
     const orangeCount = (u) => new Promise(res => {
       const im = new Image(); im.src = u;
@@ -77,7 +84,7 @@ const probe = await send('Runtime.evaluate', {
       im.onerror = () => res(-1);
     });
     const stamped = await orangeCount(state.frames[0].url);
-    const unstamped = await orangeCount(state.frames[4].url);
+    const unstamped = await orangeCount(state.frames[5].url);
     state.opts.flash = true;
     developRoll();
     await new Promise(r => setTimeout(r, 6500)); // developer phases + reveal + archive + sheet
