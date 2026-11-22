@@ -8,9 +8,9 @@ Live: **https://huckn1900.github.io/pocketroll/** (open on your phone — HTTPS 
 python -m http.server 8765      # any static server works
 open http://127.0.0.1:8765/
 ```
-- It is a PWA: installable from Chrome on Android/desktop, works offline after first load (service worker caches the shell).
+- It is a PWA: installable from Chrome on Android/desktop, works offline after first load (service worker caches the shell). Fonts are bundled OFL latin subsets (`assets/fonts/`: Roboto Condensed for brand/print, IBM Plex Mono for parameters) — no runtime webfont dependency.
 - Controls: **SHUTTER** button or spacebar exposes a frame; **camera bag** / **film shelf** load gear (swapping cameras never resets the roll); **develop roll** runs the darkroom ritual (developer → stop bath → fixer → wash, then frames reveal and archive); **contact sheet ↓** downloads the lab proof sheet after developing; **scan in photo** lab-develops an external photo as a loose frame; **back door** opens the door — on an undeveloped roll this FOGS the exposed frames; tap the finder for the full LCD readout; tap a latent frame for a brief preview pulse only.
-- Test hooks: `?cam=<id>&film=<id>&autoshot=1&dev=1&date=1&hud=full`; `test/calibration.html` (all 15 stocks on a real photo, for parameter tuning); `sounds.html` (sound lab: film-advance lever/motor + focus chirp/whir variants for auditioning before integration); `test/features-check.mjs` / `test/export-check.mjs` / `test/pwa-check.mjs` / `test/sound-smoke.mjs` (CDP assertions).
+- Test hooks: `?cam=<id>&film=<id>&autoshot=1&dev=1&date=1&hud=full&page=roll|gallery|settings`; `test/calibration.html` (all 15 stocks on a real photo, for parameter tuning); `sounds.html` (sound lab: film-advance lever/motor + focus chirp/whir variants for auditioning before integration); `test/features-check.mjs` / `test/export-check.mjs` / `test/pwa-check.mjs` / `test/sound-smoke.mjs` / `test/page-probe.mjs` (CDP assertions & debug probes).
 
 ## Architecture
 - `assets/cameras.json` — 10 classic point-and-shoots (Olympus Trip 35 … Ricoh GR1v, Minolta TC-01, Lomo LC-A). Each carries a `camera_character` (color cast gains, vignette, sharpness, halation bias, quirks like LC-A light leaks / AF35M flash pop).

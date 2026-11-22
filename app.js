@@ -225,8 +225,8 @@ function renderHud(){
   const fl = $('hudFlash');
   const capable = h.flash === 'on'; // only bodies with a built-in flash can fire one
   fl.style.display = capable ? '' : 'none';
-  fl.className = 'flash' + (capable && state.opts.flash ? ' on' : '');
-  fl.textContent = '⚡ flash ' + (capable && state.opts.flash ? 'on' : 'off');
+  fl.className = 'vf-flash' + (capable && state.opts.flash ? ' on' : '');
+  fl.textContent = '⚡';
   $('hudIso').textContent = state.film ? 'ISO ' + state.film.iso : 'no film';
   $('hudReadout').textContent = (h.shutter ? h.shutter : '—') + ' · +0.0 EV';
   $('hudBattFill').style.width = state.battery + '%';
@@ -238,6 +238,25 @@ function renderOpts(){
   const capable = state.cam ? CAMERA_HUD[state.cam.id]?.flash === 'on' : false;
   $('optFlash').classList.toggle('disabled', !capable);
   $('optFlash').classList.toggle('on', capable && state.opts.flash);
+}
+
+/* main-screen counters: FRAMES LEFT card + bezel EXP readout */
+function renderCounter(){
+  $('counter').textContent = String(state.shotsLeft).padStart(2, '0');
+  $('expCount').textContent = state.shotsLeft + ' EXP';
+}
+/* the roll page owns everything about the current roll: develop appears only
+   after shooting, the contact sheet only after developing (the main screen
+   is just the shutter — feature entries never share its visual weight). */
+function renderRollPage(){
+  const has = state.frames.length > 0;
+  $('rollStatus').textContent = state.developed ? 'roll developed · archived · load a fresh roll'
+    : has ? `${state.frames.length} frames exposed · latent until developed`
+    : state.shotsLeft === 0 ? 'roll finished · develop it' : `roll loaded · ${state.shotsLeft} frames left`;
+  $('developRoll').style.display = has && !state.developed ? '' : 'none';
+  $('developRoll').classList.toggle('ready', state.shotsLeft === 0 && has && !state.developed);
+  $('sheetBtn').style.display = state.sheet ? '' : 'none';
+  $('openRoll').classList.toggle('ready', state.shotsLeft === 0 && has && !state.developed);
 }
 
 function demoScene(){
@@ -263,10 +282,10 @@ async function initCamera(){
     // ask the sensor for its native resolution so exports are full-pixel, not 640×480
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
     video = document.createElement('video'); video.srcObject = stream; video.play();
-    usingDemo = false; $('cameraHint').textContent = 'press space = shutter · live feed · tap finder = full readout';
+    usingDemo = false;
   }catch(e){
     usingDemo = true;
-    $('cameraHint').textContent = 'camera unavailable — demo scene (still filterable)';
+    toast('camera unavailable · demo scene');
   }
 }
 
@@ -331,17 +350,12 @@ function capture(){
   const url = cap.toDataURL('image/jpeg', 0.9);
   state.frames.push({ url });
   state.shotsLeft--;
-  $('counter').textContent = String(state.shotsLeft).padStart(2, '0');
+  renderCounter();
   renderStrip();
-  const g = $('gallery'); g.classList.remove('advance'); void g.offsetWidth; g.classList.add('advance'); // film-advance tick
+  const g = $('stripFrames'); g.classList.remove('advance'); void g.offsetWidth; g.classList.add('advance'); // film-advance tick
   scrollStripToLast();
-  if (state.shotsLeft === 0){
-    $('doorInfo').textContent = 'roll finished · develop it';
-    $('developRoll').classList.add('ready');
-    toast('frame 36 exposed · develop the roll');
-  } else {
-    $('doorInfo').textContent = `${state.frames.length} frames exposed · latent until developed`;
-  }
+  renderRollPage();
+  if (state.shotsLeft === 0) toast('frame 36 exposed · open ROLL to develop');
 }
 /* develop an imported photo through the loaded film — treated as a lab-developed
    scan (does not consume a frame from the roll; the roll counter stays honest). */
@@ -369,7 +383,7 @@ async function importPhoto(file){
    is developed — the ritual the user asked for; tapping a latent frame only gives
    a brief preview pulse, never a full reveal. */
 function renderStrip(){
-  const g = $('gallery'); g.innerHTML = '';
+  const g = $('stripFrames'); g.innerHTML = '';
   for (let i = 0; i < 36; i++){
     const el = document.createElement('div');
     const f = state.frames[i];
@@ -402,8 +416,8 @@ function previewFrame(el, url){
   setTimeout(() => { el.classList.remove('preview'); el.style.backgroundImage = ''; }, 1250);
 }
 function scrollStripToLast(){
-  const el = $('gallery').children[state.frames.length - 1];
-  if (el) $('stripWrap').scrollLeft = Math.max(0, el.offsetLeft - $('stripWrap').clientWidth / 2 + el.clientWidth / 2);
+  const el = $('stripFrames').children[state.frames.length - 1];
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
 function download(url, n){
   const a = document.createElement('a'); a.href = url;
@@ -472,19 +486,21 @@ function backDoor(){
   if (state.frames.length && !state.developed){
     // opening the door on an undeveloped roll fogs the exposed frames — real and ruthless
     state.frames = []; renderStrip();
-    $('counter').textContent = '—';
-    $('developRoll').classList.remove('ready');
-    $('doorInfo').textContent = 'door opened · exposed frames fogged';
+    $('counter').textContent = '—'; $('expCount').textContent = '0 EXP';
+    $('openRoll').classList.remove('ready');
+    $('rollStatus').textContent = 'door opened · exposed frames fogged';
+    $('developRoll').style.display = 'none';
     toast('oops — light fogged the undeveloped roll');
   } else {
-    state.frames = []; state.developed = false; renderStrip();
-    $('counter').textContent = '—';
-    $('doorInfo').textContent = 'empty spool out · load a fresh roll';
+    state.frames = []; state.developed = false; state.sheet = null; renderStrip();
+    $('counter').textContent = '—'; $('expCount').textContent = '0 EXP';
+    $('openRoll').classList.remove('ready');
+    $('rollStatus').textContent = 'empty spool out · load a fresh roll';
+    $('developRoll').style.display = 'none'; $('sheetBtn').style.display = 'none';
     toast('empty spool out');
   }
-  $('camBody').classList.add('open');
+  const g = $('stripFrames'); g.classList.remove('pullout'); void g.offsetWidth; g.classList.add('pullout'); // spool pulls out of the opened door
   if (navigator.vibrate) navigator.vibrate([30, 80, 30, 80, 30]); // motor-sputter
-  setTimeout(() => $('camBody').classList.remove('open'), 700);
 }
 function developRoll(){
   if (!state.frames.length){ toast('no exposed frames to develop'); return; }
@@ -501,17 +517,16 @@ function developRoll(){
     mask.classList.remove('on'); bar.style.width = '0';
     state.developed = true;
     renderStrip();
-    [...$('gallery').children].forEach((el, idx) => {
+    [...$('stripFrames').children].forEach((el, idx) => {
       if (el.className.includes('developed')){ el.style.animationDelay = (idx * 0.045) + 's'; el.classList.add('reveal'); }
     });
-    $('developRoll').classList.remove('ready');
-    $('doorInfo').textContent = 'roll developed · archived · load a fresh roll';
-    $('camBody').classList.add('open'); setTimeout(() => $('camBody').classList.remove('open'), 800);
+    $('openRoll').classList.remove('ready');
     await archiveRoll();
     // the ritual closes with a lab contact sheet of the whole roll
     const sheet = await buildSheet(state.frames.map(f => f.url));
-    if (sheet){ state.sheet = sheet; $('sheetBtn').style.display = ''; }
-    toast('roll developed · tap frames to print');
+    if (sheet) state.sheet = sheet;
+    renderRollPage();
+    toast('roll developed · archived · tap frames to print');
     ding();
   }
 }
@@ -579,7 +594,7 @@ function openRoll(r){
     img.onclick = () => { const a = document.createElement('a'); a.href = u; a.download = `roll_${r.id}_${i + 1}.jpg`; a.click(); };
     grid.appendChild(img);
   });
-  $('rollModal').classList.add('open');
+  $('rollViewer').classList.add('open');
 }
 
 /* ---------- loading gear ---------- */
@@ -587,27 +602,22 @@ function loadFilm(f){
   state.film = f; state.shotsLeft = 36;
   state.frames = []; state.developed = false;
   engine.setCombo(state.cam, f);
-  $('filmLabel').textContent = `${f.brand} ${f.name} · ${f.iso}`;
-  $('canisterName').textContent = f.name.toUpperCase();
-  $('canisterIso').textContent = f.iso + ' ISO';
-  $('counter').textContent = '36';
-  $('doorInfo').textContent = 'roll loaded · 36 frames';
-  $('developRoll').classList.remove('ready');
-  $('sheetBtn').style.display = 'none'; state.sheet = null;
+  $('vfFilm').textContent = f.name.toUpperCase();
+  $('filmLine').textContent = 'FILM · ' + f.name.toUpperCase();
+  renderCounter();
+  $('openRoll').classList.remove('ready');
+  state.sheet = null;
   renderStrip();
-  const g = $('gallery'); g.classList.remove('slidein'); void g.offsetWidth; g.classList.add('slidein'); // film threading in
-  $('stripWrap').scrollLeft = 0;
-  $('comboTag').textContent = (state.cam ? state.cam.model.toUpperCase() : 'BODY') + ' + ' + f.name.toUpperCase();
+  const g = $('stripFrames'); g.classList.remove('slidein'); void g.offsetWidth; g.classList.add('slidein'); // film threading in
+  $('stripFrames').scrollLeft = 0;
+  renderRollPage();
   renderHud();
-  $('camBody').classList.add('open');
-  setTimeout(() => $('camBody').classList.remove('open'), 600);
   toast(`loading roll · ${f.name}`);
 }
 function loadCamera(c){
   state.cam = c;
   engine.setCombo(c, state.film);
-  $('camLabel').textContent = `${c.brand} ${c.model} · ${c.year}`;
-  $('comboTag').textContent = c.model.toUpperCase() + ' + ' + (state.film ? state.film.name.toUpperCase() : 'NO FILM');
+  $('camModel').textContent = c.model.toUpperCase();
   renderHud();
   renderOpts();
   toast('camera swapped — roll untouched');
@@ -620,7 +630,7 @@ function buildLists(){
     const el = document.createElement('div');
     el.className = 'item' + (state.cam?.id === c.id ? ' active' : '');
     el.innerHTML = `<div><div class="t">${c.brand} ${c.model}</div><div class="d">${c.year} · ${c.lens.focal_mm}mm ${c.lens.aperture} · ${c.vibe}</div></div><span class="badge">${c.format.includes('126') ? '126 cartridge' : '135'}</span>`;
-    el.onclick = () => { loadCamera(c); buildLists(); $('camModal').classList.remove('open'); };
+    el.onclick = () => { loadCamera(c); buildLists(); $('settingsModal').classList.remove('open'); };
     cl.appendChild(el);
   });
   const fl = $('filmList'); fl.innerHTML = '';
@@ -629,7 +639,7 @@ function buildLists(){
     el.className = 'item' + (state.film?.id === f.id ? ' active' : '');
     const typeTag = f.type === 'bw' ? 'b&w' : f.type === 'slide' ? 'slide' : 'color neg';
     el.innerHTML = `<div><div class="t">${f.brand} ${f.name}</div><div class="d">${f.iso} · ${typeTag} · ${f.story}</div></div><span class="badge${f.status.startsWith('disc') ? ' heritage' : ''}">${f.status.startsWith('disc') ? 'heritage' : 'in production'}</span>`;
-    el.onclick = () => { loadFilm(f); buildLists(); $('filmModal').classList.remove('open'); };
+    el.onclick = () => { loadFilm(f); buildLists(); $('rollModal').classList.remove('open'); };
     fl.appendChild(el);
   });
 }
@@ -641,7 +651,7 @@ async function boot(){
     state.cameras = (await camRes.json()).cameras;
     state.films = (await filmRes.json()).films;
   }catch(e){
-    $('cameraHint').textContent = 'assets load failed: ' + (e && e.message ? e.message : String(e));
+    toast('assets load failed: ' + (e && e.message ? e.message : String(e)));
     return;
   }
   buildLists();
@@ -665,8 +675,9 @@ async function boot(){
   });
 
   $('shutter').onclick = capture;
-  $('pickCamera').onclick = () => $('camModal').classList.add('open');
-  $('pickFilm').onclick = () => $('filmModal').classList.add('open');
+  $('openRoll').onclick = () => $('rollModal').classList.add('open');
+  $('openGallery').onclick = () => $('galleryModal').classList.add('open');
+  $('openSettings').onclick = () => $('settingsModal').classList.add('open');
   $('doorBtn').onclick = backDoor;
   $('developRoll').onclick = developRoll;
   $('sheetBtn').onclick = () => { if (state.sheet) download(state.sheet, 'sheet'); else toast('develop a roll first'); };
@@ -676,11 +687,16 @@ async function boot(){
     state.opts.flash = !state.opts.flash; saveOpts(); renderHud(); renderOpts();
     toast(state.opts.flash ? 'flash on · fires at the shutter' : 'flash off');
   };
-  $('downloadBtn').onclick = () => { const last = state.frames[state.frames.length - 1]; if (last) download(last.url, state.frames.length); else toast('no frames yet'); };
   $('loadPhoto').onclick = () => $('fileInput').click();
   $('fileInput').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) importPhoto(f); e.target.value = ''; };
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.modal').classList.remove('open'));
-  document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.target.closest('.modal')) { e.preventDefault(); capture(); } });
+  // test hook: ?page=roll|gallery|settings opens that page directly
+  const page = q.get('page');
+  if (page === 'roll') $('rollModal').classList.add('open');
+  if (page === 'gallery') $('galleryModal').classList.add('open');
+  if (page === 'settings') $('settingsModal').classList.add('open');
+  // spacebar is the shutter — but never while a page (roll/gallery/settings) is open
+  document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !document.querySelector('.modal.open')) { e.preventDefault(); capture(); } });
 }
 window.FilmEngine = FilmEngine;
 window.CAMERA_CAST = CAMERA_CAST;
