@@ -1,1 +1,6 @@
-shot*.png
+﻿shot*.png
+# delivered artifacts & test screenshots
+pocketroll-src*/
+*.zip
+test/out-*.png
+test/out-*.jpg
