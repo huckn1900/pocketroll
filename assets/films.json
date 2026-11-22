@@ -45,7 +45,12 @@
    },
    "leak_prob": 0.12,
    "leak_strength": 0.55,
-   "tier": "pro"
+   "tier": "pro",
+   "can": {
+    "body": "#211f1e",
+    "band": "#d8c9a9",
+    "label": "TRI-X"
+   }
   },
   {
    "id": "hp5plus",
@@ -91,7 +96,12 @@
    },
    "leak_prob": 0.14,
    "leak_strength": 0.6,
-   "tier": "free"
+   "tier": "free",
+   "can": {
+    "body": "#e6e3da",
+    "band": "#4f8f3f",
+    "label": "HP5"
+   }
   },
   {
    "id": "delta100",
@@ -137,7 +147,12 @@
    },
    "leak_prob": 0.05,
    "leak_strength": 0.35,
-   "tier": "pro"
+   "tier": "pro",
+   "can": {
+    "body": "#e6e3da",
+    "band": "#6d5a93",
+    "label": "DELTA"
+   }
   },
   {
    "id": "kentmere400",
@@ -183,7 +198,12 @@
    },
    "leak_prob": 0.09,
    "leak_strength": 0.5,
-   "tier": "pro"
+   "tier": "pro",
+   "can": {
+    "body": "#e6e3da",
+    "band": "#3f6f8f",
+    "label": "KENTMERE"
+   }
   },
   {
    "id": "portra160",
@@ -229,7 +249,12 @@
    },
    "leak_prob": 0.06,
    "leak_strength": 0.4,
-   "tier": "pro"
+   "tier": "pro",
+   "can": {
+    "body": "#232120",
+    "band": "#d9b64a",
+    "label": "PORTRA"
+   }
   },
   {
    "id": "portra400",
@@ -275,7 +300,12 @@
    },
    "leak_prob": 0.07,
    "leak_strength": 0.45,
-   "tier": "free"
+   "tier": "free",
+   "can": {
+    "body": "#232120",
+    "band": "#d9b64a",
+    "label": "PORTRA"
+   }
   },
   {
    "id": "gold200",
@@ -321,7 +351,12 @@
    },
    "leak_prob": 0.12,
    "leak_strength": 0.6,
-   "tier": "free"
+   "tier": "free",
+   "can": {
+    "body": "#c98b2e",
+    "band": "#201c17",
+    "label": "GOLD"
+   }
   },
   {
    "id": "ektar100",
@@ -367,7 +402,12 @@
    },
    "leak_prob": 0.08,
    "leak_strength": 0.5,
-   "tier": "pro"
+   "tier": "pro",
+   "can": {
+    "body": "#232120",
+    "band": "#d2a03b",
+    "label": "EKTAR"
+   }
   },
   {
    "id": "colorplus",
@@ -413,7 +453,12 @@
    },
    "leak_prob": 0.22,
    "leak_strength": 0.75,
-   "tier": "free"
+   "tier": "free",
+   "can": {
+    "body": "#a3543f",
+    "band": "#efe6d2",
+    "label": "COLORPLUS"
+   }
   },
   {
    "id": "vision3-500t",
@@ -459,7 +504,12 @@
    },
    "leak_prob": 0.12,
    "leak_strength": 0.55,
-   "tier": "pro"
+   "tier": "pro",
+   "can": {
+    "body": "#232120",
+    "band": "#d97a37",
+    "label": "VISION3"
+   }
   },
   {
    "id": "cinestill800t",
@@ -505,7 +555,12 @@
    },
    "leak_prob": 0.18,
    "leak_strength": 0.7,
-   "tier": "pro"
+   "tier": "pro",
+   "can": {
+    "body": "#232120",
+    "band": "#d4552f",
+    "label": "CINESTILL"
+   }
   },
   {
    "id": "velvia50",
@@ -551,7 +606,12 @@
    },
    "leak_prob": 0.08,
    "leak_strength": 0.45,
-   "tier": "free"
+   "tier": "free",
+   "can": {
+    "body": "#c8ccc6",
+    "band": "#b8402e",
+    "label": "VELVIA"
+   }
   },
   {
    "id": "provia100f",
@@ -597,7 +657,12 @@
    },
    "leak_prob": 0.06,
    "leak_strength": 0.4,
-   "tier": "pro"
+   "tier": "pro",
+   "can": {
+    "body": "#c8ccc6",
+    "band": "#2f6fa0",
+    "label": "PROVIA"
+   }
   },
   {
    "id": "e100",
@@ -643,7 +708,12 @@
    },
    "leak_prob": 0.1,
    "leak_strength": 0.5,
-   "tier": "pro"
+   "tier": "pro",
+   "can": {
+    "body": "#e6e3da",
+    "band": "#c07a2f",
+    "label": "EKTACHROME"
+   }
   },
   {
    "id": "kodachrome64",
@@ -689,7 +759,62 @@
    },
    "leak_prob": 0.12,
    "leak_strength": 0.55,
-   "tier": "pro"
+   "tier": "pro",
+   "can": {
+    "body": "#a33327",
+    "band": "#efe6d2",
+    "label": "KODACHROME"
+   }
+  },
+  {
+   "id": "superia400",
+   "brand": "Fujifilm",
+   "name": "Superia Xtra 400",
+   "type": "color_negative",
+   "iso": 400,
+   "status": "coming",
+   "era": "2005",
+   "story": "Everyday consumer colour negative: soft greens, forgiving overexposure, gentle contrast. Currently in production for this app.",
+   "stub": true,
+   "tier": "expansion",
+   "filter_params": {
+    "contrast": 1.05,
+    "black_lift": 0.06,
+    "white_point": 0.93,
+    "saturation": 1.05,
+    "grain_size": 1.2,
+    "grain_strength": 0.35,
+    "tint_highlights": "#f4ecd9",
+    "tint_shadows": "#16202c",
+    "halation": 0.05,
+    "vignette": 0.04,
+    "fade": 0.08,
+    "wb": [
+     1,
+     1,
+     1.02
+    ],
+    "exposure": 0.05,
+    "highlights": 0.35,
+    "shadows": 0.12,
+    "rgb_matrix": [
+     0.92,
+     0.05,
+     0.03,
+     0.02,
+     0.94,
+     0.04,
+     0.01,
+     0.06,
+     0.93
+    ],
+    "grain_color": true
+   },
+   "can": {
+    "body": "#b8b9b2",
+    "band": "#c24a6b",
+    "label": "SUPERIA"
+   }
   }
  ]
 }
