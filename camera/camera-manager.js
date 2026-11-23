@@ -91,7 +91,10 @@ function loadCamera(c, { quiet = false } = {}){
   }
   state.cam = c;
   engine.setCombo(c, state.film);
-  $('camModel').textContent = c.model.toUpperCase();
+  // the status plate reads like the body's own nameplate. A model string that is only a
+  // number or a print format ("6×7", "35", "35Ti") is not a name by itself, so those
+  // profiles carry `plate` with the maker on it; self-identifying models print as-is.
+  $('camModel').textContent = (c.plate || c.model).toUpperCase();
   // the counter follows the gate this body holds, never a hardcoded 36
   state.shotsLeft = state.rollId ? Math.min(state.shotsLeft, rollCapacity()) : rollCapacity();
   renderHud();

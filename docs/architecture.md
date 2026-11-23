@@ -187,6 +187,13 @@ readout, focus hint) and `camera_character` (`color_cast`, `vignette`, `sharpnes
 split-image patch for rangefinders, a centre focus box for AF, a ground-glass-style screen for
 SLR, nothing for scale focus — and the HUD states the focus method in terse tokens.
 
+**The nameplate is data, not a guess.** The status plate prints the body's own nameplate:
+`plate` when the model string is only a number or a print format (`PENTAX 6×7`, `OLYMPUS XA`,
+`ROLLEI 35`, `NIKON 35Ti`, `KONICA HEXAR AF` — scripts/patch-nameplates.mjs), otherwise the
+model, which is already self-identifying (`TRIP 35`, `CANONET QL17 GIII`). The finder stage
+keeps a compact's LCD box (clamped 0.72–1.34) for 135 bodies, and shows a gate's real shape for
+medium-format bodies — 6×7 at 1.273, 6×4.5 at 1.349 — never trimmed to 4:3.
+
 **A gate is real.** A body with `gate` crops the view *before* film science runs, drives the
 finder stage ratio, and sets the export frame ratio and the roll capacity — `rollCapacity()`
 reads the profile, never 36. Pentax 6×7 prints 55×70mm on 120 (eight exposures, waist-level
