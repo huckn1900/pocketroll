@@ -860,8 +860,9 @@ function renderArchive(){
   const live = state.rollId && state.frames.length && !state.developed;
   if (live){
     const el = document.createElement('div'); el.className = 'roll-card incamera';
-    el.innerHTML = `<div class="meta"><span>IN CAMERA · ${esc(state.film ? state.film.name : 'a roll')}</span>`
-      + `<span class="sub">${state.frames.length} frames latent · developed to archive them</span></div>`
+    el.innerHTML = `<div class="meta"><span>IN CAMERA</span>`
+      + `<span class="sub">${esc(state.film ? state.film.name : 'a roll')}</span></div>`
+      + `<div class="rollmeta">${state.frames.length} FRAMES LATENT · DEVELOP IT TO ARCHIVE</div>`
       + `<div class="mini">${state.frames.slice(0, 8).map(f => `<img src="${f.t || f.url}" alt="">`).join('')}</div>`;
     el.onclick = () => { $('galleryModal').classList.remove('open'); $('rollModal').classList.add('open'); };
     a.appendChild(el);
