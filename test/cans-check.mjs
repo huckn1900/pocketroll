@@ -1,8 +1,12 @@
-/* test/cans-check.mjs — render every film canister at readable scale and assert the
-   printed label never overflows its band.
-   Usage: node test/cans-check.mjs <url> [out.png]
-   Why: the shelf cans are ~30px, too small to eyeball for clipped glyphs; this builds
-   a zoomed contact sheet of all stocks and measures each <text> run against the band. */
+/* test/cans-check.mjs — render every film canister at readable scale and assert two things:
+    1) the printed label never overflows its band,
+    2) every stock is the SAME print — the shelf standardises the canister geometry, so only
+       the type inside the band adapts to a long film name, never the can's dimensions.
+    Usage: node test/cans-check.mjs <url> [out.png]
+    Why: the shelf draws one standardised 48×72 print per stock (cap, body, band, ISO baseline
+    and bottom gap are fixed coordinates). This builds a zoomed contact sheet of all stocks,
+    measures each <text> run against the band, and compares every can's geometry against the
+    first can plus every ISO baseline against the first one. */
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 
@@ -38,14 +42,16 @@ const build = `(async () => {
   document.body.style.padding = '16px';
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:14px';
+  const SCALE = 2.5; // the print is 48x72; measured at 120x180 so glyph runs are readable
   state.films.forEach(f => {
     const cell = document.createElement('div');
     cell.style.cssText = 'background:#24211D;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px';
     const holder = document.createElement('div');
     holder.innerHTML = canSvg(f);
-    holder.querySelector('svg').style.transform = 'scale(3)';
-    holder.querySelector('svg').style.transformOrigin = 'top left';
-    holder.style.width = '90px'; holder.style.height = '108px';
+    const svg = holder.querySelector('svg');
+    svg.style.transform = 'scale(' + SCALE + ')';
+    svg.style.transformOrigin = 'top left';
+    holder.style.width = (48 * SCALE) + 'px'; holder.style.height = (72 * SCALE) + 'px';
     const name = document.createElement('div');
     name.style.cssText = "font-family:'PC Mono',monospace;font-size:10px;color:#cfc5b4;letter-spacing:.08em";
     name.textContent = f.id;
@@ -53,20 +59,28 @@ const build = `(async () => {
     grid.appendChild(cell);
   });
   document.body.appendChild(grid);
-  // measure: every printed run must stay inside the 20-unit-wide band
-  const bad = [];
-  document.querySelectorAll('.cansvg').forEach(svg => {
+  const cans = [...document.querySelectorAll('.cansvg')];
+  const shapeOf = (svg) => [...svg.querySelectorAll('rect')].map(r =>
+    [r.getAttribute('x'), r.getAttribute('y'), r.getAttribute('width'), r.getAttribute('height')].join(':')).join('|');
+  const shape = shapeOf(cans[0]);
+  const isoYOf = (svg) => [...svg.querySelectorAll('text')].map(t => t.getAttribute('y')).sort().pop();
+  const isoY = isoYOf(cans[0]);
+  const overflow = [], ragged = [], offBaseline = [];
+  cans.forEach(svg => {
     const band = svg.querySelectorAll('rect')[2];
     const bandW = Number(band.getAttribute('width'));
     svg.querySelectorAll('text').forEach(t => {
       const b = t.getBBox();
       const half = b.width / 2, cx = Number(t.getAttribute('x'));
       if (cx - half < Number(band.getAttribute('x')) - 0.5 || cx + half > Number(band.getAttribute('x')) + bandW + 0.5) {
-        bad.push(svg.getAttribute('viewBox') + ' ' + t.textContent + ' w=' + b.width.toFixed(1));
+        overflow.push(svg.getAttribute('viewBox') + ' ' + t.textContent + ' w=' + b.width.toFixed(1));
       }
     });
+    if (shapeOf(svg) !== shape) ragged.push(svg.getAttribute('viewBox'));
+    if (isoYOf(svg) !== isoY) offBaseline.push(svg.getAttribute('viewBox'));
   });
-  return JSON.stringify({ cans: document.querySelectorAll('.cansvg').length, overflow: bad });
+  return JSON.stringify({ cans: cans.length, print: cans[0].getAttribute('viewBox'),
+    isoBaseline: isoY, overflow, ragged, offBaseline });
 })()`;
 
 await send('Page.enable');

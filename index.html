@@ -214,13 +214,37 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   padding:8px;cursor:pointer;z-index:60;border-bottom:1px solid #4a4238}
 /* film shelf: availability states must never read ambiguously —
    AVAILABLE (usable now) / LOCKED (finished, needs Pro) / COMING SOON (in development) */
-.stchip{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.12em;padding:4px 7px;
-  border-radius:5px;align-self:center;white-space:nowrap;border:1px solid #4a4238;color:#8a8072}
+.stchip{font-family:'PC Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.12em;
+  height:26px;min-width:96px;padding:0 10px;border-radius:6px;align-self:center;
+  display:flex;align-items:center;justify-content:center;white-space:nowrap;
+  border:1px solid #4a4238;color:#8a8072}
 .stchip.avail{color:#93b87c;border-color:#4d6b3f}
 .stchip.lock{color:#c9a45a;border-color:#7a5a3a}
 .stchip.soon{color:#8a8072;border-color:#4a4238;background:#2e2822}
 .item .ic{align-self:center;flex:0 0 auto}
 .item .txt{flex:1 1 auto;min-width:0}
+/* Film card: three rails — a fixed 48×72 canister box, a flexible information column, a fixed
+   availability badge. Every rail is centred on the same line, the card is the same height
+   whether the name is short or long, and a long name truncates instead of pushing the badge
+   out of the card. This aligns the existing shelf; it does not redesign it. */
+.item.filmitem{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;
+  gap:14px;padding:14px 16px;min-height:104px}
+.item.filmitem .ic{width:48px;height:72px;flex:none;display:flex;align-items:center;justify-content:center}
+.item.filmitem .ic svg{width:48px;height:72px;display:block}
+.item.filmitem .t{display:flex;align-items:baseline;gap:8px;font-size:17px;letter-spacing:.04em;line-height:1.25}
+.item.filmitem .t .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* the PRO tag is catalog tier, so it must never be the thing that gets squeezed out */
+.item.filmitem .protag{margin-left:0;flex:none;font-size:9px;padding:3px 6px}
+.item.filmitem .d{font-size:12px;letter-spacing:.08em;margin-top:5px;color:#a99a82}
+.item.filmitem .d.op{font-size:11px;color:#6d6455;margin-top:3px}
+/* narrow phones: the rails shrink together, so the badge keeps its own column and the name
+   gives up width first — nothing scrolls horizontally and no badge is ever cut off */
+@media (max-width:430px){
+  .item.filmitem{grid-template-columns:44px minmax(0,1fr) auto;gap:10px;padding:12px 12px}
+  .item.filmitem .ic,.item.filmitem .ic svg{width:44px;height:66px}
+  .item.filmitem .t{font-size:15px}
+  .stchip{min-width:78px;padding:0 8px;font-size:9px;height:24px}
+}
 /* brand caption: groups the shelf so dozens of expansion packs stay readable */
 .brandline{font-family:'PC Cond',sans-serif;font-size:9px;letter-spacing:.16em;color:var(--sub);margin:2px 0 8px}
 .brandcap{font-family:'PC Cond',sans-serif;font-size:9px;letter-spacing:.18em;color:var(--sub);

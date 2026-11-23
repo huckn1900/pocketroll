@@ -2,7 +2,7 @@
    The expression may also be given as "@path/to/file.js" (or DSH_PROBE_EXPR_FILE) — PowerShell
    strips quotes from native args, which breaks JS string literals, so a file is the reliable way. */
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 const url = process.argv[2];
 let expr = process.argv[3];
 if (process.env.DSH_PROBE_EXPR_FILE) expr = readFileSync(process.env.DSH_PROBE_EXPR_FILE, 'utf8');
@@ -41,5 +41,13 @@ await new Promise(r => setTimeout(r, Number(process.env.WAIT_MS || 2500)));
 const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
 console.log(JSON.stringify((r.result && r.result.result) ?? r.result));
 if (exceptions.length) console.log('EXCEPTIONS: ' + exceptions.join(' | '));
+/* DSH_PROBE_SHOT=<path> also captures the page after the probe, so a layout probe can be
+   read AND looked at in one run (the expression may open a modal to make the layout visible). */
+if (process.env.DSH_PROBE_SHOT) {
+  await new Promise(res => setTimeout(res, 300));
+  const shot = await send('Page.captureScreenshot', { format: 'png' });
+  writeFileSync(process.env.DSH_PROBE_SHOT, Buffer.from(shot.result.data, 'base64'));
+  console.log('shot → ' + process.env.DSH_PROBE_SHOT);
+}
 ws.close(); proc.kill();
 setTimeout(() => process.exit(0), 300);

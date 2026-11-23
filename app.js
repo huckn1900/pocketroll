@@ -700,8 +700,10 @@ const TYPE_TAG = { bw: 'b&w', slide: 'slide', motion_negative: 'cinema neg', col
 const canInk = (hex) => { const c = hexToRgb(hex); return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b > 0.45 ? '#241f16' : '#efe6d2'; };
 /* The label is printed INSIDE the band: font size is derived from the band width and
    textLength forces the exact run width, so long names wrap onto two lines like a real
-   can instead of being clipped at the edge. */
-const CAN_TEXT_BOX = 18;
+   can instead of being clipped at the edge. Both boxes are measured inside the fixed
+   32-unit band of the 48×72 print — a long name takes smaller type, never a wider can. */
+const CAN_TEXT_BOX = 28;
+const CAN_ISO_BOX = 22;
 const monoFit = (t, box, maxFs, minFs) => {
   const n = Math.max(1, String(t).length);
   const fs = Math.max(minFs, Math.min(maxFs, box / (0.62 * n)));
@@ -720,30 +722,43 @@ const canLines = (label) => {
   const cut = Math.ceil(s.length / 2);
   return [s.slice(0, cut), s.slice(cut)];
 };
-/* tiny 35mm canister built from the stock's own can colours — a collectible mark,
-   not a photo of the film; the actual look is shown by the engine preview below */
+/* 35mm canister printed from the stock's own can colours — a collectible mark, not a photo
+   of the film; the actual look is shown by the engine preview below.
+   The geometry below is FIXED for every stock (one 48×72 print, cap/body/band/foot at the same
+   coordinates), because a shelf of collectibles only reads as a row when every can is the same
+   size: a longer film name shrinks its own type, never the can, and every ISO number sits on
+   the same baseline. Brand colours and lettering stay per-stock. */
+const CAN_GEO = {
+  capY: 4, capH: 7,          // cap: 4→11
+  bodyY: 11, bodyH: 52,      // body: 11→63, container 72 → identical bottom gap on every can
+  bandY: 20, bandH: 26,      // label band: 20→46, centred at 33 whether the name is 1 or 2 lines
+  label1: 34.2, labelTop: 29.6, labelLow: 36.2, // fixed baselines for both cases
+  isoY: 56.5,                // every ISO number on the same baseline
+  footY: 61, footH: 2,       // the dark end of the can, inside the body
+};
 function canSvg(f){
   const c = f.can || { body: '#2b2723', band: '#d8c9a9', label: '35' };
+  const g = CAN_GEO;
   const lines = canLines(c.label);
   const ink = canInk(c.band);
   const two = lines.length > 1;
-  let y = two ? 17.6 : 21.4;
+  let y = two ? g.labelTop : g.label1;
   const labelRuns = lines.map(l => {
-    const fit = monoFit(l, CAN_TEXT_BOX, 5.2, 3.4);
-    const run = `<text x="15" y="${y.toFixed(1)}" text-anchor="middle" fill="${ink}" textLength="${fit.w}" lengthAdjust="spacingAndGlyphs"`
+    const fit = monoFit(l, CAN_TEXT_BOX, two ? 8.4 : 9.2, 5.4);
+    const run = `<text x="24" y="${y.toFixed(1)}" text-anchor="middle" fill="${ink}" textLength="${fit.w}" lengthAdjust="spacingAndGlyphs"`
       + ` style="font-family:'PC Mono',ui-monospace,monospace;font-size:${fit.fs.toFixed(2)}px;font-weight:700">${esc(l)}</text>`;
-    y += two ? 5.2 : 0;
+    y += g.labelLow - g.labelTop;
     return run;
   }).join('');
-  const isoFit = monoFit(String(f.iso || ''), 9, 4.2, 3.2);
-  return `<svg class="cansvg" viewBox="0 0 30 36" width="30" height="36" aria-hidden="1">`
-    + `<rect x="5" y="2.5" width="20" height="5" rx="2" fill="${c.body}" opacity=".72"/>`
-    + `<rect x="5" y="7" width="20" height="23" rx="2.5" fill="${c.body}"/>`
-    + `<rect x="5" y="12" width="20" height="13" fill="${c.band}"/>`
+  const isoFit = monoFit(String(f.iso || ''), CAN_ISO_BOX, 7.4, 4.6);
+  return `<svg class="cansvg" viewBox="0 0 48 72" width="48" height="72" aria-hidden="1">`
+    + `<rect x="8" y="${g.capY}" width="32" height="${g.capH}" rx="3" fill="${c.body}" opacity=".72"/>`
+    + `<rect x="8" y="${g.bodyY}" width="32" height="${g.bodyH}" rx="3.5" fill="${c.body}"/>`
+    + `<rect x="8" y="${g.bandY}" width="32" height="${g.bandH}" fill="${c.band}"/>`
     + labelRuns
-    + `<text x="15" y="28.4" text-anchor="middle" fill="${canInk(c.body)}" opacity=".85" textLength="${isoFit.w}" lengthAdjust="spacingAndGlyphs"`
+    + `<text x="24" y="${g.isoY}" text-anchor="middle" fill="${canInk(c.body)}" opacity=".85" textLength="${isoFit.w}" lengthAdjust="spacingAndGlyphs"`
     + ` style="font-family:'PC Mono',ui-monospace,monospace;font-size:${isoFit.fs.toFixed(2)}px;font-weight:700">${esc(String(f.iso || ''))}</text>`
-    + `<rect x="9" y="30" width="12" height="1.6" rx="1" fill="${c.band}" opacity=".5"/></svg>`;
+    + `<rect x="12" y="${g.footY}" width="24" height="${g.footH}" rx="1" fill="${c.band}" opacity=".5"/></svg>`;
 }
 /* the same canister at 18px for the nameplate chip: no text at that size (it would be
    unreadable), so the colour band is the identity; a hairline rim keeps dark cans legible
@@ -762,6 +777,22 @@ function stateChip(st){
   if (st === 'soon') return '<span class="stchip soon">COMING SOON</span>';
   return '<span class="stchip avail">AVAILABLE</span>';
 }
+/* Every category already NAMES its lab — a colour negative is C-41, a slide is E-6, a cinema
+   negative is ECN-2 — so the card states the category once and never prints its lab twice.
+   A process is only printed when it is NOT the one the category implies: Kodachrome's retired
+   D-70 lab (and its discontinued status) is the single case that adds information, and it gets
+   its own dim third line so the name and the ISO stay the loudest things on the card. */
+const IMPLIED_LAB = { color_negative: 'C-41', bw: 'B&W', motion_negative: 'ECN-2', slide: 'E-6' };
+function labLine(f){
+  const p = String(f.process || '');
+  const parts = [];
+  if (p && p.toUpperCase() !== String(IMPLIED_LAB[f.type] || '').toUpperCase()) parts.push(p);
+  if (String(f.status || '').startsWith('disc')) parts.push(f.status);
+  return parts.length ? `<div class="d op">${esc(parts.join(' · '))}</div>` : '';
+}
+/* The category as the CARD prints it: caps, because the card is a shelf label, not a data
+   dump — same tokens TYPE_TAG feeds the preview, never a second table that could drift. */
+function categoryCap(f){ return String(TYPE_TAG[f.type] || '').toUpperCase(); }
 
 /* ---------- film shelf: category tabs + brand caption groups ----------
    Built from profiles only, so it scales to dozens of expansion packs later. */
@@ -840,15 +871,15 @@ function buildFilmList(){
       const st = filmState(f);
       const el = document.createElement('div');
       el.className = 'item filmitem' + (state.film?.id === f.id ? ' active' : '') + (st === 'lock' ? ' locked' : '');
-      // the PRO tag marks catalog tier, not availability — it stays next to the name in both modes
-      const proTag = f.tier !== 'free' ? ' <span class="protag">PRO</span>' : '';
-      const extra = st === 'soon' ? ' · in development'
-        : f.status.startsWith('disc') ? ' · ' + f.status : '';
-      // a film is developed, not filtered: the lab process is part of the stock's identity
-      const proc = f.process ? ` · ${esc(f.process)}` : '';
+      // the PRO tag marks catalog tier, not availability — it stays beside the name in both
+      // licence modes and truncates the name instead of colliding with it
+      const proTag = f.tier !== 'free' ? '<span class="protag">PRO</span>' : '';
+      /* The second line states the stock ONCE: ISO value, the ISO label, then the category —
+         see labLine, which is what keeps a lab process from ever repeating that category. */
+      const meta = `<div class="d">${f.iso} ISO · ${categoryCap(f)}</div>${labLine(f)}`;
       el.innerHTML = `<div class="ic">${canSvg(f)}</div>`
-        + `<div class="txt"><div class="t">${esc(f.brand)} ${esc(f.name)}${proTag}</div>`
-        + `<div class="d">${f.iso} · ${TYPE_TAG[f.type]}${proc}${extra}</div></div>${stateChip(st)}`;
+        + `<div class="txt"><div class="t"><span class="nm">${esc(f.brand)} ${esc(f.name)}</span>${proTag}</div>${meta}</div>`
+        + stateChip(st);
       // tapping a stock opens its preview first — never loads silently
       el.onclick = () => openFilmPreview(f);
       fl.appendChild(el);
@@ -982,7 +1013,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v15';
+const BUILD = 'pocketroll-v16';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
