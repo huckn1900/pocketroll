@@ -1,8 +1,10 @@
 /* POCKETROLL service worker — offline-capable PWA shell.
    Code/assets are NETWORK-FIRST with cache fallback: deployed code is never stale,
    offline still works (install pre-caches the shell). Icons stay cache-first.
-   Test pages and query-param URLs bypass the SW entirely. */
-const CACHE = 'pocketroll-v8';
+   Test pages and query-param URLs bypass the SW entirely.
+   CACHE is bumped on every deploy; app.js compares it with its own BUILD and shows a
+   RELOAD notice when the shipped build is older than this cache name. */
+const CACHE = 'pocketroll-v10'; // app.js compares BUILD with this; bump the two together on deploy
 const SHELL = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon.png', 'assets/cameras.json', 'assets/films.json', 'assets/samples/street.jpg', 'assets/fonts/roboto-condensed-700.woff2', 'assets/fonts/ibm-plex-mono-400.woff2'];
 const CODE = [/\/app\.js$/, /\/sounds\.js$/, /\/assets\/.*\.json$/, /\/index\.html$/, /\/sounds\.html$/, /\/$/];
 
@@ -14,20 +16,24 @@ self.addEventListener('activate', e => {
     .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
+/* Only ok responses are cached (a 404 or a redirect must not become the offline answer),
+   and a cache write that fails — quota, opaque response, browser refusing it — never breaks
+   the request the user is waiting for. */
+async function respondNetworkFirst(req){
+  try {
+    const res = await fetch(req);
+    if (res.ok) { try { await caches.open(CACHE).put(req, res.clone()); } catch {} }
+    return res;
+  } catch {
+    return (await caches.match(req)) || Response.error();
+  }
+}
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
   if (u.pathname.includes('/test/') || u.search) return; // dev bypass
-  if (CODE.test(u.pathname)) {
-    e.respondWith(
-      fetch(e.request).then(res => { caches.open(CACHE).put(e.request, res.clone()); return res; })
-        .catch(() => caches.match(e.request))
-    );
-    return;
-  }
+  if (CODE.test(u.pathname)) { e.respondWith(respondNetworkFirst(e.request)); return; }
   e.respondWith(
-    caches.match(e.request).then(hit =>
-      hit || fetch(e.request).then(res => { caches.open(CACHE).put(e.request, res); return res; })
-    )
+    caches.match(e.request).then(hit => hit || respondNetworkFirst(e.request))
   );
 });

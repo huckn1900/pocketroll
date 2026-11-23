@@ -64,7 +64,7 @@ await new Promise(r => setTimeout(r, 3500));
 const after = JSON.parse(await evalIn(`(async () => { try {
   await loadArchives();
   if (!state.rolls.length) return JSON.stringify({ error: 'LOST AFTER RELOAD' });
-  const r = state.rolls.find(x => x.id === ${rec.id});
+  const r = state.rolls.find(x => x.id === ${JSON.stringify(rec.id)});
   if (!r) return JSON.stringify({ error: 'ROLL id missing after reload' });
   // restore round-trip through the real restoreFile path
   const backup = JSON.stringify({ app: 'pocketroll', version: 1, exported: new Date().toISOString(), rolls: [r] });

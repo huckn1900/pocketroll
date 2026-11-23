@@ -47,12 +47,46 @@ Every content item/pack carries:
 - Settings carries the **GET PRO APK · US$6.99 · PATREON** button + a one-time/Android/iOS-later hint. The Patreon page URL is a placeholder (`https://www.patreon.com/`) until the creator page exists — swap it then.
 - License state on the web is fixed to `free` (`state.license` concept); PurchaseVerification for the APK will validate the Patreon purchase and store entitlements locally (offline-capable).
 
-## Photo persistence & backup layer (Round⑨)
+## Photo persistence & backup layer (Round⑨, tightened in Round⑮)
 
-- **Storage**: developed rolls are stored in **IndexedDB** (`pocketroll-db`, store `rolls`) as full roll records — full-resolution frames (JPEG q0.95, native stream size), thumbnails, favorites, and metadata (camera/film/ISO/loaded/developed/status/notes). The old localStorage shelf is migrated once and removed; environments without IndexedDB fall back to the small shelf (archive UI says "degraded").
-- **Roll record schema**: `{id, camId, cam, filmId, film, iso, loadedAt, developedAt, status, notes, frames:[{u,t,fav}]}` — this is the same record the Pro APK's RollManager/gallery will ship, so the archive format doubles as the interchange format.
-- **Backup & Restore**: the archive exports as one JSON file (`BACKUP ARCHIVE`) and `restoreFile()` re-imports it on any device/device-browser (id-dedup). A per-roll `.zip` export (frames + roll.json, tiny stored-zip writer) is the escape hatch for sharing a roll.
-- **Storage management**: the archive page shows roll count + approximate bytes used/quota (`navigator.storage.estimate()`) and states that frames persist across refresh and offline (SW caches the app; capture is local).
+- **Storage**: IndexedDB `pocketroll-db` (version 2) holds two stores — `rolls` and `scans`.
+  A roll in the camera is a **record with an identity**, not a scratch array:
+  `{id, camId, cam, filmId, film, iso, loadedAt, developedAt, status:'shooting'|'developed', notes, frames:[{u,t,fav,brand,iso}]}`.
+  Every shutter press writes it (`saveCurrentRoll()`), so closing the app loses nothing; reopening
+  restores the same roll, same counter, same latent frames (`restoreCurrentRoll()`).
+  localStorage holds settings only (options incl. sensor choice). Without IndexedDB the app says
+  plainly that nothing persists and points at EXPORT BACKUP instead of pretending to keep things.
+- **Two kinds of images, never mixed**: `roll.frames` = real shutter exposures (36 max, counted);
+  `scans` = photos run through the loaded film by SCAN IN PHOTO — lab prints, stored in the `scans`
+  store and shown on their own shelf. An import never changes the roll count and never turns a
+  36-frame roll into 46.
+- **Roll lifecycle gate**: an empty camera may take any stock; an exposed, undeveloped roll must be
+  resolved first — DEVELOP it or open the back door (frames fog); a developed roll is archived
+  before anything new is threaded. The film preview offers those choices instead of a generic
+  confirm dialog, because this is the product's physical lifecycle.
+- **One developer tank**: `developRoll()` is guarded by `isDeveloping` — a second tap is refused,
+  related actions go disabled while the tank runs, and a thrown step leaves the roll latent rather
+  than half-developed, so a retry is safe. One develop → one archive record → one contact sheet.
+- **Roll record schema** (`status` distinguishes a live roll from an archived one) — this is the
+  same record the Pro APK's RollManager/gallery will ship, so the archive format doubles as the
+  interchange format.
+- **Backup & Restore** (`schemaVersion: 2`): one JSON export carrying counts + rolls + scans + the
+  roll currently in the camera. Import validates structure first, skips records with unusable
+  frames (reported, not silently repaired), shows a plan — "will restore N rolls · N frames · N
+  scans · latent frames go back into the camera · what you already kept stays kept" — and only
+  applies on CONFIRM. Re-imports merge by id (refresh, never pile up); a failed write rolls the
+  archive back to exactly what was kept before. A per-roll `.zip` export (frames + roll.json) stays
+  the sharing escape hatch.
+- **Camera**: `playsInline` + `muted` and an awaited `play()`; rear/front sensor choice persists in
+  settings; an interrupted or blocked stream falls back to the demo scene and states the state
+  ("camera: live feed · rear sensor" / "camera: blocked · demo scene") with RETRY CAMERA; unused
+  tracks are stopped when switching; the preview pauses when the page goes to the background.
+- **Storage management**: the archive page shows rolls/frames/scans plus approximate bytes used and
+  quota (`navigator.storage.estimate()`), asks for `navigator.storage.persist()`, and states what
+  survives refresh and offline.
+- **Build notice**: `sw.js` only caches `res.ok` responses and never fails a request over a cache
+  write; `CACHE` in sw.js and `BUILD` in app.js are bumped together on deploy, and a mismatch shows
+  "NEW VERSION AVAILABLE · RELOAD" instead of quietly running an older build.
 
 ## Future content updates
 
