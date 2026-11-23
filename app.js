@@ -367,7 +367,9 @@ async function initCamera(){
 }
 function renderCamState(){
   const el = $('camState'); if (!el) return;
-  el.textContent = usingDemo ? 'camera: blocked · demo scene' : 'camera: live feed · ' + (state.opts.facing === 'user' ? 'front sensor' : 'rear sensor');
+  el.textContent = camPaused ? 'camera: resting · sensor released while the page is in the background'
+    : usingDemo ? 'camera: blocked · demo scene'
+    : 'camera: live feed · ' + (state.opts.facing === 'user' ? 'front sensor' : 'rear sensor');
   const flip = $('optCamFlip'); if (flip) flip.classList.toggle('on', state.opts.facing === 'user');
 }
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
@@ -1500,8 +1502,18 @@ async function boot(){
   // the finder sleeps when the page goes to the background: a live sensor nobody is looking at
   // is battery drain, and the browser can interrupt the feed on its own meanwhile
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { camPaused = true; if (video) video.pause(); }
-    else { camPaused = false; if (video && video.srcObject) video.play().catch(() => {}); }
+    /* Background means nobody is looking at the finder: pause the feed and hand the sensor
+       back, so the phone stops spending battery on a preview no one can see. Coming back
+       re-acquires the stream — a paused video with a dead track would show a frozen frame. */
+    if (document.hidden) {
+      camPaused = true;
+      if (video) video.pause();
+      stopStream();
+      renderCamState();
+    } else {
+      camPaused = false;
+      initCamera().then(renderCamState).catch(() => {});
+    }
   });
   loop();
   // autoshot fires after the feed is settled (live camera if granted, demo otherwise)
