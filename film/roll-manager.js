@@ -22,6 +22,9 @@ function loadFilm(f, { force = false } = {}){
   applyFilm(f);
   state.rollId = newRollId(); state.shotsLeft = rollCapacity();
   state.frames = []; state.developed = false;
+  /* a fresh roll takes the strip with it: the marks of frames that fogged belong to the spool
+     that just left the camera, not to the one now threaded. */
+  state.fogged = 0;
   state.loadedAt = Date.now(); // roll record: the date this roll was loaded
   state.sheet = null;
   renderCounter();
@@ -32,6 +35,11 @@ function loadFilm(f, { force = false } = {}){
   renderRollPage();
   saveCurrentRoll(); // a threaded roll is on record before the first shutter press
   renderArchive();   // the shelf shows the roll sitting in the camera, stock and all
-  toast(`loading roll · ${f.name}`);
+  /* The badges answer the camera, not the catalog: whatever is now threaded says SELECTED,
+     and the stock it replaced stops saying so — a shelf that keeps an old badge is a lie. */
+  buildLists();
+  /* Loading answers in one line at the screen the user is already on: the stock now threaded,
+     what it replaces with, and that the body in hand did not change. */
+  toast(`loaded ${f.name} · fresh roll in ${state.cam?.model || 'this body'} · ${rollCapacity()} frames`);
   return true;
 }

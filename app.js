@@ -120,8 +120,22 @@ class FilmEngine {
     this.ctx.fillRect(0, b.dy, b.dx, b.dh);
     this.ctx.fillRect(b.dx + b.dw, b.dy, b.w - b.dx - b.dw, b.dh);
   }
+  /* A canvas cannot draw itself onto itself: _drawContained fills the bezel first, which
+     wipes the scene before the copy ever happens. The preview samples and the shelf swatches
+     render a film on its own canvas, so the frame is lifted out first and drawn back in. */
+  _isolate(sx, sy, sw2, sh2){
+    const off = this.off || (this.off = document.createElement('canvas'));
+    off.width = sw2; off.height = sh2;
+    const oc = off.getContext('2d');
+    oc.clearRect(0, 0, sw2, sh2);
+    oc.drawImage(this.canvas, sx, sy, sw2, sh2, 0, 0, sw2, sh2);
+    return off;
+  }
   process(src, srcW, srcH, opts){
-    if (!this.film) { this._drawContained(src, 0, 0, srcW, srcH); return; }
+    if (!this.film) {
+      if (src === this.canvas) src = this._isolate(0, 0, srcW, srcH);
+      this._drawContained(src, 0, 0, srcW, srcH); return;
+    }
     const p = this.film.filter_params;
     const cast = (this.cam && CAMERA_CAST[this.cam.id]) || { gain:[1,1,1] };
     // on-camera electronic flash at the moment of capture: brightens & slightly cools
@@ -143,6 +157,7 @@ class FilmEngine {
     // lens softness from camera character — scaled with resolution, so a plastic
     // lens stays soft at export size while sharp primes (T*, GR) never blur
     const blur = (1 - (this.cam?.camera_character?.sharpness ?? 1)) * (2.0 + w / 420);
+    if (src === this.canvas) { src = this._isolate(sx, sy, sw2, sh2); sx = 0; sy = 0; }
     this.ctx.filter = blur > 0.35 ? `blur(${blur.toFixed(1)}px)` : 'none';
     this._drawContained(src, sx, sy, sw2, sh2);
     this.ctx.filter = 'none';
@@ -299,7 +314,10 @@ function saveOpts(){ try{ localStorage.setItem(OPTS_KEY, JSON.stringify(state.op
    the record persisted to IndexedDB on every exposure, and `scans` is separate data — a
    scan is processed by the film, it never consumes a frame of the roll. */
 const state = { cameras: [], films: [], cam: null, film: null, shotsLeft: 36, frames: [], scans: [],
-  rollId: null, developed: false, rolls: [], battery: 92, opts: loadOpts(), sheet: null, persisted: false };
+  rollId: null, developed: false, rolls: [], battery: 92, opts: loadOpts(), sheet: null, persisted: false,
+  /* frames the light destroyed are a mark on the strip, not data in the roll: the count and
+     the record stay empty, the cells stay visible until a fresh roll is threaded. */
+  fogged: 0 };
 /* The helper pages (calibration grid, sound lab) load this file for FilmEngine and the cast
    table only — they have no viewfinder, so the engine is built when there is one to draw into. */
 const vf = $('viewfinder');
@@ -348,6 +366,15 @@ function renderCounter(){
   // no roll in the camera reads as a blank counter, the way a real camera does
   $('counter').textContent = state.rollId ? String(state.shotsLeft).padStart(2, '0') : '—';
   $('expCount').textContent = state.rollId ? state.shotsLeft + ' EXP' : '0 EXP';
+  // a finished roll is a state, not a broken number: the LED goes dark instead of shouting
+  $('counterPlate').classList.toggle('done', !!state.rollId && state.shotsLeft === 0);
+}
+/* the shutter answers the counter: one short LED blink on the number that just changed.
+   It is feedback at the number, not a dialog — the shot itself is shown on the glass. */
+function pulseCounter(){
+  const n = $('counter');
+  n.classList.remove('tick'); void n.offsetWidth;   // restart the animation on every frame
+  n.classList.add('tick');
 }
 /* the roll page owns everything about the current roll: develop appears only
    after shooting, the contact sheet only after developing (the main screen
@@ -364,6 +391,17 @@ function renderRollPage(){
   $('developRoll').style.display = has && !state.developed ? '' : 'none';
   $('developRoll').disabled = isDeveloping;
   $('developRoll').classList.toggle('ready', !!state.rollId && has && state.shotsLeft === 0 && !state.developed);
+  /* The roll's own numbers, in the same LED tone the camera uses — here stated against this
+     body's capacity, so 00 reads as finished rather than as a broken counter. */
+  const rc = $('rollCount');
+  rc.querySelector('b').textContent = state.rollId ? String(state.shotsLeft).padStart(2, '0') : '—';
+  rc.querySelector('span').textContent = state.rollId
+    ? `of ${rollCapacity()} left · ${state.cam?.gate ? state.cam.gate.film : '135'} roll`
+    : 'no roll threaded';
+  rc.classList.toggle('done', !!state.rollId && state.shotsLeft === 0);
+  /* Before the tank runs, the page says what will happen to the roll and that it cannot be
+     taken back: development is not a preview you can cancel. */
+  $('devNote').style.display = has && !state.developed && !isDeveloping ? '' : 'none';
   $('sheetBtn').style.display = state.sheet ? '' : 'none';
   $('openRoll').classList.toggle('ready', !!state.rollId && has && state.shotsLeft === 0 && !state.developed);
   // standalone develop action on the main screen: shoot → develop, right here
@@ -475,10 +513,13 @@ function renderStrip(){
     const el = document.createElement('div');
     const f = state.frames[i];
     const dev = f && (f.developed || state.developed); // developing the roll reveals every exposed frame
-    el.className = 'frame' + (f ? (dev ? ' developed' : ' latent') : '');
+    /* a frame the light destroyed stays on the strip as a mark: the roll did not lose those
+       frames, it lost what was on them. Grey, hatched, still numbered where the light hit. */
+    const foggedHere = !f && state.fogged > i;
+    el.className = 'frame' + (f ? (dev ? ' developed' : ' latent') : foggedHere ? ' fogged' : '');
     const num = document.createElement('span'); num.className = 'num'; num.textContent = String(i + 1).padStart(2, '0');
     el.appendChild(num);
-    if (state.film){
+    if (state.film && !foggedHere){
       // edge printing is what the film itself carries: an exposed frame keeps the stock it was
       // shot on, an unexposed cell shows the stock currently threaded
       const brand = (f && f.brand) || state.film.brand;
@@ -494,6 +535,8 @@ function renderStrip(){
     } else if (f){
       el.title = 'latent image · develop the roll to reveal';
       el.onclick = () => previewFrame(el, f.url);
+    } else if (foggedHere){
+      el.title = `frame ${i + 1} · fogged — the back door was opened before this roll was developed`;
     } else {
       el.title = `frame ${i + 1} · not exposed`;
     }
@@ -772,10 +815,74 @@ function canMark(f){
     + `<rect x="9" y="30" width="12" height="1.6" rx="1" fill="${c.band}" opacity=".5"/>`
     + `<rect x="5" y="2.5" width="20" height="30" rx="2.5" fill="none" stroke="rgba(233,223,205,.22)" stroke-width="1"/></svg>`;
 }
+/* One badge component for both shelves, so a camera card and a film card say the same words
+   in the same shape. A card states its relation to the camera in exactly one place, and the
+   words never contradict each other:
+   SELECTED (in the camera now) · AVAILABLE (selectable now) · UNLOCKED (a Pro stock this
+   build opened) · LOCKED · PRO (finished, needs Pro) · COMING SOON (still being made).
+   A LOCKED · PRO badge already names the tier, so a locked card never also carries the PRO
+   tag — two marks saying one thing is exactly the confusion the user ruled out. */
 function stateChip(st){
-  if (st === 'lock') return '<span class="stchip lock">&#128274; LOCKED</span>';
+  if (st === 'sel') return '<span class="stchip sel">SELECTED</span>';
+  if (st === 'unlock') return '<span class="stchip unlock">&#9679; UNLOCKED</span>';
+  if (st === 'lock') return '<span class="stchip lock">&#128274; LOCKED · PRO</span>';
   if (st === 'soon') return '<span class="stchip soon">COMING SOON</span>';
   return '<span class="stchip avail">AVAILABLE</span>';
+}
+/* The badge comes from the live camera, not from the profile alone: whatever is loaded says
+   SELECTED, and an opened Pro stock says UNLOCKED instead of pretending it is free stock. */
+function shelfState(kind, item){
+  const active = kind === 'cam' ? (state.cam?.id === item.id) : (state.film?.id === item.id);
+  if (active) return 'sel';
+  const base = kind === 'cam' ? cameraState(item) : filmState(item);
+  return base === 'avail' && item.tier !== 'free' ? 'unlock' : base;
+}
+/* The body glyph: every card in the bag is drawn on the same 44×44 plate, so the bag reads
+   as a collection of equipment rather than a table of numbers. The silhouette is derived from
+   the profile only — lens radius from the stated focal length, a rangefinder window for a
+   rangefinder, a prism hump for an SLR, a film back for a gate body, a flash housing only
+   where the body really has one. Nothing is invented for a body that does not state it. */
+function camSvg(c){
+  const focal = c.lens?.focal_mm || 35;
+  const r = Math.max(7.5, Math.min(11.5, focal / 4.4));
+  const med = !!c.gate;
+  const by = med ? 8 : 11, bh = med ? 24 : 19;
+  const cy = by + bh / 2;
+  const prism = c.focus_mode === 'slr' ? `<rect x="16" y="${by - 5}" width="12" height="6" rx="1.5"/>` : '';
+  const win = c.focus_mode === 'rangefinder' ? `<rect x="5" y="${by + 2}" width="7" height="4.5" rx="1"/>` : '';
+  const flash = c.hud?.flash === 'on' ? `<rect x="30" y="${by - 4}" width="7" height="5" rx="1"/>` : '';
+  const back = med ? `<rect x="31" y="${by + 7}" width="8" height="10" rx="1.5"/>` : '';
+  const tag = med ? `<text x="22" y="40" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="6" letter-spacing="1.2" fill="#9c917f" text-anchor="middle">${esc(c.gate.film)}</text>` : '';
+  return `<svg viewBox="0 0 44 44" width="44" height="44" fill="none" stroke="#cfc5b4" stroke-width="1.2" aria-hidden="1">`
+    + `<rect x="4" y="${by}" width="36" height="${bh}" rx="3"/>${prism}${win}${flash}${back}`
+    + `<circle cx="22" cy="${cy}" r="${r}"/><circle cx="22" cy="${cy}" r="${Math.max(3, r - 4.5)}" stroke-opacity=".55"/>`
+    + `<rect x="6" y="${by + bh - 3}" width="6" height="2.5" rx="1" stroke-opacity=".5"/>${tag}</svg>`;
+}
+/* What a stock actually does to a scene, in three swatches the engine itself rendered on a
+   neutral card: shadow, midtone, highlight. It is the stock's identity, not a brand colour
+   picked by hand — and the same parameters the preview meters show. Cached per stock. */
+const LOOK_CACHE = {};
+function lookSwatches(f){
+  if (LOOK_CACHE[f.id]) return LOOK_CACHE[f.id];
+  const cv = document.createElement('canvas'); cv.width = 39; cv.height = 8;
+  const ctx = cv.getContext('2d');
+  ['#3a3a3a', '#8a8a8a', '#e2cfa8'].forEach((hex, i) => { ctx.fillStyle = hex; ctx.fillRect(i * 13, 0, 13, 8); });
+  try {
+    const eng = new FilmEngine(cv); eng.setCombo(NEUTRAL_CAM, f); eng.process(cv, 39, 8);
+    const px = cv.getContext('2d').getImageData(0, 0, 39, 8).data;
+    const hex = x => { const i = (4 * 39 + x) * 4; return '#' + [px[i], px[i + 1], px[i + 2]].map(v => v.toString(16).padStart(2, '0')).join(''); };
+    LOOK_CACHE[f.id] = [hex(6), hex(19), hex(32)];
+  } catch { LOOK_CACHE[f.id] = null; }
+  return LOOK_CACHE[f.id];
+}
+/* One short line about how the stock behaves in use — taken from the profile's own text and
+   cut to a single line. The card never grows because of it: it truncates, and the full story
+   belongs to the preview page. */
+function vibeFor(f){
+  const s = String(f.story || '').trim();
+  if (!s) return '';
+  const first = s.split(/(?<=[.!?])\s/)[0] || s;
+  return first.length > 78 ? first.slice(0, 78).trimEnd() + '…' : first;
 }
 /* Every category already NAMES its lab — a colour negative is C-41, a slide is E-6, a cinema
    negative is ECN-2 — so the card states the category once and never prints its lab twice.
@@ -814,6 +921,17 @@ function gateLine(c){
   return g ? `${g.film} · ${g.short_mm}×${g.long_mm}mm · ${c.frames} frames`
     : `135 film · ${c.frames} frames`;
 }
+/* The body's technical sheet, printed only when it is opened: one line per system, never a
+   paragraph. The character line on the card comes from the profile's own vibe; the prose
+   stays out of the collection view, which is what makes the bag scannable on a phone. */
+function specLines(c){
+  const rows = [['FOCUS', `${c.focus_system}${c.focus_mode ? ` · ${c.focus_mode}` : ''}`],
+    ['EXPOSURE', c.exposure_system], ['FILM', gateLine(c)]];
+  if (c.lens?.elements) rows.push(['LENS', `${lensLine(c)} · ${c.lens.elements}`]);
+  if (c.features?.length) rows.push(['NOTES', c.features.join(' · ')]);
+  if (c.price_usd) rows.push(['MARKET', String(c.price_usd)]);
+  return rows.map(([k, v]) => `<span>${k} · ${esc(v)}</span>`).join('');
+}
 function buildLists(){
   const cl = $('camList'); cl.innerHTML = '';
   BAG_ROUTES.forEach(([route, label]) => {
@@ -823,14 +941,32 @@ function buildLists(){
     cap.className = 'brandcap'; cap.textContent = label;
     cl.appendChild(cap);
     inRoute.forEach(c => {
-      const st = cameraState(c);
+      // the badge comes from the live camera (shelfState), so nothing on the card contradicts
+      // what the camera actually holds: SELECTED, AVAILABLE, UNLOCKED, LOCKED · PRO
+      const st = shelfState('cam', c);
       const el = document.createElement('div');
-      el.className = 'item' + (state.cam?.id === c.id ? ' active' : '') + (st === 'lock' ? ' locked' : '');
-      // the PRO tag marks catalog tier, not availability — same discipline as the film shelf
-      const proTag = c.tier !== 'free' ? ' <span class="protag">PRO</span>' : '';
-      el.innerHTML = `<div class="txt"><div class="t">${esc(c.brand)} ${esc(c.model)}${proTag}</div>`
-        + `<div class="d">${c.year} · ${lensLine(c)} · ${esc(c.vibe)}</div>`
-        + `<div class="d op">${esc(c.focus_system)} · ${esc(c.exposure_system)} · ${gateLine(c)}</div></div>${stateChip(st)}`;
+      el.className = 'item camitem' + (st === 'sel' ? ' active' : '') + (st === 'lock' ? ' locked' : '');
+      /* The PRO tag marks catalog tier, not availability — the same discipline as the film
+         shelf. A card already saying LOCKED · PRO does not also carry the tag: two marks
+         saying one thing is the confusion the user ruled out. */
+      const proTag = c.tier !== 'free' && st !== 'lock' ? '<span class="protag">PRO</span>' : '';
+      /* What a collector scans: the name, the year, the lens, and how the body behaves in
+         hand. The technical sheet sits behind a disclosure row, so the bag reads as equipment,
+         not as a database, and every card in the bag is the same height. */
+      el.innerHTML = `<div class="ic">${camSvg(c)}</div>`
+        + `<div class="txt"><div class="t"><span class="nm">${esc(c.brand)} ${esc(c.model)}</span>${proTag}</div>`
+        + `<div class="d">${c.year} · ${lensLine(c)}</div>`
+        + `<div class="d vibe">${esc(c.vibe)}</div>`
+        + `<div class="specrow" role="button" tabindex="0">SPECIFICATION<span>show</span></div>`
+        + `<div class="spec">${specLines(c)}</div></div>` + stateChip(st);
+      const row = el.querySelector('.specrow'), spec = el.querySelector('.spec');
+      const toggle = () => {
+        spec.classList.toggle('on');
+        row.querySelector('span').textContent = spec.classList.contains('on') ? 'hide' : 'show';
+      };
+      // opening the sheet must not swap the camera: the row answers its own click only
+      row.onclick = e => { e.stopPropagation(); toggle(); };
+      row.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); toggle(); } };
       el.onclick = () => {
         if (st === 'lock'){ proHint(); return; }
         // a body that holds a different roll refuses the swap until the roll is resolved
@@ -868,18 +1004,27 @@ function buildFilmList(){
     cap.className = 'brandcap'; cap.textContent = brand.toUpperCase();
     fl.appendChild(cap);
     byBrand[brand].forEach(f => {
-      const st = filmState(f);
+      // one badge from the live camera state; the card never says two things about availability
+      const st = shelfState('film', f);
       const el = document.createElement('div');
-      el.className = 'item filmitem' + (state.film?.id === f.id ? ' active' : '') + (st === 'lock' ? ' locked' : '');
-      // the PRO tag marks catalog tier, not availability — it stays beside the name in both
-      // licence modes and truncates the name instead of colliding with it
-      const proTag = f.tier !== 'free' ? '<span class="protag">PRO</span>' : '';
+      el.className = 'item filmitem' + (st === 'sel' ? ' active' : '') + (st === 'lock' ? ' locked' : '');
+      /* The PRO tag marks catalog tier, not availability — it stays beside the name in both
+         licence modes and truncates the name instead of colliding with it. A card already
+         saying LOCKED · PRO carries no second tier mark. */
+      const proTag = f.tier !== 'free' && st !== 'lock' ? '<span class="protag">PRO</span>' : '';
       /* The second line states the stock ONCE: ISO value, the ISO label, then the category —
-         see labLine, which is what keeps a lab process from ever repeating that category. */
-      const meta = `<div class="d">${f.iso} ISO · ${categoryCap(f)}</div>${labLine(f)}`;
+         see labLine, which is what keeps a lab process from ever repeating that category.
+         The swatches get their own line below it: inline they would be clipped by a long
+         identity and would grow the card. */
+      const look = lookSwatches(f);
+      const meta = `<div class="d">${f.iso} ISO · ${categoryCap(f)}</div>${labLine(f)}`
+        + (look ? `<div class="look">${look.map(h => `<i style="background:${h}"></i>`).join('')}</div>` : '');
+      /* A short line about how the stock behaves in use, taken from the profile and cut to one
+         line — the story itself belongs to the preview page, never to the list. */
+      const vibe = vibeFor(f);
       el.innerHTML = `<div class="ic">${canSvg(f)}</div>`
-        + `<div class="txt"><div class="t"><span class="nm">${esc(f.brand)} ${esc(f.name)}</span>${proTag}</div>${meta}</div>`
-        + stateChip(st);
+        + `<div class="txt"><div class="t"><span class="nm">${esc(f.brand)} ${esc(f.name)}</span>${proTag}</div>${meta}`
+        + (vibe ? `<div class="d vibe">${esc(vibe)}</div>` : '') + `</div>` + stateChip(st);
       // tapping a stock opens its preview first — never loads silently
       el.onclick = () => openFilmPreview(f);
       fl.appendChild(el);
@@ -969,7 +1114,8 @@ function swapFog(){
 }
 
 async function openFilmPreview(f){
-  const st = filmState(f);
+  // the preview answers the same vocabulary the shelf uses, including the stock in the camera
+  const st = shelfState('film', f);
   hideSwapGate();
   $('pvTitle').textContent = `${f.brand} ${f.name}`;
   /* The preview must say exactly what the shelf chip says. A finished Pro stock is not
@@ -978,17 +1124,27 @@ async function openFilmPreview(f){
      being made. In a test build a Pro stock is open, and the line says exactly that —
      opening it here does not claim the free web demo owns it permanently. */
   let statusLine;
-  if (st === 'soon') statusLine = 'IN DEVELOPMENT';
+  if (st === 'sel') statusLine = 'IN THE CAMERA NOW';
+  else if (st === 'soon') statusLine = 'IN DEVELOPMENT';
   else if (st === 'lock') statusLine = 'PRO STOCK · UNLOCKS IN THE PRO APK';
-  else if (f.tier !== 'free') statusLine = f.status.startsWith('disc') ? 'DISCONTINUED PRO STOCK · OPEN FOR TESTING HERE' : 'PRO STOCK · OPEN FOR TESTING HERE';
+  else if (st === 'unlock') statusLine = f.status.startsWith('disc') ? 'DISCONTINUED PRO STOCK · OPEN FOR TESTING HERE' : 'PRO STOCK · OPEN FOR TESTING HERE';
   else statusLine = 'AVAILABLE NOW';
   // the lab process belongs with the stock's identity, not buried in a footnote
   $('pvMeta').textContent = `${f.iso} · ${TYPE_TAG[f.type]} · ${statusLine}${f.process ? ` · PROCESS ${f.process}` : ''} · samples rendered by the POCKETROLL engine on a neutral body`;
   $('pvStory').textContent = f.story || '';
   renderParamBars(f);
+  /* Previewing and loading are different acts, so the page says which one it is doing before
+     any samples: opening a stock never threads anything into the camera. */
+  $('pvNote').textContent = st === 'sel'
+    ? 'ALREADY LOADED · this page loads nothing. The roll in the camera is untouched by opening it.'
+    : 'PREVIEW ONLY · this page loads nothing. LOAD FILM below threads a fresh roll into the camera.';
   const btn = $('pvLoad');
   btn.classList.toggle('locked', st === 'lock');
-  if (st === 'avail'){
+  if (st === 'sel'){
+    // a stock already threaded cannot be "loaded" again; the roll it holds is the real state
+    btn.textContent = 'ALREADY IN THE CAMERA'; btn.disabled = true; btn.onclick = null;
+    $('pvHint').textContent = `threaded in ${state.cam?.model || 'this body'} · ${state.shotsLeft} frames left · develop or resolve the roll to change it`;
+  } else if (st === 'avail' || st === 'unlock'){
     btn.textContent = 'LOAD FILM'; btn.disabled = false;
     btn.onclick = () => tryLoadFilm(f);
     $('pvHint').textContent = f.status.startsWith('disc')
@@ -1013,7 +1169,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v16';
+const BUILD = 'pocketroll-v17';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW

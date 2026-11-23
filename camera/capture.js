@@ -77,6 +77,21 @@ function capture(opts){
   renderStrip();
   const g = $('stripFrames'); g.classList.remove('advance'); void g.offsetWidth; g.classList.add('advance'); // film-advance tick
   scrollStripToLast();
+  /* One press answers at three places at once: the dome flashes under the finger, the number
+     that just changed blinks, and what the camera exposed is held on the glass for a moment
+     before the live finder returns. The held frame stays dim — a latent negative is not a
+     print yet, and the strip keeps its undeveloped mark while this fades. */
+  const shutter = $('shutter');
+  shutter.classList.remove('fired'); void shutter.offsetWidth; shutter.classList.add('fired');
+  setTimeout(() => shutter.classList.remove('fired'), 400);
+  pulseCounter();
+  const peek = $('shotPeek'), last = state.frames[state.frames.length - 1];
+  peek.style.backgroundImage = `url(${last.t})`;
+  $('shotPeekCap').textContent = `${String(state.frames.length).padStart(2, '0')} · LATENT`;
+  const stage = $('vfStage');   // the live meter and focus box step out while the frame is held
+  peek.classList.add('on'); stage.classList.add('peeking');
+  setTimeout(() => { peek.classList.remove('on'); stage.classList.remove('peeking'); }, 900);
+  setTimeout(() => { peek.style.backgroundImage = ''; }, 1400);
   renderRollPage();
   saveCurrentRoll(); // the exposure is written down as it happens — refresh loses nothing
   renderArchive();   // the shelf answers "what do I have" at any moment, not on reopen

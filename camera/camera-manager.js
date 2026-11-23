@@ -88,6 +88,8 @@ function loadCamera(c, { quiet = false } = {}){
     // nothing exposed yet: the empty roll comes out and the new body holds its own gate
     state.rollId = newRollId(); state.loadedAt = Date.now();
     state.frames = []; state.developed = false; state.sheet = null;
+    // an empty chamber re-threaded into a new body leaves nothing behind, marks included
+    state.fogged = 0;
   }
   state.cam = c;
   engine.setCombo(c, state.film);
@@ -103,6 +105,14 @@ function loadCamera(c, { quiet = false } = {}){
   renderStrip();
   renderRollPage();
   if (state.rollId) saveCurrentRoll();
-  if (!quiet) toast(otherGate ? `different gate · this body holds ${rollCapacity()} frames` : 'camera swapped — roll untouched');
+  /* the bag's badges answer the camera too: the body now in hand says SELECTED, the one it
+     replaced stops saying so — no stale badge left on the shelf */
+  buildLists();
+  /* The swap answers in one line at the place the user already is: which body is now in
+     hand, and whether the film stayed. No full-page transition — the bag closes and the
+     camera screen updates in place. */
+  if (!quiet) toast(otherGate
+    ? `${c.brand} ${c.model} · different gate — this body holds ${rollCapacity()} frames`
+    : `${c.brand} ${c.model} selected · ${state.film ? `${state.film.name} stays loaded, ${state.shotsLeft} frames left` : 'no film loaded'}`);
   return true;
 }

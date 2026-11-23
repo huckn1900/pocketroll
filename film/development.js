@@ -11,10 +11,14 @@ let isDeveloping = false;
 function backDoor(){
   if (isDeveloping){ toast('the roll is in the developer · wait for it to come out'); return; }
   const fogged = state.frames.length && !state.developed;
+  const foggedCount = fogged ? state.frames.length : 0;
   state.frames = []; state.developed = false; state.sheet = null; state.shotsLeft = 0;
+  /* the frames the light destroyed stay on the strip as marks — the roll did not lose those
+     frames, it lost what was on them. A fresh roll threaded clears the marks. */
+  state.fogged = foggedCount;
   dropCurrentRoll();
   renderCounter(); renderStrip(); renderRollPage(); renderArchive();
-  $('rollStatus').textContent = fogged ? 'door opened · exposed frames fogged' : 'empty spool out · load a fresh roll';
+  $('rollStatus').textContent = foggedCount ? `door opened · ${foggedCount} undeveloped frames fogged` : 'empty spool out · load a fresh roll';
   $('developRoll').style.display = 'none'; $('sheetBtn').style.display = 'none';
   toast(fogged ? 'oops — light fogged the undeveloped roll' : 'empty spool out');
   const g = $('stripFrames'); g.classList.remove('pullout'); void g.offsetWidth; g.classList.add('pullout'); // spool pulls out of the opened door
