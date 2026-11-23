@@ -72,6 +72,53 @@ Every content item/pack carries:
 - Settings carries the **GET PRO APK · US$6.99 · PATREON** button + a one-time/Android/iOS-later hint. The Patreon page URL is a placeholder (`https://www.patreon.com/`) until the creator page exists — swap it then.
 - License state on the web is fixed to `free` (`state.license` concept); PurchaseVerification for the APK will validate the Patreon purchase and store entitlements locally (offline-capable).
 
+## Film library roadmap (Round⑰, user-defined)
+
+**Temporary test unlock (web only).** `app.js` carries `const WEB_LICENSE = 'all'`, which opens
+every finished stock in the browser so each one's colour science can be tried and calibrated.
+Profiles keep their `tier`, and the shelf still prints the `PRO` tag next to a Pro stock's
+name plus a one-line note saying this is a test build — opening everything here must not read
+as "the free web owns the full library". Re-locking = set `WEB_LICENSE = 'free'`; pricing and
+entitlements are untouched. Cameras keep the production gate (films were what was asked for).
+
+**Every stock owns its own parameters.** No shared colour preset: white balance, exposure bias,
+toe/shoulder curve, `rgb_matrix`, split-tone tint, grain size + ISO response, highlight and
+shadow behaviour, leak probability are per-profile numbers (`scripts/patch-films.mjs` keeps
+matrix rows summing to 1). The spread below is a *simulated* target direction, not published
+manufacturer data.
+
+| Image route | Stocks covering it |
+| --- | --- |
+| Warm everyday | Gold 200, ColorPlus 200 |
+| Natural portrait | Portra 160 / 400 / 800 |
+| Vivid colour | Ektar 100, UltraMax 400 |
+| Classic B&W | Tri-X 400, HP5 Plus, FP4 Plus |
+| Fine B&W | Delta 100, Acros II, T-Max 100 |
+| Dramatic B&W | Delta 3200, Ferrania P30 |
+| Slide film | Velvia 50, Provia 100F, Ektachrome E100 |
+| Cinema | Vision3 500T, Cinestill 800T / 400D / 50D |
+| Experimental | LomoChrome Metropolis, LomoChrome Purple |
+
+Brand grouping stays in the shelf (it scales to dozens of expansion packs); what the library
+must actually cover is the **image route**, so a stock is added only where a route is thin —
+Portra 800 fills low-light portraiture, Delta 3200 the only dramatic high-speed B&W, 400D the
+daylight side of the cinema pair.
+
+**Candidates, in priority order (12).** Kodak Portra 800 · Kodak UltraMax 400 · Ilford FP4
+Plus · Ilford Delta 3200 · Fujifilm Neopan Acros II 100 · Cinestill 400D · Cinestill 50D ·
+Foma Fomapan 100 Classic · LomoChrome Metropolis · LomoChrome Purple · Ferrania P30 · Kodak
+T-Max 100. Each arrives as a profile carrying `tier`, `process` and tuned parameters — never a
+copy of another stock's preset, and preview samples are always rendered by this engine on a
+neutral body (never stock photos).
+
+**Lab process is part of the identity.** `assets/films.json` carries `process`
+(`scripts/patch-film-process.mjs` validates it against the profile type): **C-41** (consumer
+colour negative), **ECN-2** (motion-picture negative — Vision3 and Cinestill are a separate
+system, not ordinary C-41), **E-6** (transparency), **B&W**, **D-70** (Kodachrome 64: retired
+2009, its processing lines no longer exist anywhere, so its render is stated as an
+approximation). The shelf prints the process beside the ISO and the preview prints it in the
+meta line, so a lab result can never be confused with a filter preset.
+
 ## Photo persistence & backup layer (Round⑨, tightened in Round⑮)
 
 - **Storage**: IndexedDB `pocketroll-db` (version 2) holds two stores — `rolls` and `scans`.

@@ -609,8 +609,15 @@ function openFrame(r, i){
    lifecycle gate), camera/camera-manager.js owns swapping bodies and the sensor. */
 
 /* ---------- modals ---------- */
-/* License gating: the free web demo exposes the classic 5+5; Pro content is shown
-   but locked — the full library lives in the paid Pro APK (one-time, via Patreon). */
+/* ---------- web entitlement ----------
+   The released free web demo keeps the classic five stocks and five bodies; Pro content is
+   shown but locked, and the full library lives in the paid Pro APK (one-time, via Patreon).
+   THIS BUILD IS A TEST BUILD: WEB_LICENSE='all' opens every finished stock so each stock's
+   colour science can be tried and calibrated in the browser. Profiles keep their tier, so the
+   business model is untouched — set it back to 'free' to re-lock the web demo to the free
+   tier before this goes out to users. */
+const WEB_LICENSE = 'all'; // 'free' = production gate · 'all' = every finished stock loadable
+function entitled(f){ return WEB_LICENSE === 'all' || f.tier === 'free'; }
 function proHint(){
   toast('PRO content · the full library is in the Pro APK — GET PRO in ⚙ Settings');
 }
@@ -626,8 +633,7 @@ function filmCat(f){
 }
 function filmState(f){
   if (f.status === 'coming') return 'soon';
-  if (f.tier === 'pro' || f.tier === 'expansion') return 'lock';
-  return 'avail';
+  return entitled(f) ? 'avail' : 'lock';
 }
 const TYPE_TAG = { bw: 'b&w', slide: 'slide', motion_negative: 'cinema neg', color_negative: 'color neg' };
 const canInk = (hex) => { const c = hexToRgb(hex); return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b > 0.45 ? '#241f16' : '#efe6d2'; };
@@ -725,6 +731,12 @@ function buildFilmList(){
   if (count) count.textContent = `${visible.length} films · ${filmCatOn === 'all' ? 'all' : filmCatOn.toUpperCase()}`;
   const capline = $('filmBrands');
   if (capline) capline.textContent = brands.join(' · ');
+  /* A test build has to say so: the shelf still shows which catalog tier each stock belongs
+     to, so opening everything here never reads as "the web demo is the full library". */
+  const gateNote = $('filmGate');
+  if (gateNote) gateNote.textContent = WEB_LICENSE === 'all'
+    ? 'test build · every finished stock is open here so the science can be checked. the released web keeps the free five; PRO stocks unlock in the Pro APK.'
+    : '';
   brands.forEach(brand => {
     const cap = document.createElement('div');
     cap.className = 'brandcap'; cap.textContent = brand.toUpperCase();
@@ -733,11 +745,15 @@ function buildFilmList(){
       const st = filmState(f);
       const el = document.createElement('div');
       el.className = 'item filmitem' + (state.film?.id === f.id ? ' active' : '') + (st === 'lock' ? ' locked' : '');
+      // the PRO tag marks catalog tier, not availability — it stays next to the name in both modes
+      const proTag = f.tier !== 'free' ? ' <span class="protag">PRO</span>' : '';
       const extra = st === 'soon' ? ' · in development'
         : f.status.startsWith('disc') ? ' · ' + f.status : '';
+      // a film is developed, not filtered: the lab process is part of the stock's identity
+      const proc = f.process ? ` · ${esc(f.process)}` : '';
       el.innerHTML = `<div class="ic">${canSvg(f)}</div>`
-        + `<div class="txt"><div class="t">${esc(f.brand)} ${esc(f.name)}${st === 'lock' ? ' <span class="protag">PRO</span>' : ''}</div>`
-        + `<div class="d">${f.iso} · ${TYPE_TAG[f.type]}${extra}</div></div>${stateChip(st)}`;
+        + `<div class="txt"><div class="t">${esc(f.brand)} ${esc(f.name)}${proTag}</div>`
+        + `<div class="d">${f.iso} · ${TYPE_TAG[f.type]}${proc}${extra}</div></div>${stateChip(st)}`;
       // tapping a stock opens its preview first — never loads silently
       el.onclick = () => openFilmPreview(f);
       fl.appendChild(el);
@@ -833,11 +849,15 @@ async function openFilmPreview(f){
   /* The preview must say exactly what the shelf chip says. A finished Pro stock is not
      "in production" — that phrasing reads as unfinished, which is the confusion the user
      ruled out: LOCKED means finished and unlocked by buying Pro, COMING SOON means still
-     being made. */
-  const statusLine = st === 'soon' ? 'IN DEVELOPMENT'
-    : st === 'lock' ? 'PRO STOCK · UNLOCKS IN THE PRO APK'
-    : f.status.startsWith('disc') ? f.status.toUpperCase() : 'AVAILABLE NOW';
-  $('pvMeta').textContent = `${f.iso} · ${TYPE_TAG[f.type]} · ${statusLine} · samples rendered by the POCKETROLL engine on a neutral body`;
+     being made. In a test build a Pro stock is open, and the line says exactly that —
+     opening it here does not claim the free web demo owns it permanently. */
+  let statusLine;
+  if (st === 'soon') statusLine = 'IN DEVELOPMENT';
+  else if (st === 'lock') statusLine = 'PRO STOCK · UNLOCKS IN THE PRO APK';
+  else if (f.tier !== 'free') statusLine = f.status.startsWith('disc') ? 'DISCONTINUED PRO STOCK · OPEN FOR TESTING HERE' : 'PRO STOCK · OPEN FOR TESTING HERE';
+  else statusLine = 'AVAILABLE NOW';
+  // the lab process belongs with the stock's identity, not buried in a footnote
+  $('pvMeta').textContent = `${f.iso} · ${TYPE_TAG[f.type]} · ${statusLine}${f.process ? ` · PROCESS ${f.process}` : ''} · samples rendered by the POCKETROLL engine on a neutral body`;
   $('pvStory').textContent = f.story || '';
   renderParamBars(f);
   const btn = $('pvLoad');
@@ -845,7 +865,11 @@ async function openFilmPreview(f){
   if (st === 'avail'){
     btn.textContent = 'LOAD FILM'; btn.disabled = false;
     btn.onclick = () => tryLoadFilm(f);
-    $('pvHint').textContent = 'loads a fresh 36-frame roll · swapping bodies never resets it';
+    $('pvHint').textContent = f.status.startsWith('disc')
+      ? 'historical stock · its original lab process no longer exists, so this is an approximation — open here for testing'
+      : f.tier !== 'free'
+      ? 'test build: open here so the science can be checked · in the released web this stock unlocks in the Pro APK'
+      : 'loads a fresh 36-frame roll · swapping bodies never resets it';
   } else if (st === 'lock'){
     btn.textContent = 'UNLOCK WITH PRO'; btn.disabled = false;
     btn.onclick = proHint;
@@ -863,7 +887,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v10';
+const BUILD = 'pocketroll-v11';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
