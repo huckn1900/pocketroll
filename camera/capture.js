@@ -45,16 +45,22 @@ function capture(){
   if (!state.rollId){ toast('no roll in the camera · load a film'); return; }
   if (state.shotsLeft <= 0){ toast('roll finished · develop it'); return; }
   shutterSound();
-  // focus box snaps to locked for a moment; battery sips down (flash shots draw more)
+  // a body with a focusing aid snaps its indicator to locked; a scale-focus camera has
+  // nothing on its glass to confirm, so nothing flashes
   const focus = $('hudFocus');
-  focus.classList.add('lock'); setTimeout(() => focus.classList.remove('lock'), 350);
-  const flashShot = state.opts.flash && CAMERA_HUD[state.cam?.id]?.flash === 'on';
+  if (state.cam?.focus_mode !== 'scale'){
+    focus.classList.add('lock'); setTimeout(() => focus.classList.remove('lock'), 350);
+  }
+  const flashShot = state.opts.flash && state.cam?.hud?.flash === 'on';
   state.battery = Math.max(4, state.battery - (flashShot ? 2 : 1));
   renderHud();
   const cap = document.createElement('canvas');
-  // export at the stream's native pixel size (cap guards 4K+ streams from huge pixel loops)
+  // export at the stream's native pixel size (cap guards 4K+ streams from huge pixel loops),
+  // cropped to the body's print gate when it prints one — the negative is that shape.
   const w = usingDemo ? 1280 : Math.min(2560, video.videoWidth || 1280);
-  const h = usingDemo ? 960 : Math.round(w * (video.videoHeight / (video.videoWidth || 1)));
+  const gate = state.cam?.gate?.aspect;
+  const h = gate ? Math.round(w / gate)
+    : usingDemo ? 960 : Math.round(w * (video.videoHeight / (video.videoWidth || 1)));
   cap.width = w; cap.height = h;
   const tmp = new FilmEngine(cap); tmp.setCombo(state.cam, state.film);
   tmp.process(usingDemo ? demoCanvas : video, usingDemo ? demoCanvas.width : video.videoWidth, usingDemo ? demoCanvas.height : video.videoHeight, { flash: flashShot });
@@ -71,5 +77,5 @@ function capture(){
   renderRollPage();
   saveCurrentRoll(); // the exposure is written down as it happens — refresh loses nothing
   renderArchive();   // the shelf answers "what do I have" at any moment, not on reopen
-  if (state.shotsLeft === 0) toast('frame 36 exposed · ready to DEVELOP');
+  if (state.shotsLeft === 0) toast(`roll finished · ${state.frames.length} frames exposed · ready to DEVELOP`);
 }

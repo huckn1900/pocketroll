@@ -10,7 +10,7 @@ const port = 9333 + Math.floor(Math.random() * 60);
 const proc = spawn(chrome, [
   '--headless=new', '--disable-gpu', '--no-sandbox',
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream',
-  `--user-data-dir=${process.env.TEMP}\\chrome-exp-${port}`,
+  `--user-data-dir=${process.env.TEMP}\\chrome-exp-${port}-${Date.now().toString(36)}`,
   `--remote-debugging-port=${port}`,
 ], { stdio: 'ignore', detached: true });
 

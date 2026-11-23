@@ -10,7 +10,7 @@ else if (expr && expr.startsWith('@')) expr = readFileSync(expr.slice(1), 'utf8'
 const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const port = 9333 + Math.floor(Math.random() * 60);
 const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox',
-  `--user-data-dir=${process.env.TEMP}\\chrome-probe-${port}`, `--remote-debugging-port=${port}`,
+  `--user-data-dir=${process.env.TEMP}\\chrome-probe-${port}-${Date.now().toString(36)}`, `--remote-debugging-port=${port}`,
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], { stdio: 'ignore', detached: true });
 async function waitPort() {
   for (let i = 0; i < 20; i++) { try { const r = await fetch(`http://127.0.0.1:${port}/json/list`); if (r.ok) return await r.json(); } catch {} await new Promise(r => setTimeout(r, 400)); }

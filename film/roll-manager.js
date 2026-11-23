@@ -20,7 +20,7 @@ function applyFilm(f){
 function loadFilm(f, { force = false } = {}){
   if (!force && rollInCamera()) return false; // the caller has to resolve the roll first
   applyFilm(f);
-  state.rollId = newRollId(); state.shotsLeft = 36;
+  state.rollId = newRollId(); state.shotsLeft = rollCapacity();
   state.frames = []; state.developed = false;
   state.loadedAt = Date.now(); // roll record: the date this roll was loaded
   state.sheet = null;

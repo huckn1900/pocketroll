@@ -17,7 +17,7 @@ const port = 9333 + Math.floor(Math.random() * 60);
 const proc = spawn(chrome, [
   '--headless=new', '--disable-gpu', '--no-sandbox',
   ...(process.env.EXTRA_FLAGS ? process.env.EXTRA_FLAGS.split(' ') : []),
-  `--user-data-dir=${process.env.TEMP}\\chrome-cdp-${port}`,
+  `--user-data-dir=${process.env.TEMP}\\chrome-cdp-${port}-${Date.now().toString(36)}`,
   `--remote-debugging-port=${port}`,
 ], { stdio: 'ignore', detached: true });
 

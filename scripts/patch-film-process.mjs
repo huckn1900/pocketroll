@@ -8,13 +8,22 @@ const PROCESS = {
   // colour negative — C-41 is the standard consumer/lab process
   gold200: 'C-41', colorplus: 'C-41', superia400: 'C-41',
   portra160: 'C-41', portra400: 'C-41', ektar100: 'C-41',
-  // motion-picture negative — its own line, with its own mask
-  'vision3-500t': 'ECN-2', cinestill800t: 'ECN-2',
+  portra800: 'C-41', ultramax400: 'C-41',
+  // experimental chromogenic negatives — still developed in C-41, their oddness is in the emulsion
+  metropolis: 'C-41', purple: 'C-41',
+  // motion-picture negative — Kodak Vision3 keeps its own ECN-2 line and its mask
+  'vision3-500t': 'ECN-2',
+  // CineStill is NOT ECN-2: their own help page states the colour films are made for still
+  // photography in C-41 (RA-4 compatible). Motion-derived science, ordinary lab process.
+  cinestill800t: 'C-41', cinestill400d: 'C-41', cinestill50d: 'C-41',
   // transparency
   velvia50: 'E-6', provia100f: 'E-6', e100: 'E-6',
   kodachrome64: 'D-70',
   // black & white — one label, the science differs per stock (fine vs dramatic grain)
   hp5plus: 'B&W', trix400: 'B&W', kentmere400: 'B&W', delta100: 'B&W',
+  fp4plus: 'B&W', delta3200: 'B&W', acros2: 'B&W', fomapan100: 'B&W', tmax100: 'B&W',
+  // P30 is a monochrome developed in a B&W process (Ferrania recommends hand processing)
+  'ferrania-p30': 'B&W',
 };
 
 const doc = JSON.parse(fs.readFileSync('assets/films.json', 'utf8'));

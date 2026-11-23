@@ -75,12 +75,31 @@ function wireCameraLifecycle(){
     }
   });
 }
-/* Swapping bodies never touches the roll — the film in the camera is the product. */
+/* Swapping bodies never touches the roll — the film in the camera is the product.
+   The one exception is physical: a body prints a different gate, so it holds a different
+   roll. A 6×7 back cannot carry a 135 roll that already has exposures on it, and neither
+   can a 6×4.5 back carry a 6×7 one — both are 120 film, but the negatives differ. */
+function rollCapacity(){ return (state.cam && state.cam.frames) || 36; }
+function gateKey(c){ return c?.gate ? `${c.gate.film}:${Math.round(c.gate.aspect * 1000) / 1000}` : '135'; }
 function loadCamera(c, { quiet = false } = {}){
+  const otherGate = state.cam ? gateKey(c) !== gateKey(state.cam) : false;
+  if (state.rollId && otherGate){
+    if (state.frames.length){ toast('that body prints a different frame size · develop it or open the back door first'); return false; }
+    // nothing exposed yet: the empty roll comes out and the new body holds its own gate
+    state.rollId = newRollId(); state.loadedAt = Date.now();
+    state.frames = []; state.developed = false; state.sheet = null;
+  }
   state.cam = c;
   engine.setCombo(c, state.film);
   $('camModel').textContent = c.model.toUpperCase();
+  // the counter follows the gate this body holds, never a hardcoded 36
+  state.shotsLeft = state.rollId ? Math.min(state.shotsLeft, rollCapacity()) : rollCapacity();
   renderHud();
   renderOpts();
-  if (!quiet) toast('camera swapped — roll untouched');
+  renderCounter();
+  renderStrip();
+  renderRollPage();
+  if (state.rollId) saveCurrentRoll();
+  if (!quiet) toast(otherGate ? `different gate · this body holds ${rollCapacity()} frames` : 'camera swapped — roll untouched');
+  return true;
 }

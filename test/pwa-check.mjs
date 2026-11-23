@@ -8,7 +8,7 @@ const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const port = 9333 + Math.floor(Math.random() * 60);
 const proc = spawn(chrome, [
   '--headless=new', '--disable-gpu', '--no-sandbox',
-  `--user-data-dir=${process.env.TEMP}\\chrome-pwa-${port}`,
+  `--user-data-dir=${process.env.TEMP}\\chrome-pwa-${port}-${Date.now().toString(36)}`,
   `--remote-debugging-port=${port}`,
 ], { stdio: 'ignore', detached: true });
 

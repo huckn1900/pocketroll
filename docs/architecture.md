@@ -160,6 +160,50 @@ meta line, so a lab result can never be confused with a filter preset.
   write; `CACHE` in sw.js and `BUILD` in app.js are bumped together on deploy, and a mismatch shows
   "NEW VERSION AVAILABLE · RELOAD" instead of quietly running an older build.
 
+## Camera bag roadmap (Round⑱)
+
+The bag started as a shelf of 35mm fixed-lens point-and-shoots. The expansion round is about
+**different operations**, not different-looking compacts: different lens angles, focus systems,
+body structures and imaging character. A body that only changes the name on the nameplate is a
+filter with a label, so every profile states its own machine-readable parameters
+(`assets/cameras.json`, maintained by `scripts/patch-new-cameras.mjs`, which refuses two bodies
+sharing the same operation signature).
+
+**Five experience routes** (`route`, shown as captions in CAMERA BAG):
+
+| route | what it is | bodies now |
+|---|---|---|
+| `everyday` | automatic pocket cameras, one job: point and press | Big Mini BM-201, QuickSnap CL, AF35M, Instamatic, Trip 35, LC-A |
+| `rangefinder` | focus by coinciding two images; you choose the light | Olympus XA, Canonet QL17 GIII |
+| `mechanical` | clockwork and scales, no electronics between you and the film | Rollei 35 |
+| `premium` | engineering and character, quiet operation | 35Ti, Hexar AF, μ II, Contax T2, GR1V, T4, TC-1 |
+| `medium` | a bigger negative — a different frame shape, not just a bigger camera | Pentax 6×7, GA645 Professional |
+
+**Per-body parameters.** Each profile carries: `route`, `focus_mode` (`af` | `scale` |
+`rangefinder` | `slr`), `focus_system`, `exposure_system`, `shutter_character`, `frames`,
+optional `gate` `{film, short_mm, long_mm, aspect}`, `finder`, `hud` (flash availability, shutter
+readout, focus hint) and `camera_character` (`color_cast`, `vignette`, `sharpness`,
+`halation_bias`, optional `grain_bias`). The finder draws its focus aid from `focus_mode` — a
+split-image patch for rangefinders, a centre focus box for AF, a ground-glass-style screen for
+SLR, nothing for scale focus — and the HUD states the focus method in terse tokens.
+
+**A gate is real.** A body with `gate` crops the view *before* film science runs, drives the
+finder stage ratio, and sets the export frame ratio and the roll capacity — `rollCapacity()`
+reads the profile, never 36. Pentax 6×7 prints 55×70mm on 120 (eight exposures, waist-level
+screen, TTL metering, interchangeable lens); GA645 Professional prints 41.5×56mm on 120
+(sixteen exposures, per its manual). Both keep the medium-format character honest: grain reads
+finer per pixel (`grain_bias` < 1) because the negative is larger. An archive record carries the
+`format` it was shot on, so a 120 roll never comes back labelled as 35mm. Swapping to a body
+with a different gate is refused while an exposed roll is loaded; after DEVELOP or a back-door
+fog, the empty roll is exchanged and the new body holds its own capacity.
+
+**Candidates, in priority order (8).** Olympus XA ✓ · Rollei 35 ✓ · Canonet QL17 GIII ✓ ·
+Konica Big Mini BM-201 ✓ · Pentax 6×7 ✓ · Fujifilm GA645 ✓ · Nikon 35Ti ✓ · Konica Hexar AF ✓.
+Specs are quoted only where a source states them; an interchangeable system says so instead of
+inventing a focal length. Shutter *sound* is a separate track: per-body character (a near-silent
+Hexar, a mechanical Rollei, the mirror-slap of a 6×7) is prototyped in `sounds.html` first and
+merged into `app.js` only after the variants are chosen.
+
 ## Future content updates
 
 New film → new profile JSON only. New camera → same. New pack → pack folder + entitlement. FilmEngine/CameraEngine keep reading configs; no core rewrite.

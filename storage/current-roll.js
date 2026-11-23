@@ -13,6 +13,9 @@ function rollRecord(){
     camId: state.cam?.id || '', cam: state.cam ? `${state.cam.brand} ${state.cam.model}` : 'unknown body',
     filmId: state.film?.id || '', film: state.film ? `${state.film.brand} ${state.film.name}` : 'unknown stock',
     iso: state.film?.iso || null, shotsLeft: state.shotsLeft, loadedAt: state.loadedAt || Date.now(),
+    // the gate belongs to the body: a record must say how many frames its camera holds,
+    // so restoring a 6×7 roll never comes back as a 36-frame 135 roll.
+    capacity: rollCapacity(), format: state.cam?.format || '35mm (135)',
     frames: state.frames.map(f => ({ u: f.url, t: f.t || f.url, fav: false })) };
 }
 async function saveCurrentRoll(){
@@ -36,7 +39,8 @@ function restoreCurrentRoll(rec){
   if (c) loadCamera(c, { quiet: true });
   state.rollId = rec.id; state.loadedAt = rec.loadedAt || Date.now();
   state.frames = (rec.frames || []).map(fr => ({ url: fr.u, t: fr.t || fr.u }));
-  state.shotsLeft = Math.max(0, Math.min(36, Number(rec.shotsLeft) || 0));
+  const cap = Number(rec.capacity) || rollCapacity();
+  state.shotsLeft = Math.max(0, Math.min(cap, Number(rec.shotsLeft) || 0));
   state.developed = false; state.sheet = null;
   renderCounter(); renderStrip(); renderRollPage();
   if (state.frames.length) toast(`picked up where you left off · ${state.frames.length} frames still latent`);

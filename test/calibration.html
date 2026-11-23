@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>film calibration grid — 15 stocks × real photo</title>
+<title>film calibration grid — every stock × real photo</title>
 <style>
 body{background:#141311;font-family:ui-monospace,Menlo,Consolas,monospace;color:#e8dcc9;padding:20px}
 h1{font-size:13px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:14px}
@@ -14,7 +14,7 @@ h1{font-size:13px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:14
 </style>
 </head>
 <body>
-<h1>film calibration grid · POCKETROLL engine · real photo baseline vs 15 stocks</h1>
+<h1 id="head">film calibration grid · POCKETROLL engine · real photo baseline vs every stock</h1>
 <div class="grid" id="grid"></div>
 <script src="../app.js"></script>
 <script>
@@ -34,6 +34,26 @@ h1{font-size:13px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:14
     if (c.film) eng.setCombo(null, c.film);
     eng.process(img, img.naturalWidth, img.naturalHeight);
   }
+  /* Distinctness self-check: each stock must read as its own image. A mean alone is too weak
+     — dark neutrals can average the same number — so the signature is the luminance shape:
+     mean, spread and the toe/midtone/shoulder percentiles. Two cells sharing that signature
+     mean the curve was copied, which is exactly what this library forbids. */
+  document.getElementById('head').textContent =
+    `film calibration grid · POCKETROLL engine · real photo baseline vs ${films.length} stocks`;
+  const lum = (cv) => {
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    const l = new Float64Array(d.length / 4);
+    for (let i = 0, j = 0; i < d.length; i += 4, j++) l[j] = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    const n = l.length;
+    let mean = 0; for (const v of l) mean += v; mean /= n;
+    let sq = 0; for (const v of l) sq += (v - mean) * (v - mean);
+    l.sort();
+    const pick = (p) => Math.round(l[Math.floor(p * (n - 1))]);
+    return [mean.toFixed(1), Math.sqrt(sq / n).toFixed(1), pick(0.1), pick(0.5), pick(0.9)].join('/');
+  };
+  const sig = [...grid.querySelectorAll('canvas')].map(lum);
+  const dup = sig.filter((s, i) => sig.lastIndexOf(s) !== i);
+  document.getElementById('head').textContent += ` · ${new Set(sig).size} distinct / ${sig.length} cells${dup.length ? ' · DUPLICATES: ' + dup.join(' ') : ''}`;
 })();
 </script>
 </body>

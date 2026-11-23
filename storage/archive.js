@@ -9,6 +9,7 @@ function migrateRoll(r){
   const frames = (r.frames || []).map(u => typeof u === 'string' ? { u, t: u, fav: false } : { u: u.u, t: u.t || u.u, fav: !!u.fav });
   return { id: r.id, status: 'developed', camId: r.camId || '', cam: r.cam || 'unknown body',
     filmId: r.filmId || '', film: r.film || 'unknown stock', iso: r.iso || null,
+    format: r.format || '',
     loadedAt: r.loadedAt || r.date || Date.now(), developedAt: r.developedAt || r.date || Date.now(),
     notes: r.notes || '', frames };
 }
@@ -72,6 +73,8 @@ async function archiveRoll(){
     camId: state.cam ? state.cam.id : '', cam: state.cam ? `${state.cam.brand} ${state.cam.model}` : 'scanned prints',
     filmId: state.film ? state.film.id : '', film: state.film ? `${state.film.brand} ${state.film.name}` : 'scanned prints',
     iso: state.film ? (state.film.iso || state.film.filter_params.iso || null) : null,
+    // the negative the roll was shot on travels with the record: a 6×7 roll is not filed as 135
+    format: state.cam?.format || '35mm (135)',
     loadedAt: state.loadedAt || Date.now(), developedAt: Date.now(),
     notes: '', frames,
   };
@@ -124,7 +127,7 @@ async function blobOf(dataUrl){ const r = await fetch(dataUrl); return new Uint8
 async function rollZip(r){
   const entries = [];
   for (let i = 0; i < r.frames.length; i++) entries.push({ name: `frame_${String(i + 1).padStart(2, '0')}.jpg`, data: await blobOf(r.frames[i].u) });
-  entries.push({ name: 'roll.json', data: new TextEncoder().encode(JSON.stringify({ camera: r.cam, film: r.film, iso: r.iso, frames: r.frames.length, loaded: r.loadedAt, developed: r.developedAt, notes: r.notes })) });
+  entries.push({ name: 'roll.json', data: new TextEncoder().encode(JSON.stringify({ camera: r.cam, film: r.film, iso: r.iso, format: r.format || '', frames: r.frames.length, loaded: r.loadedAt, developed: r.developedAt, notes: r.notes })) });
   return zipStore(entries);
 }
 function downloadBytes(bytes, name){

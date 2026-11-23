@@ -18,6 +18,15 @@ const CAMERA_CAST = {
   gr1v:       { gain:[1.0,1.0,1.0] },
   tc01:       { gain:[1.02,1.0,0.96] },
   lca:        { gain:[1.10,1.02,0.88], leaks:true },
+  // bodies added in the camera-expansion round: each prime has its own cast, never a copy
+  xa:         { gain:[1.02,1.0,0.96] },
+  rollei35:   { gain:[1.05,1.0,0.92] },
+  p67:        { gain:[1.01,1.0,0.98] },
+  canonetql17:{ gain:[1.03,1.0,0.95] },   // bright f/1.7 prime, a faint warm bias
+  bigmini:    { gain:[1.02,1.0,0.98] },   // four-element lens: flat rather than characterful
+  ga645:      { gain:[1.0,1.0,1.0] },     // even coverage across a 6×4.5 negative
+  n35ti:      { gain:[0.99,1.0,1.02] },   // exact, a touch cool — an instrument, not a toy
+  hexaraf:    { gain:[1.01,1.0,0.99] },   // fast clean street prime
 };
 
 class FilmEngine {
@@ -98,11 +107,20 @@ class FilmEngine {
     // cheap bodies seep every frame; the app itself never passes this.
     const noLeak = !!(opts && opts.noLeak);
     const w = this.canvas.width, h = this.canvas.height;
+    // The print gate. A body that prints a different frame than the sensor sees — 6×7 on
+    // 120 film — crops the view to that gate BEFORE any film science runs: the frame is
+    // the gate, not a label on a nameplate. Bodies without a gate keep the sensor frame.
+    let sx = 0, sy = 0, sw2 = srcW, sh2 = srcH;
+    const gate = this.cam?.gate?.aspect;
+    if (gate){
+      if (srcW / srcH > gate){ sw2 = Math.round(srcH * gate); sx = Math.round((srcW - sw2) / 2); }
+      else { sh2 = Math.round(srcW / gate); sy = Math.round((srcH - sh2) / 2); }
+    }
     // lens softness from camera character — scaled with resolution, so a plastic
     // lens stays soft at export size while sharp primes (T*, GR) never blur
     const blur = (1 - (this.cam?.camera_character?.sharpness ?? 1)) * (2.0 + w / 420);
     this.ctx.filter = blur > 0.35 ? `blur(${blur.toFixed(1)}px)` : 'none';
-    this.ctx.drawImage(src, 0, 0, srcW, srcH);
+    this.ctx.drawImage(src, sx, sy, sw2, sh2, 0, 0, w, h);
     this.ctx.filter = 'none';
 
     // pixel pass — full film pipeline:
@@ -138,7 +156,11 @@ class FilmEngine {
     // (iso lives at the film profile top level; filter_params.iso is legacy)
     const isoEff = this.film.iso || p.iso || 100;
     const isoScale = Math.min(1.6, Math.max(0.8, Math.pow(isoEff / 100, 0.32)));
-    const cell = Math.max(1, (p.grain_size || 1) * (w / 720) * 1.7 * isoScale);
+    // grain is a fixed physical size on the film: a 55×70mm negative holds the same grain
+    // over far more area than a 135 frame, so a medium-format scan reads finer per pixel.
+    // That is the body's doing, not the stock's — grain_bias comes from camera_character.
+    const grainBias = this.cam?.camera_character?.grain_bias ?? 1;
+    const cell = Math.max(1, (p.grain_size || 1) * (w / 720) * 1.7 * isoScale * grainBias);
     const ampMul = 0.75 + 0.5 * isoScale + Math.max(0, -(p.exposure || 0)) * 0.3;
     const grainColor = p.grain_color !== false; // B&W stocks get pure luminance grain
     const noise = this.noise;
@@ -232,24 +254,15 @@ class FilmEngine {
   }
 }
 
-/* LCD finder readout per camera (plausible programmed values, UI prop only) */
-const CAMERA_HUD = {
-  trip35:     { flash: 'off',  shutter: 'PRGM 1/60' },
-  instamatic: { flash: 'on',   shutter: 'PRGM 1/60' },
-  af35m:      { flash: 'on',   shutter: 'PRGM' },
-  l35af:      { flash: 'off',  shutter: 'PRGM' },
-  t4:         { flash: 'none', shutter: '1/250' },
-  contaxt2:   { flash: 'none', shutter: '1/250' },
-  mju2:       { flash: 'none', shutter: '1/200' },
-  gr1v:       { flash: 'none', shutter: '1/500' },
-  tc01:       { flash: 'none', shutter: 'PRGM' },
-  lca:        { flash: 'off',  shutter: '1/125' },
-};
+/* LCD finder readouts live in cameras.json per body (`hud`) — the panel shows what that
+   camera actually reads out, not a plausible generic string. Bodies without a flash cannot
+   fire one, and bodies without a meter cannot promise one. */
 
 /* Light leaks: stray light seeping into the chamber between frames — probability
    & strength follow the film stock (cheap/expired stocks leak more) multiplied by
-   the camera body (LC-A / cheap point-and-shoots leak through the door seal). */
-const CAMERA_LEAK = { lca: 2.2, trip35: 1.4, instamatic: 1.2, af35m: 1.2, tc01: 1.3, t4: 0.45, contaxt2: 0.4, mju2: 0.45, gr1v: 0.4, l35af: 0.5 };
+   the camera body (LC-A / cheap point-and-shoots leak through the door seal).
+   Tight metal bodies leak little; a large 120 back lets light seep at the edges. */
+const CAMERA_LEAK = { lca: 2.2, trip35: 1.4, instamatic: 1.2, af35m: 1.2, tc01: 1.3, t4: 0.45, contaxt2: 0.4, mju2: 0.45, gr1v: 0.4, l35af: 0.5, xa: 0.5, rollei35: 1.0, p67: 0.6, canonetql17: 1.2, bigmini: 0.35, ga645: 0.4, n35ti: 0.3, hexaraf: 0.35 };
 
 const OPTS_KEY = 'pocketroll-opts-v1';
 function loadOpts(){ try{ return Object.assign({ date: false, flash: true, facing: 'environment' }, JSON.parse(localStorage.getItem(OPTS_KEY)) || {}); }catch{ return { date: false, flash: true, facing: 'environment' }; } }
@@ -261,8 +274,10 @@ function saveOpts(){ try{ localStorage.setItem(OPTS_KEY, JSON.stringify(state.op
    scan is processed by the film, it never consumes a frame of the roll. */
 const state = { cameras: [], films: [], cam: null, film: null, shotsLeft: 36, frames: [], scans: [],
   rollId: null, developed: false, rolls: [], battery: 92, opts: loadOpts(), sheet: null, persisted: false };
+/* The helper pages (calibration grid, sound lab) load this file for FilmEngine and the cast
+   table only — they have no viewfinder, so the engine is built when there is one to draw into. */
 const vf = $('viewfinder');
-const engine = new FilmEngine(vf);
+const engine = vf ? new FilmEngine(vf) : null;
 /* The modules below are loaded as plain scripts before this file and share one global
    scope: storage/database + current-roll + archive + backup, film/roll-manager +
    development, camera/camera-manager + capture. app.js owns the engine, the state object
@@ -275,21 +290,29 @@ function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add(
 /* LCD finder HUD: minimal by default (focus box + ISO), tap the finder for the
    full readout (flash / battery / shutter / EV) — like a real camera saving power. */
 function renderHud(){
-  const h = state.cam ? (CAMERA_HUD[state.cam.id] || { flash: 'none', shutter: 'PRGM' }) : { flash: 'none', shutter: '' };
+  const cam = state.cam;
+  // every body reads out its own panel from cameras.json (`hud`): a camera with no flash
+  // cannot show a flash icon, a camera with no meter cannot promise an exposure program.
+  const h = (cam && cam.hud) || { flash: 'none', shutter: '' };
   const fl = $('hudFlash');
   const capable = h.flash === 'on'; // only bodies with a built-in flash can fire one
   fl.style.display = capable ? '' : 'none';
   fl.className = 'vf-flash' + (capable && state.opts.flash ? ' on' : '');
   fl.textContent = '⚡';
   $('hudIso').textContent = state.film ? 'ISO ' + state.film.iso : 'no film';
-  $('hudReadout').textContent = (h.shutter ? h.shutter : '—') + ' · +0.0 EV';
+  $('hudReadout').textContent = (h.shutter ? h.shutter : '—')
+    + (h.focus_hint ? ` · ${h.focus_hint}` : '') + ' · +0.0 EV';
+  // the finder shows how the body focuses: an AF box for autofocus bodies, frame lines and
+  // a patch for a rangefinder, a focus screen for an SLR, nothing for a scale-focus camera
+  // — a camera with no focusing aid does not get one drawn onto its glass.
+  $('vfStage').dataset.focus = cam?.focus_mode || 'af';
   $('hudBattFill').style.width = state.battery + '%';
   $('hudBattPct').textContent = state.battery + '%';
   $('hudBatt').classList.toggle('low', state.battery < 20);
 }
 function renderOpts(){
   $('optDate').classList.toggle('on', state.opts.date);
-  const capable = state.cam ? CAMERA_HUD[state.cam.id]?.flash === 'on' : false;
+  const capable = state.cam?.hud?.flash === 'on';
   $('optFlash').classList.toggle('disabled', !capable);
   $('optFlash').classList.toggle('on', capable && state.opts.flash);
 }
@@ -305,11 +328,13 @@ function renderCounter(){
    is just the shutter — feature entries never share its visual weight). */
 function renderRollPage(){
   const has = state.frames.length > 0;
+  // a medium-format body says what its roll is, because its roll really is different
+  const gateNote = state.cam?.gate ? ` · ${state.cam.gate.film} roll, ${state.cam.gate.short_mm}×${state.cam.gate.long_mm}mm gate` : '';
   $('rollStatus').textContent = isDeveloping ? 'in the developer · wait for the fixer'
     : state.developed ? 'roll developed · archived · load a fresh roll'
     : !state.rollId ? 'no roll in the camera · load a film'
-    : has ? `${state.frames.length} frames exposed · latent until developed`
-    : state.shotsLeft === 0 ? 'roll finished · develop it' : `roll loaded · ${state.shotsLeft} frames left`;
+    : has ? `${state.frames.length} frames exposed · latent until developed${gateNote}`
+    : state.shotsLeft === 0 ? 'roll finished · develop it' : `roll loaded · ${state.shotsLeft} frames left${gateNote}`;
   $('developRoll').style.display = has && !state.developed ? '' : 'none';
   $('developRoll').disabled = isDeveloping;
   $('developRoll').classList.toggle('ready', !!state.rollId && has && state.shotsLeft === 0 && !state.developed);
@@ -317,6 +342,7 @@ function renderRollPage(){
   $('openRoll').classList.toggle('ready', !!state.rollId && has && state.shotsLeft === 0 && !state.developed);
   // standalone develop action on the main screen: shoot → develop, right here
   $('developMain').style.display = !!state.rollId && has && state.shotsLeft === 0 && !state.developed ? '' : 'none';
+  $('developMain').textContent = `DEVELOP ROLL · ${state.frames.length} EXPOSURES DONE`;
   $('developMain').disabled = isDeveloping;
 }
 
@@ -332,15 +358,18 @@ function renderViewfinder(){
   const sw = src.width || video.videoWidth;
   const sh = src.height || video.videoHeight;
   if (!sw || !sh) return;
-  const ar = sw / sh;
-  // follow the sensor aspect, clamped to a sane LCD box (real compact LCDs ~4:3);
+  const gate = state.cam?.gate?.aspect;   // what this body prints, when it prints at all
+  const ar = gate || sw / sh;
+  // follow the sensor aspect, clamped to a sane LCD box (real compact LCDs ~4:3). A body with
+  // a print gate is different: the finder shows the gate itself — what the film will print —
+  // so a 6×4.5 or 6×7 frame is drawn at its real shape, not trimmed to a compact's box.
   // object-fit:contain keeps the FULL frame inside — never crop, never squash
-  const clamped = Math.min(1.34, Math.max(0.72, ar));
-  if (Math.abs(vfAspect - clamped) > 0.02){
+  const clamped = gate ? Math.min(1.6, Math.max(0.7, gate)) : Math.min(1.34, Math.max(0.72, ar));
+  if (Math.abs(vfAspect - clamped) > 0.005){
     vfAspect = clamped;
     $('vfStage').style.aspectRatio = String(clamped);
   }
-  const cw = previewW, ch = Math.max(2, Math.round(previewW * sh / sw));
+  const cw = previewW, ch = Math.max(2, Math.round(previewW / ar));
   if (vf.width !== cw || vf.height !== ch){ vf.width = cw; vf.height = ch; }
   engine.process(src, sw, sh);
 }
@@ -412,7 +441,8 @@ async function importPhoto(file){
    a brief preview pulse, never a full reveal. */
 function renderStrip(){
   const g = $('stripFrames'); g.innerHTML = '';
-  for (let i = 0; i < 36; i++){
+  // the strip shows the roll this body holds: 36 cells on a 135 camera, 8 on a 6×7.
+  for (let i = 0, n = rollCapacity(); i < n; i++){
     const el = document.createElement('div');
     const f = state.frames[i];
     const dev = f && (f.developed || state.developed); // developing the roll reveals every exposed frame
@@ -507,7 +537,7 @@ function renderArchive(){
       const el = document.createElement('div'); el.className = 'roll-card';
       const favs = r.frames.filter(f => f.fav).length;
       el.innerHTML = `<div class="meta"><span>${esc(r.film)} · ${r.frames.length} frames</span><span class="sub">${esc(r.cam)} · ${fmtDate(r.loadedAt)}</span></div>`
-        + `<div class="rollmeta">LOADED ${fmtDate(r.loadedAt)} · DEVELOPED ${fmtDate(r.developedAt)} · STATUS DEVELOPED${r.iso ? ' · ISO ' + r.iso : ''}${favs ? ' · ★ ' + favs : ''}${r.notes ? ' · ' + esc(r.notes) : ''}</div>`
+        + `<div class="rollmeta">LOADED ${fmtDate(r.loadedAt)} · DEVELOPED ${fmtDate(r.developedAt)} · STATUS DEVELOPED${r.iso ? ' · ISO ' + r.iso : ''}${r.format && !/135/.test(r.format) ? ' · ' + esc(r.format) : ''}${favs ? ' · ★ ' + favs : ''}${r.notes ? ' · ' + esc(r.notes) : ''}</div>`
         + `<div class="mini">${r.frames.slice(0, 8).map(f => `<img src="${f.t}" alt="">`).join('')}</div>`;
       el.onclick = () => openRoll(r);
       a.appendChild(el);
@@ -565,6 +595,7 @@ async function renderStorage(){
    storage/archive.js and storage/backup.js; this file only wires the buttons. */
 function rollMetaBlock(r){
   return `<div class="mrow"><span>CAMERA</span><span>${esc(r.cam)}</span></div>`
+    + (r.format && !/135/.test(r.format) ? `<div class="mrow"><span>NEGATIVE</span><span>${esc(r.format)}</span></div>` : '')
     + `<div class="mrow"><span>FILM</span><span>${esc(r.film)}${r.iso ? ' · ISO ' + r.iso : ''}</span></div>`
     + `<div class="mrow"><span>FRAMES</span><span>${r.frames.length}</span></div>`
     + `<div class="mrow"><span>DATE LOADED</span><span>${fmtDate(r.loadedAt)}</span></div>`
@@ -612,12 +643,13 @@ function openFrame(r, i){
 /* ---------- web entitlement ----------
    The released free web demo keeps the classic five stocks and five bodies; Pro content is
    shown but locked, and the full library lives in the paid Pro APK (one-time, via Patreon).
-   THIS BUILD IS A TEST BUILD: WEB_LICENSE='all' opens every finished stock so each stock's
-   colour science can be tried and calibrated in the browser. Profiles keep their tier, so the
-   business model is untouched — set it back to 'free' to re-lock the web demo to the free
-   tier before this goes out to users. */
-const WEB_LICENSE = 'all'; // 'free' = production gate · 'all' = every finished stock loadable
-function entitled(f){ return WEB_LICENSE === 'all' || f.tier === 'free'; }
+   THIS BUILD IS A TEST BUILD: WEB_LICENSE='all' opens every finished stock and body so each
+   one's colour science and operation can be tried in the browser. Profiles keep their tier, so
+   the business model is untouched — set it back to 'free' to re-lock the web demo to the free
+   tier before this goes out to users. One gate for both shelves: a profile is a profile. */
+const WEB_LICENSE = 'all'; // 'free' = production gate · 'all' = every finished profile loadable
+function entitled(item){ return WEB_LICENSE === 'all' || item.tier === 'free'; }
+function cameraState(c){ return entitled(c) ? 'avail' : 'lock'; }
 function proHint(){
   toast('PRO content · the full library is in the Pro APK — GET PRO in ⚙ Settings');
 }
@@ -705,19 +737,53 @@ function stateChip(st){
 /* ---------- film shelf: category tabs + brand caption groups ----------
    Built from profiles only, so it scales to dozens of expansion packs later. */
 let filmCatOn = 'all';
+/* ---------- camera bag: experience routes, not a flat list ----------
+    A bag of bodies is organised by how it is used, and every item states its own
+    operation — focal length, aperture, focusing system, exposure system, the gate the
+    film prints at and how many frames that gate holds. Profiles drive it all, so a
+    future camera pack only needs a profile. */
+const BAG_ROUTES = [
+  ['everyday', 'EVERYDAY COMPACT'], ['rangefinder', 'POCKET RANGEFINDER'],
+  ['mechanical', 'MECHANICAL CLASSIC'], ['premium', 'PREMIUM COMPACT'], ['medium', 'MEDIUM FORMAT'],
+];
+function lensLine(c){
+  return c.lens.focal_mm ? `${c.lens.focal_mm}mm ${c.lens.aperture}` : String(c.lens.aperture);
+}
+function gateLine(c){
+  const g = c.gate;
+  return g ? `${g.film} · ${g.short_mm}×${g.long_mm}mm · ${c.frames} frames`
+    : `135 film · ${c.frames} frames`;
+}
 function buildLists(){
   const cl = $('camList'); cl.innerHTML = '';
-  state.cameras.forEach(c => {
-    const st = (c.tier === 'pro' || c.tier === 'expansion') ? 'lock' : 'avail';
-    const el = document.createElement('div');
-    el.className = 'item' + (state.cam?.id === c.id ? ' active' : '') + (st === 'lock' ? ' locked' : '');
-    el.innerHTML = `<div class="txt"><div class="t">${esc(c.brand)} ${esc(c.model)}${st === 'lock' ? ' <span class="protag">PRO</span>' : ''}</div><div class="d">${c.year} · ${c.lens.focal_mm}mm ${c.lens.aperture} · ${esc(c.vibe)}</div></div>${stateChip(st)}`;
-    el.onclick = () => {
-      if (st === 'lock'){ proHint(); return; }
-      loadCamera(c); buildLists(); $('cameraBagModal').classList.remove('open');
-    };
-    cl.appendChild(el);
+  BAG_ROUTES.forEach(([route, label]) => {
+    const inRoute = state.cameras.filter(c => c.route === route);
+    if (!inRoute.length) return;
+    const cap = document.createElement('div');
+    cap.className = 'brandcap'; cap.textContent = label;
+    cl.appendChild(cap);
+    inRoute.forEach(c => {
+      const st = cameraState(c);
+      const el = document.createElement('div');
+      el.className = 'item' + (state.cam?.id === c.id ? ' active' : '') + (st === 'lock' ? ' locked' : '');
+      // the PRO tag marks catalog tier, not availability — same discipline as the film shelf
+      const proTag = c.tier !== 'free' ? ' <span class="protag">PRO</span>' : '';
+      el.innerHTML = `<div class="txt"><div class="t">${esc(c.brand)} ${esc(c.model)}${proTag}</div>`
+        + `<div class="d">${c.year} · ${lensLine(c)} · ${esc(c.vibe)}</div>`
+        + `<div class="d op">${esc(c.focus_system)} · ${esc(c.exposure_system)} · ${gateLine(c)}</div></div>${stateChip(st)}`;
+      el.onclick = () => {
+        if (st === 'lock'){ proHint(); return; }
+        // a body that holds a different roll refuses the swap until the roll is resolved
+        if (!loadCamera(c)) return;
+        buildLists(); $('cameraBagModal').classList.remove('open');
+      };
+      cl.appendChild(el);
+    });
   });
+  const bagGate = $('bagGate');
+  if (bagGate) bagGate.textContent = WEB_LICENSE === 'all'
+    ? 'test build · every finished body is open here so its operation can be tried. the released web keeps the free five; PRO bodies unlock in the Pro APK.'
+    : '';
   buildFilmList();
 }
 function buildFilmList(){
@@ -869,7 +935,7 @@ async function openFilmPreview(f){
       ? 'historical stock · its original lab process no longer exists, so this is an approximation — open here for testing'
       : f.tier !== 'free'
       ? 'test build: open here so the science can be checked · in the released web this stock unlocks in the Pro APK'
-      : 'loads a fresh 36-frame roll · swapping bodies never resets it';
+      : `loads a fresh roll in this body · ${rollCapacity()} frames · swapping bodies never resets it`;
   } else if (st === 'lock'){
     btn.textContent = 'UNLOCK WITH PRO'; btn.disabled = false;
     btn.onclick = proHint;
@@ -887,7 +953,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v11';
+const BUILD = 'pocketroll-v13';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
@@ -924,19 +990,24 @@ async function boot(){
   const fil = state.films.find(f => f.id === q.get('film')) || state.films.find(f => f.id === 'gold200');
   if (q.get('date') === '1') state.opts.date = true; // test hook: force date stamp for this run
   loadCamera(cam, { quiet: true });
-  loadFilm(fil, { force: true });
   if (q.get('hud') === 'full') $('hud').classList.add('full');
   $('vfStage').addEventListener('click', () => $('hud').classList.toggle('full'));
-  renderHud();
   renderCamState();
   await loadArchives();
   /* A half-shot roll belongs in the camera, not in the archive: reopening the app puts the
      same roll back with the same frames and the same counter — the ritual survives a refresh.
      Test hooks that name gear explicitly (?cam/?film/?autoshot/?dev/?fresh) start clean so
-     checks stay deterministic. */
+     checks stay deterministic. The roll in the camera is never replaced by a fresh one: a
+     restore must not leave a second empty roll on record behind it. */
   const freshIntent = q.has('cam') || q.has('film') || q.has('autoshot') || q.has('dev') || q.has('fresh');
-  if (!freshIntent && pendingRoll) restoreCurrentRoll(pendingRoll);
-  else renderStrip();
+  if (!freshIntent && pendingRoll) {
+    restoreCurrentRoll(pendingRoll);
+    if (!state.film) applyFilm(fil); // a restored roll always names its stock on the plate
+  } else {
+    loadFilm(fil, { force: true });
+    renderStrip();
+  }
+  renderHud();
   renderArchive();
   // ask the browser to keep our data; best effort, and the result is stated in the storage note
   if (navigator.storage && navigator.storage.persist) { try { state.persisted = await navigator.storage.persist(); } catch {} }
