@@ -96,8 +96,32 @@ class FilmEngine {
     for (let i = 0; i < arr.length; i++) arr[i] = 128 + Math.round((Math.random()*2 - 1) * 90);
     return arr;
   }
+  /* The viewfinder is a display, not a print. Whatever the sensor sends is drawn FULL, at
+     its true aspect, centred inside the LCD box — never stretched to fill it, never trimmed
+     to its corner. What the box itself is shaped like comes from the body (a print gate is
+     the frame the film carries); anything that does not fit gets the dark bars a real
+     compact screen shows around a frame it cannot display. */
+  _drawContained(src, sx, sy, sw2, sh2){
+    const w = this.canvas.width, h = this.canvas.height;
+    let dw = w, dh = Math.round(w * sh2 / sw2);
+    if (dh > h){ dh = h; dw = Math.round(h * sw2 / sh2); }
+    const dx = Math.round((w - dw) / 2), dy = Math.round((h - dh) / 2);
+    this.ctx.fillStyle = '#0d0b09'; this.ctx.fillRect(0, 0, w, h);
+    this.ctx.drawImage(src, sx, sy, sw2, sh2, dx, dy, dw, dh);
+    // remember the bars so the effects pass cannot grain, bloom or vignette them: film grain
+    // lives on the emulsion, not on the bezel of the screen
+    this.bars = (dw < w || dh < h) ? { w, h, dw, dh, dx, dy } : null;
+  }
+  _repaintBars(){
+    const b = this.bars; if (!b) return;
+    this.ctx.fillStyle = '#0d0b09';
+    this.ctx.fillRect(0, 0, b.w, b.dy);
+    this.ctx.fillRect(0, b.dy + b.dh, b.w, b.h - b.dy - b.dh);
+    this.ctx.fillRect(0, b.dy, b.dx, b.dh);
+    this.ctx.fillRect(b.dx + b.dw, b.dy, b.w - b.dx - b.dw, b.dh);
+  }
   process(src, srcW, srcH, opts){
-    if (!this.film) { this.ctx.drawImage(src, 0, 0, srcW, srcH); return; }
+    if (!this.film) { this._drawContained(src, 0, 0, srcW, srcH); return; }
     const p = this.film.filter_params;
     const cast = (this.cam && CAMERA_CAST[this.cam.id]) || { gain:[1,1,1] };
     // on-camera electronic flash at the moment of capture: brightens & slightly cools
@@ -120,7 +144,7 @@ class FilmEngine {
     // lens stays soft at export size while sharp primes (T*, GR) never blur
     const blur = (1 - (this.cam?.camera_character?.sharpness ?? 1)) * (2.0 + w / 420);
     this.ctx.filter = blur > 0.35 ? `blur(${blur.toFixed(1)}px)` : 'none';
-    this.ctx.drawImage(src, sx, sy, sw2, sh2, 0, 0, w, h);
+    this._drawContained(src, sx, sy, sw2, sh2);
     this.ctx.filter = 'none';
 
     // pixel pass — full film pipeline:
@@ -251,6 +275,8 @@ class FilmEngine {
       this.ctx.globalCompositeOperation = 'screen'; this.ctx.fillStyle = grd; this.ctx.fillRect(0,0,w,h);
       this.ctx.globalCompositeOperation = 'source-over';
     }
+    // the LCD bars are the display, not the film: put them back pure black after every pass
+    this._repaintBars();
   }
 }
 
@@ -351,25 +377,24 @@ function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
 let vfAspect = 0;
 function renderViewfinder(){
-  // show the FULL frame, never crop or squash: canvas matches source aspect,
-  // and the stage's aspect follows the sensor so the LCD reads edge-to-edge
+  // The finder box is the BODY's frame, not the sensor's: a gate body shows the shape it
+  // prints (6×7 / 6×4.5 at real ratio), a 135 compact keeps a compact LCD box (~4:3). The
+  // sensor feed is then drawn COMPLETE inside that box by the engine — centred at its true
+  // aspect, never stretched to fill it, never trimmed to its corner. A phone sensor held
+  // portrait therefore gets the dark bars a real compact screen shows around a frame it
+  // cannot display, and the page never grows taller than the layout can hold.
   const src = usingDemo ? demoCanvas : (video && video.videoWidth ? video : null);
   if (!src) return;
   const sw = src.width || video.videoWidth;
   const sh = src.height || video.videoHeight;
   if (!sw || !sh) return;
   const gate = state.cam?.gate?.aspect;   // what this body prints, when it prints at all
-  const ar = gate || sw / sh;
-  // follow the sensor aspect, clamped to a sane LCD box (real compact LCDs ~4:3). A body with
-  // a print gate is different: the finder shows the gate itself — what the film will print —
-  // so a 6×4.5 or 6×7 frame is drawn at its real shape, not trimmed to a compact's box.
-  // object-fit:contain keeps the FULL frame inside — never crop, never squash
-  const clamped = gate ? Math.min(1.6, Math.max(0.7, gate)) : Math.min(1.34, Math.max(0.72, ar));
-  if (Math.abs(vfAspect - clamped) > 0.005){
-    vfAspect = clamped;
-    $('vfStage').style.aspectRatio = String(clamped);
+  const box = gate ? Math.min(1.6, Math.max(0.7, gate)) : 1.333;
+  if (Math.abs(vfAspect - box) > 0.005){
+    vfAspect = box;
+    $('vfStage').style.aspectRatio = String(box);
   }
-  const cw = previewW, ch = Math.max(2, Math.round(previewW / ar));
+  const cw = previewW, ch = Math.max(2, Math.round(previewW / box));
   if (vf.width !== cw || vf.height !== ch){ vf.width = cw; vf.height = ch; }
   engine.process(src, sw, sh);
 }
@@ -440,7 +465,11 @@ async function importPhoto(file){
    is developed — the ritual the user asked for; tapping a latent frame only gives
    a brief preview pulse, never a full reveal. */
 function renderStrip(){
-  const g = $('stripFrames'); g.innerHTML = '';
+  const g = $('stripFrames');
+  // A spool pulled out of the opened door stays out until a new one is threaded; rendering
+  // the strip is the moment the chamber changes, so transient motion ends here — otherwise a
+  // pulled strip keeps its transform and every later roll sits off the strip forever.
+  g.classList.remove('advance', 'slidein', 'pullout'); g.innerHTML = '';
   // the strip shows the roll this body holds: 36 cells on a 135 camera, 8 on a 6×7.
   for (let i = 0, n = rollCapacity(); i < n; i++){
     const el = document.createElement('div');
@@ -856,7 +885,7 @@ function renderParamBars(f){
   ];
   $('pvBars').innerHTML = bars.map(([k, v]) => {
     const n = Math.round(clamp01(v) * 100);
-    return `<div class="pvbar"><span>${k}</span><span class="track"><i style="width:${n}%"></i></span><span>${n}</span></div>`;
+    return `<div class="pvbar"><span class="lbl">${k}</span><span class="track"><i style="width:${n}%"></i></span><span class="val">${n}</span></div>`;
   }).join('');
 }
 async function renderSamples(f){
@@ -953,7 +982,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v14';
+const BUILD = 'pocketroll-v15';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW

@@ -153,6 +153,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .frame.preview{background-size:cover;background-position:center;box-shadow:0 0 14px rgba(255,140,60,.25)}
 .frame.reveal{animation:reveal .5s both}
 @keyframes reveal{from{filter:brightness(.35) sepia(.5)}to{filter:none}}
+/* Strip motion is animation, not state. Threading and advancing are transient; pulling the
+   spool out stays out — an opened chamber holds nothing — until renderStrip() rebuilds the
+   chamber and ends every transform, so the next roll always sits ON the strip. */
 .frames.advance{animation:adv .28s}
 @keyframes adv{from{transform:translateX(-14px)}to{transform:none}}
 .frames.slidein{animation:slide .7s}
@@ -229,10 +232,16 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .pvimg{width:100%;display:block}
 .pvcap{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.12em;color:#8a8072;padding:5px 8px}
 .pvstory{font-size:11px;color:#5a5147;line-height:1.5;margin:10px 0}
-.pvbar{display:flex;align-items:center;gap:8px;font-family:'PC Mono',ui-monospace,monospace;font-size:9px;
+/* film preview meters: every bar starts on the SAME vertical line. The label column has a
+   fixed width — otherwise a long label (SATURATION) pushes its track right and the four
+   meters read as a ragged column, not a parameter panel. */
+.pvbar{display:grid;grid-template-columns:82px 1fr 34px;align-items:center;gap:8px;
+  font-family:'PC Mono',ui-monospace,monospace;font-size:9px;
   letter-spacing:.1em;color:var(--sub);margin-top:5px}
-.pvbar .track{flex:1;height:5px;background:#c9bda6;border-radius:3px;overflow:hidden}
+.pvbar .track{height:5px;background:#c9bda6;border-radius:3px;overflow:hidden}
+.pvbar .lbl{white-space:nowrap}
 .pvbar .track i{display:block;height:100%;background:var(--red)}
+.pvbar .val{text-align:right}
 /* landscape screens (rotated phones, tablets, desktops): split layout —
    finder + shutter on the left (thumb zone under the finder),
    status/roll/develop in a right column */

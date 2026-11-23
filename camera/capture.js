@@ -40,7 +40,7 @@ function stampDate(ctx, w, h){
   ctx.fillText(txt, w - tw - w * 0.035, h - h * 0.045);
   ctx.shadowBlur = 0;
 }
-function capture(){
+function capture(opts){
   if (!state.film){ toast('load a film first'); return; }
   if (!state.rollId){ toast('no roll in the camera · load a film'); return; }
   if (state.shotsLeft <= 0){ toast('roll finished · develop it'); return; }
@@ -63,7 +63,10 @@ function capture(){
     : usingDemo ? 960 : Math.round(w * (video.videoHeight / (video.videoWidth || 1)));
   cap.width = w; cap.height = h;
   const tmp = new FilmEngine(cap); tmp.setCombo(state.cam, state.film);
-  tmp.process(usingDemo ? demoCanvas : video, usingDemo ? demoCanvas.width : video.videoWidth, usingDemo ? demoCanvas.height : video.videoHeight, { flash: flashShot });
+  // a lens analysis may ask for the frame WITHOUT the chamber's quirk overlays: an LC-A light
+  // leak seeps in from one edge and would read as a lighter vignette. The UI never asks — a
+  // real exposure keeps its leaks, which is the whole point of the quirk.
+  tmp.process(usingDemo ? demoCanvas : video, usingDemo ? demoCanvas.width : video.videoWidth, usingDemo ? demoCanvas.height : video.videoHeight, { flash: flashShot, noLeak: !!(opts && opts.noLeak) });
   const cctx = cap.getContext('2d');
   rollLeak(cctx, w, h);            // per-frame chance, tuned by film stock + body
   if (state.opts.date) stampDate(cctx, w, h);
