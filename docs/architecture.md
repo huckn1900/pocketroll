@@ -15,21 +15,46 @@ The free demo is the storefront: it demonstrates the ritual and locks the rest o
 
 **Platform boundary:** the $6.99 Patreon APK plan covers **Android only** today. iOS needs its own distribution/payment design matching Apple store rules (likely standard IAP, separate price tier) — deferred, do not block Android.
 
-## Module architecture (target shape)
+## Module architecture
+
+**Conceptual shape (unchanged):** App owns CameraEngine · FilmEngine · Gallery · RollManager;
+Licensing owns LicenseManager · PurchaseVerification · PackEntitlements; Content is profile
+files only — engines never hardcode content. Adding a film = adding a Film Profile; adding a
+pack = adding pack files + entitlement info. Core stays stable.
+
+**Implemented file layout (Round⑯, stage 1 — storage, roll and camera extraction):**
 
 ```
-POCKETROLL 35 APP
-├── App/            CameraEngine (lens sim, exposure, live view, shutter)
-│                 FilmEngine   (color science, grain, light leaks, curves)
-│                 Gallery      (photo storage, developed rolls)
-│                 RollManager  (36-frame roll lifecycle, develop ritual)
-├── Licensing/      LicenseManager · PurchaseVerification · PackEntitlements
-└── Content/        Free/{FilmProfiles,CameraProfiles}
-                  Pro/{FilmProfiles,CameraProfiles}
-                  ExpansionPacks/{FilmPack01,…,CameraPack01,…}
+pocketroll/
+├── index.html          loads plain scripts in order: storage → film → camera → app.js
+├── app.js              FilmEngine, profiles/casts, app state, every renderer, boot & wiring
+├── storage/
+│   ├── database.js     IndexedDB v2 (rolls + scans), openDB/getAll/put/delete, storage estimate
+│   ├── current-roll.js the roll in the camera: identity, record, save/drop/restore, scan save
+│   ├── archive.js      developed rolls, legacy migration, thumbs, whole-roll zip export
+│   └── backup.js       schemaVersion 2 payload, validation, restore plan, merge + rollback
+├── film/
+│   ├── roll-manager.js applying stock, threading a new roll, the lifecycle gate
+│   └── development.js  back door, the one-tank develop run, bell, contact sheet
+├── camera/
+│   ├── camera-manager.js sensor lifecycle, demo fallback, body swap, background pause/resume
+│   └── capture.js      the moment of exposure: frame, leak, date stamp, thumbnail, roll record
+├── assets/             cameras.json · films.json · samples · fonts
+├── sw.js               shell pre-cache + network-first for code
+└── licensing/          (Pro APK stage) license-manager.js · entitlement-manager.js
 ```
 
-Engines never hardcode content — they read profile files. Adding a film = adding a Film Profile; adding a pack = adding pack files + entitlement info. Core stays stable.
+Rules that keep the split honest:
+- Plain scripts sharing one global scope, no bundler — the web demo ships as files, and the
+  service worker serves code network-first. `index.html` loads storage → film → camera → app;
+  nothing runs at load time, only at `boot()`, so load order is readability, not a dependency.
+- `app.js` owns the engine, the state object and every renderer; modules own device and data
+  behaviour and call renderers by name. A module never writes DOM copy — that is UI.
+- Anything that exists only at the shutter lives in `camera/capture.js`; anything that changes
+  what is on record lives in `storage/`.
+- Stage 2 (when Pro/licensing lands): `app/state.js`, `app/ui/*`, `film/film-preview.js`
+  (the swap gate choices), `film/scan.js` (the lab-scan path), `licensing/*`. Extracting on
+  demand beats a big-bang rewrite: the regression suite stays green at every step.
 
 ## Content entitlement contract
 

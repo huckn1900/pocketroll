@@ -263,8 +263,12 @@ const state = { cameras: [], films: [], cam: null, film: null, shotsLeft: 36, fr
   rollId: null, developed: false, rolls: [], battery: 92, opts: loadOpts(), sheet: null, persisted: false };
 const vf = $('viewfinder');
 const engine = new FilmEngine(vf);
-let video = null, demoCanvas = null, usingDemo = false;
-let stream = null, camPaused = false, isDeveloping = false, pendingFilm = null, pendingBackup = null;
+/* The modules below are loaded as plain scripts before this file and share one global
+   scope: storage/database + current-roll + archive + backup, film/roll-manager +
+   development, camera/camera-manager + capture. app.js owns the engine, the state object
+   and every renderer — the modules own device and data behaviour. `pendingFilm` is the
+   preview's pending choice, `pendingBackup` lives in storage/backup.js. */
+let pendingFilm = null;
 
 function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); }
 
@@ -316,62 +320,7 @@ function renderRollPage(){
   $('developMain').disabled = isDeveloping;
 }
 
-function demoScene(){
-  // procedural fallback scene so filters can be tested without camera permission
-  const c = document.createElement('canvas'); c.width = 1280; c.height = 960;
-  const ctx = c.getContext('2d');
-  const sky = ctx.createLinearGradient(0,0,0,600);
-  sky.addColorStop(0,'#b8d4e8'); sky.addColorStop(1,'#f6e2c8');
-  ctx.fillStyle = sky; ctx.fillRect(0,0,1280,600);
-  ctx.fillStyle = '#ffd9a0'; ctx.beginPath(); ctx.arc(980,240,70,0,7); ctx.fill();
-  ctx.fillStyle = '#31424d';
-  for (let i=0;i<9;i++){ const x=i*150+20, hgt=120+Math.random()*260; ctx.fillRect(x,600-hgt,90,hgt); }
-  ctx.fillStyle = '#20262e'; ctx.fillRect(0,600,1280,360);
-  ctx.fillStyle = '#55616a'; ctx.fillRect(0,600,1280,8);
-  // a bright highlight to show halation
-  ctx.fillStyle = '#fff2d8'; ctx.beginPath(); ctx.arc(300,540,26,0,7); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(60,700,120,18);
-  return c;
-}
-
-/* Camera plumbing: the feed is a device resource, not a page element. Tracks are released
-   when we switch sensors or the browser interrupts them; play() is awaited so the finder
-   never shows a black panel that was promised but not started; the preview sleeps while
-   the page sits in the background, because a live sensor burning battery nobody asked for
-   is a bug on a phone, not a feature. */
-function stopStream(){ if (!stream) return; for (const t of stream.getTracks()) t.stop(); stream = null; }
-async function initCamera(){
-  stopStream();
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    usingDemo = true; renderCamState(); toast('this browser has no camera · demo scene stands in'); return;
-  }
-  const rear = state.opts.facing !== 'user';
-  try{
-    // ask the sensor for its native resolution so exports are full-pixel, not 640×480
-    const ideal = rear ? { width: { ideal: 1920 }, height: { ideal: 1080 } } : { width: { ideal: 1280 }, height: { ideal: 960 } };
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: rear ? 'environment' : 'user', ...ideal }, audio: false });
-    if (!video){ video = document.createElement('video'); video.playsInline = true; video.muted = true; }
-    video.srcObject = stream;
-    for (const t of stream.getTracks()) t.onended = () => {
-      if (camPaused || !stream) return; // an intentional stop is not an interruption
-      usingDemo = true; renderCamState(); toast('camera interrupted · retrying'); setTimeout(initCamera, 800);
-    };
-    await video.play();
-    usingDemo = false;
-    renderCamState();
-  }catch(e){
-    stopStream();
-    usingDemo = true; renderCamState();
-    toast('camera blocked · demo scene stands in. allow camera access, then SETTINGS → RETRY CAMERA');
-  }
-}
-function renderCamState(){
-  const el = $('camState'); if (!el) return;
-  el.textContent = camPaused ? 'camera: resting · sensor released while the page is in the background'
-    : usingDemo ? 'camera: blocked · demo scene'
-    : 'camera: live feed · ' + (state.opts.facing === 'user' ? 'front sensor' : 'rear sensor');
-  const flip = $('optCamFlip'); if (flip) flip.classList.toggle('on', state.opts.facing === 'user');
-}
+/* sleep is a shared util: the developer phases and the preview both wait on it. */
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
 let vfAspect = 0;
@@ -426,48 +375,8 @@ function shutterSound(){
   } catch(e){ /* silent on browsers without WebAudio */ }
 }
 
-/* ---------- capture ---------- */
-function thumbFromCanvas(src){
-  // thumbnail made at the moment of exposure, from the frame we already have on canvas —
-  // the roll record carries it so restoring a half-shot roll never re-decodes 20 photos
-  const w = Math.min(320, src.width);
-  const c = document.createElement('canvas'); c.width = w; c.height = Math.round(w * src.height / src.width);
-  c.getContext('2d').drawImage(src, 0, 0, w, c.height);
-  return c.toDataURL('image/jpeg', 0.75);
-}
-function capture(){
-  if (!state.film){ toast('load a film first'); return; }
-  if (!state.rollId){ toast('no roll in the camera · load a film'); return; }
-  if (state.shotsLeft <= 0){ toast('roll finished · develop it'); return; }
-  shutterSound();
-  // focus box snaps to locked for a moment; battery sips down (flash shots draw more)
-  const focus = $('hudFocus');
-  focus.classList.add('lock'); setTimeout(() => focus.classList.remove('lock'), 350);
-  const flashShot = state.opts.flash && CAMERA_HUD[state.cam?.id]?.flash === 'on';
-  state.battery = Math.max(4, state.battery - (flashShot ? 2 : 1));
-  renderHud();
-  const cap = document.createElement('canvas');
-  // export at the stream's native pixel size (cap guards 4K+ streams from huge pixel loops)
-  const w = usingDemo ? 1280 : Math.min(2560, video.videoWidth || 1280);
-  const h = usingDemo ? 960 : Math.round(w * (video.videoHeight / (video.videoWidth || 1)));
-  cap.width = w; cap.height = h;
-  const tmp = new FilmEngine(cap); tmp.setCombo(state.cam, state.film);
-  tmp.process(usingDemo ? demoCanvas : video, usingDemo ? demoCanvas.width : video.videoWidth, usingDemo ? demoCanvas.height : video.videoHeight, { flash: flashShot });
-  const cctx = cap.getContext('2d');
-  rollLeak(cctx, w, h);            // per-frame chance, tuned by film stock + body
-  if (state.opts.date) stampDate(cctx, w, h);
-  const url = cap.toDataURL('image/jpeg', 0.95); // export quality: full-res, never silently compressed
-  state.frames.push({ url, t: thumbFromCanvas(cap), brand: state.film.brand, iso: state.film.iso });
-  state.shotsLeft--;
-  renderCounter();
-  renderStrip();
-  const g = $('stripFrames'); g.classList.remove('advance'); void g.offsetWidth; g.classList.add('advance'); // film-advance tick
-  scrollStripToLast();
-  renderRollPage();
-  saveCurrentRoll(); // the exposure is written down as it happens — refresh loses nothing
-  renderArchive();   // the shelf answers "what do I have" at any moment, not on reopen
-  if (state.shotsLeft === 0) toast('frame 36 exposed · ready to DEVELOP');
-}
+/* The shutter itself lives in camera/capture.js: the frame, the leak, the stamp, the
+   thumbnail and the roll record it writes. What stays here is the lab scan path. */
 /* develop an imported photo through the loaded film — treated as a lab-developed
    scan (does not consume a frame from the roll; the roll counter stays honest). */
 async function importPhoto(file){
@@ -548,307 +457,15 @@ function download(url, n){
 }
 /* light leak: 1–2 warm red/orange seeps drawn only at exposure (never in the
    live finder — leaks happen when light sneaks past the door seal between frames) */
-function rollLeak(ctx, w, h){
-  const film = state.film;
-  const prob = ((film?.leak_prob) ?? 0.12) * (CAMERA_LEAK[state.cam?.id] || 1);
-  if (Math.random() > prob) return;
-  const s = film?.leak_strength ?? 0.5;
-  ctx.globalCompositeOperation = 'lighter';
-  for (let k = 0; k < 1 + Math.floor(Math.random() * 2); k++){
-    const x = Math.random() * w, y = Math.random() * h;
-    const r = (0.25 + Math.random() * 0.5) * w;
-    const hue = Math.random() < 0.55 ? '255,84,28' : '255,150,52';
-    const grd = ctx.createRadialGradient(x, y, r * 0.08, x, y, r);
-    grd.addColorStop(0, `rgba(${hue},${(0.38 * s).toFixed(2)})`);
-    grd.addColorStop(1, 'rgba(255,120,40,0)');
-    ctx.fillStyle = grd; ctx.fillRect(0, 0, w, h);
-  }
-  ctx.globalCompositeOperation = 'source-over';
-}
-/* date stamp: retro orange LCD-back print, e.g. "26 11 '26" bottom-right */
-function stampDate(ctx, w, h){
-  const d = new Date();
-  const txt = `${String(d.getDate()).padStart(2, '0')} ${String(d.getMonth() + 1).padStart(2, '0')} '${String(d.getFullYear()).slice(2)}`;
-  ctx.font = `bold ${Math.round(w * 0.024)}px ui-monospace, monospace`;
-  const tw = ctx.measureText(txt).width;
-  ctx.shadowColor = 'rgba(255,120,40,.75)'; ctx.shadowBlur = w * 0.006;
-  ctx.fillStyle = 'rgba(255,138,61,.92)';
-  ctx.fillText(txt, w - tw - w * 0.035, h - h * 0.045);
-  ctx.shadowBlur = 0;
-}
-/* contact sheet: lab-style proof sheet of the developed roll — film base with
-   sprocket holes, edge printing, frames in a grid with orange frame numbers */
-async function buildSheet(urls){
-  const imgs = [];
-  for (const u of urls){
-    const im = new Image(); im.src = u;
-    try { await im.decode(); imgs.push(im); } catch { /* skip unreadable frame */ }
-  }
-  if (!imgs.length) return null;
-  // the sheet follows the film: portrait phone frames get portrait cells —
-  // frames are never squashed into a wrong aspect ratio.
-  const ar = Math.min(1.6, Math.max(0.5, imgs[0].naturalWidth / imgs[0].naturalHeight));
-  const cols = 3;
-  const cw = ar >= 1 ? 320 : 244;
-  const ch = Math.round(cw / ar);
-  const gap = 12, edge = 36, bandTop = 56, bandBot = 42;
-  const rows = Math.ceil(imgs.length / cols);
-  const c = document.createElement('canvas');
-  c.width = edge * 2 + cols * cw + gap * (cols - 1);
-  c.height = bandTop + rows * (ch + gap) + bandBot;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#17110c'; ctx.fillRect(0, 0, c.width, c.height); // film base
-  // clean label strip on top: type only — sprocket holes live in the bottom band,
-  // so the print never collides with them.
-  try { await document.fonts.load('bold 15px "PC Mono"'); } catch {}
-  const f = state.film;
-  const filmLabel = f ? f.brand + ' ' + f.name + (String(f.name).includes(String(f.iso)) ? '' : ' ' + f.iso) : 'CONTACT PRINT';
-  ctx.fillStyle = '#c9a45a'; ctx.font = 'bold 15px "PC Mono", ui-monospace, monospace';
-  if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
-  ctx.fillText(`POCKETROLL LAB · ${filmLabel.toUpperCase()}`, edge, 34);
-  const meta = `${(state.cam?.model || 'SCAN').toUpperCase()} · ${imgs.length} FRAMES`;
-  ctx.font = '12px "PC Mono", ui-monospace, monospace';
-  ctx.fillStyle = '#9a8a6e';
-  ctx.fillText(meta, c.width - edge - ctx.measureText(meta).width, 34);
-  ctx.fillStyle = '#3b332a'; ctx.fillRect(edge, bandTop - 8, c.width - edge * 2, 1);
-  imgs.forEach((im, i) => {
-    const x = edge + (i % cols) * (cw + gap), y = bandTop + Math.floor(i / cols) * (ch + gap);
-    ctx.fillStyle = '#000'; ctx.fillRect(x - 2, y - 2, cw + 4, ch + 4);
-    ctx.drawImage(im, x, y, cw, ch);
-    // frame number rides inside the print, like a lab border marking
-    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.85)'; ctx.shadowBlur = 5;
-    ctx.fillStyle = '#ff8a3d'; ctx.font = 'bold 13px "PC Mono", ui-monospace, monospace';
-    ctx.fillText(String(i + 1).padStart(2, '0'), x + 7, y + 18);
-    ctx.restore();
-  });
-  // film-base edge: sprocket holes + tiny print along the bottom
-  ctx.fillStyle = '#c9bda6';
-  for (let x = edge; x < c.width - edge - 22; x += 52) ctx.fillRect(x, c.height - bandBot + 8, 22, 13);
-  ctx.fillStyle = '#8d8171'; ctx.font = '10px "PC Mono", ui-monospace, monospace';
-  ctx.fillText(`POCKETROLL 35 · ${imgs.length} FRAMES DEVELOPED`, edge, c.height - 10);
-  return c.toDataURL('image/jpeg', 0.92);
-}
-function backDoor(){
-  if (isDeveloping){ toast('the roll is in the developer · wait for it to come out'); return; }
-  // opening the door takes the spool out of the camera for good: the roll record goes with
-  // it, so reopening POCKETROLL shows an empty camera, not a phantom half-shot roll.
-  const fogged = state.frames.length && !state.developed;
-  state.frames = []; state.developed = false; state.sheet = null; state.shotsLeft = 0;
-  dropCurrentRoll();
-  renderCounter(); renderStrip(); renderRollPage(); renderArchive();
-  $('rollStatus').textContent = fogged ? 'door opened · exposed frames fogged' : 'empty spool out · load a fresh roll';
-  $('developRoll').style.display = 'none'; $('sheetBtn').style.display = 'none';
-  toast(fogged ? 'oops — light fogged the undeveloped roll' : 'empty spool out');
-  const g = $('stripFrames'); g.classList.remove('pullout'); void g.offsetWidth; g.classList.add('pullout'); // spool pulls out of the opened door
-  if (navigator.vibrate) navigator.vibrate([30, 80, 30, 80, 30]); // motor-sputter
-}
-/* The developer is one tank: tapping DEVELOP twice while a roll is in it would pour the
-   same roll into the fixer twice — two archive records, two contact sheets. Nothing comes
-   out half-developed either: if a step throws, the roll stays latent and can be run again. */
-async function developRoll(){
-  if (isDeveloping){ toast('this roll is already in the developer'); return; }
-  if (!state.frames.length){ toast('no exposed frames to develop'); return; }
-  if (state.developed){ toast('this roll is already developed'); return; }
-  if (!state.rollId){ toast('no roll in the camera · load a film'); return; }
-  isDeveloping = true;
-  renderRollPage(); // related operations go disabled while the tank is running
-  const mask = $('devMask'), step = $('devStep'), bar = $('devBar');
-  mask.classList.add('on');
-  try {
-    const phases = [['in developer · 68°F', 30], ['stop bath', 55], ['fixer', 80], ['wash · drying', 100]];
-    for (const [label, pct] of phases){ step.textContent = label; bar.style.width = pct + '%'; await sleep(950); }
-    mask.classList.remove('on'); bar.style.width = '0';
-    state.developed = true;
-    renderStrip();
-    [...$('stripFrames').children].forEach((el, idx) => {
-      if (el.className.includes('developed')){ el.style.animationDelay = (idx * 0.045) + 's'; el.classList.add('reveal'); }
-    });
-    renderRollPage(); // the develop action disappears the moment the photos appear
-    ding();
-    toast('roll developed · tap frames to print');
-    // quiet wrap-up: archive shelf + lab contact sheet land a few seconds later
-    await archiveRoll();
-    const sheet = await buildSheet(state.frames.map(f => f.url));
-    if (sheet) state.sheet = sheet;
-    renderRollPage();
-    toast('archived · contact sheet ready');
-  } catch(e){
-    state.developed = false; // never a half-developed roll: frames stay latent, retry works
-    mask.classList.remove('on'); bar.style.width = '0';
-    renderStrip(); renderRollPage();
-    toast('developer jammed · frames kept · try DEVELOP again');
-  } finally {
-    isDeveloping = false;
-    renderRollPage();
-  }
-}
-function ding(){ // darkroom timer bell when the roll comes out of the fixer
-  try{
-    const ac = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ac.createOscillator(); const g = ac.createGain();
-    o.type = 'sine'; o.frequency.value = 880;
-    g.gain.setValueAtTime(0.12, ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.5);
-    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.5);
-    setTimeout(() => ac.close(), 650);
-  } catch(e){ /* silent */ }
-}
-/* ---------- darkroom archive (IndexedDB shelf: full-res frames + roll records) ---------- */
-/* ---------- darkroom archive (IndexedDB shelf: full-res frames + roll records) ----------
-   IndexedDB is the real store; localStorage only holds settings and the legacy shelf being
-   migrated once. If IDB is unavailable the app says so plainly instead of pretending the
-   photos are safe, and asks for a backup export. */
-const ARCHIVE_KEY = 'pocketroll-archive-v1'; // legacy shelf: migrated into IDB once
-const DB_NAME = 'pocketroll-db', DB_STORE = 'rolls', SCAN_STORE = 'scans';
-let db = null, storageBroken = false, pendingRoll = null;
-function openDB(){
-  return new Promise((res, rej) => {
-    if (!('indexedDB' in window)) { rej(new Error('no indexedDB')); return; }
-    const rq = indexedDB.open(DB_NAME, 2);
-    rq.onupgradeneeded = () => {
-      const d = rq.result; // v2 adds the scan shelf; existing rolls are untouched
-      if (!d.objectStoreNames.contains(DB_STORE)) d.createObjectStore(DB_STORE, { keyPath: 'id' });
-      if (!d.objectStoreNames.contains(SCAN_STORE)) d.createObjectStore(SCAN_STORE, { keyPath: 'id' });
-    };
-    rq.onerror = () => rej(rq.error || new Error('db open failed'));
-    rq.onsuccess = () => res(rq.result);
-  });
-}
-function idbGetAll(store){
-  return new Promise((res, rej) => {
-    const rq = db.transaction(store, 'readonly').objectStore(store).getAll();
-    rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error);
-  });
-}
-function idbPut(rec, store){
-  return new Promise((res, rej) => {
-    const rq = db.transaction(store || DB_STORE, 'readwrite').objectStore(store || DB_STORE).put(rec);
-    rq.onsuccess = () => res(true); rq.onerror = () => rej(rq.error);
-  });
-}
-function idbDelete(key){
-  return new Promise((res, rej) => {
-    const rq = db.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).delete(key);
-    rq.onsuccess = () => res(true); rq.onerror = () => rej(rq.error);
-  });
-}
-/* ---------- the roll sitting in the camera ----------
-   An undeveloped roll is data, not scratch state: it is written down when loaded and on
-   every exposure, so closing the page never costs a photo the user already took. */
-function newRollId(){ return 'roll-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7); }
-function rollInCamera(){ return !!state.rollId && state.frames.length > 0 && !state.developed; }
-function rollRecord(){
-  return { id: state.rollId, status: 'shooting', developed: false,
-    camId: state.cam?.id || '', cam: state.cam ? `${state.cam.brand} ${state.cam.model}` : 'unknown body',
-    filmId: state.film?.id || '', film: state.film ? `${state.film.brand} ${state.film.name}` : 'unknown stock',
-    iso: state.film?.iso || null, shotsLeft: state.shotsLeft, loadedAt: state.loadedAt || Date.now(),
-    frames: state.frames.map(f => ({ u: f.url, t: f.t || f.url, fav: false })) };
-}
-async function saveCurrentRoll(){
-  if (!db || !state.rollId) return;
-  try { await idbPut(rollRecord()); }
-  catch { toast('could not save this roll · export a backup from GALLERY to keep it'); }
-}
-async function dropCurrentRoll(){
-  const id = state.rollId; state.rollId = null;
-  if (db && id){ try { await idbDelete(id); } catch {} }
-}
-async function saveScan(s){
-  if (!db) return;
-  try { await idbPut(s, SCAN_STORE); }
-  catch { toast('could not save the scan · export a backup from GALLERY'); }
-}
-function restoreCurrentRoll(rec){
-  const f = state.films.find(x => x.id === rec.filmId);
-  const c = state.cameras.find(x => x.id === rec.camId);
-  if (f) applyFilm(f);
-  if (c) loadCamera(c, { quiet: true });
-  state.rollId = rec.id; state.loadedAt = rec.loadedAt || Date.now();
-  state.frames = (rec.frames || []).map(fr => ({ url: fr.u, t: fr.t || fr.u }));
-  state.shotsLeft = Math.max(0, Math.min(36, Number(rec.shotsLeft) || 0));
-  state.developed = false; state.sheet = null;
-  renderCounter(); renderStrip(); renderRollPage();
-  if (state.frames.length) toast(`picked up where you left off · ${state.frames.length} frames still latent`);
-}
+/* Exposure-time prints (light leak, date stamp) live in camera/capture.js; the darkroom run
+   (back door, develop tank, bell, contact sheet) lives in film/development.js. Both are
+   plain scripts in the same global scope, so the UI calls them by name as before. */
+/* ---------- darkroom shelf UI ----------
+   The data layer is split into storage/database.js (the device store), storage/current-roll.js
+   (the roll in the camera), storage/archive.js (developed rolls, scans, whole-roll zip) and
+   storage/backup.js (export, validation, plan, restore). app.js keeps the shelf UI only. */
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function fmtDate(iso){ const d = new Date(iso); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
-function migrateRoll(r){
-  // old shelf record → full roll record (nothing is lost on migration)
-  const frames = (r.frames || []).map(u => typeof u === 'string' ? { u, t: u, fav: false } : { u: u.u, t: u.t || u.u, fav: !!u.fav });
-  return { id: r.id, status: 'developed', camId: r.camId || '', cam: r.cam || 'unknown body',
-    filmId: r.filmId || '', film: r.film || 'unknown stock', iso: r.iso || null,
-    loadedAt: r.loadedAt || r.date || Date.now(), developedAt: r.developedAt || r.date || Date.now(),
-    notes: r.notes || '', frames };
-}
-async function loadArchives(){
-  try {
-    db = await openDB();
-    let all = await idbGetAll(DB_STORE);
-    const developed = all.filter(r => r.status !== 'shooting');
-    if (!developed.length) { // one-time migration of the legacy localStorage shelf
-      try {
-        const legacy = JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
-        for (const r of legacy) { const rec = migrateRoll(r); await idbPut(rec); developed.push(rec); }
-        if (legacy.length) localStorage.removeItem(ARCHIVE_KEY);
-      } catch {}
-    }
-    // a roll still in the camera is not archive: it goes back into the camera on boot
-    pendingRoll = all.find(r => r.status === 'shooting') || null;
-    state.rolls = developed.sort((a, b) => (b.developedAt || 0) - (a.developedAt || 0));
-    try { state.scans = (await idbGetAll(SCAN_STORE)).sort((a, b) => (b.date || 0) - (a.date || 0)); } catch { state.scans = []; }
-  } catch (e) {
-    db = null; storageBroken = true; // degraded environment: small local shelf, stated plainly
-    try { state.rolls = JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || []; } catch { state.rolls = []; }
-    pendingRoll = null;
-    toast('device storage unavailable · photos live in this session only — export a backup from GALLERY');
-  }
-}
-async function persistRoll(rec){
-  state.rolls.unshift(rec);
-  state.rolls.sort((a, b) => (b.developedAt || 0) - (a.developedAt || 0));
-  if (db) {
-    // a failed write must not silently drop rolls: they stay visible, and the user is told
-    // the one thing that actually rescues them — the backup export.
-    try { await idbPut(rec); }
-    catch { toast('could not write to the archive · EXPORT BACKUP in GALLERY to keep this roll'); }
-  } else {
-    try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(state.rolls.slice(0, 6))); } catch {}
-    if (state.rolls.length > 6) toast('small local shelf holds only 6 rolls · export a backup from GALLERY');
-  }
-}
-async function updateRoll(rec){
-  if (db) { try { await idbPut(rec); } catch { toast('could not save that change · export a backup from GALLERY'); } }
-  else { try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(state.rolls.slice(0, 6))); } catch {} }
-}
-function thumbOf(url){
-  return new Promise(res => {
-    const img = new Image(); img.src = url;
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      const w = Math.min(320, img.naturalWidth);
-      c.width = w; c.height = Math.round(w * img.naturalHeight / img.naturalWidth);
-      c.getContext('2d').drawImage(img, 0, 0, w, c.height);
-      res(c.toDataURL('image/jpeg', 0.75));
-    };
-    img.onerror = () => res(url);
-  });
-}
-async function archiveRoll(){
-  // the developed record replaces the shooting record under the SAME id — one roll, one record
-  const frames = [];
-  for (const f of state.frames) frames.push({ u: f.url, t: f.t || await thumbOf(f.url), fav: false });
-  const rec = {
-    id: state.rollId || ('roll-' + Date.now().toString(36)), status: 'developed', developed: true,
-    camId: state.cam ? state.cam.id : '', cam: state.cam ? `${state.cam.brand} ${state.cam.model}` : 'scanned prints',
-    filmId: state.film ? state.film.id : '', film: state.film ? `${state.film.brand} ${state.film.name}` : 'scanned prints',
-    iso: state.film ? (state.film.iso || state.film.filter_params.iso || null) : null,
-    loadedAt: state.loadedAt || Date.now(), developedAt: Date.now(),
-    notes: '', frames,
-  };
-  state.rollId = null; // the roll has left the camera: it is archive now
-  await persistRoll(rec);
-  renderArchive();
-}
 let archTab = 'rolls', favOnly = false;
 function renderArchive(){
   const a = $('archive'); a.innerHTML = '';
@@ -933,179 +550,19 @@ function openScan(s){
 async function renderStorage(){
   const el = $('storageNote'); if (!el) return;
   const frames = state.rolls.reduce((n, r) => n + (r.frames?.length || 0), 0);
-  let txt = `${state.rolls.length} rolls · ${frames} frames · ${state.scans.length} scans kept · survives refresh and offline`;
-  try {
-    if (navigator.storage && navigator.storage.estimate) {
-      const est = await navigator.storage.estimate();
-      const mb = v => Math.round((v || 0) / 1048576);
-      txt = `${state.rolls.length} rolls · ${frames} frames · ${state.scans.length} scans · ~${mb(est.usage)} MB used of ~${mb(est.quota)} MB available · survives refresh and offline`;
-    }
-    if (navigator.storage && navigator.storage.persist && state.persisted) txt += ' · storage marked persistent';
-  } catch {}
+  const counts = `${state.rolls.length} rolls · ${frames} frames · ${state.scans.length} scans`;
+  let txt = `${counts} kept · survives refresh and offline`;
+  const est = await storageEstimate(); // null when the browser cannot answer; we do not guess
+  if (est) {
+    const mb = v => Math.round((v || 0) / 1048576);
+    txt = `${counts} · ~${mb(est.usage)} MB used of ~${mb(est.quota)} MB available · survives refresh and offline`;
+  }
+  if (navigator.storage && navigator.storage.persist && state.persisted) txt += ' · storage marked persistent';
   if (!db) txt += ' · device storage unavailable — export a backup to keep anything';
   el.textContent = txt;
 }
-/* mini zip writer (stored, no compression) — batch download of a whole roll */
-function crc32(buf){
-  let c = ~0;
-  for (let i = 0; i < buf.length; i++){ c ^= buf[i]; for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xEDB88320 & -(c & 1)); }
-  return (~c) >>> 0;
-}
-function zipStore(entries){
-  const parts = [], central = [];
-  let offset = 0;
-  for (const e of entries){
-    const nb = new TextEncoder().encode(e.name);
-    const crc = crc32(e.data);
-    const local = new Uint8Array(30 + nb.length);
-    const dv = new DataView(local.buffer);
-    dv.setUint32(0, 0x04034b50, true); dv.setUint16(4, 20, true);
-    dv.setUint32(14, crc, true); dv.setUint32(18, e.data.length, true); dv.setUint32(22, e.data.length, true);
-    dv.setUint16(26, nb.length, true);
-    local.set(nb, 30);
-    parts.push(local, e.data);
-    const cen = new Uint8Array(46 + nb.length);
-    const cd = new DataView(cen.buffer);
-    cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true);
-    cd.setUint32(16, crc, true); cd.setUint32(20, e.data.length, true); cd.setUint32(24, e.data.length, true);
-    cd.setUint16(28, nb.length, true); cd.setUint32(42, offset, true);
-    cen.set(nb, 46);
-    central.push(cen);
-    offset += local.length + e.data.length;
-  }
-  const cenLen = central.reduce((s, c) => s + c.length, 0);
-  const end = new Uint8Array(22);
-  const ed = new DataView(end.buffer);
-  ed.setUint32(0, 0x06054b50, true); ed.setUint16(8, entries.length, true); ed.setUint16(10, entries.length, true);
-  ed.setUint32(12, cenLen, true); ed.setUint32(16, offset, true);
-  const total = new Uint8Array(offset + cenLen + 22);
-  let p = 0;
-  for (const b of parts){ total.set(b, p); p += b.length; }
-  for (const c of central){ total.set(c, p); p += c.length; }
-  total.set(end, p);
-  return total;
-}
-async function blobOf(dataUrl){ const r = await fetch(dataUrl); return new Uint8Array(await r.arrayBuffer()); }
-async function rollZip(r){
-  const entries = [];
-  for (let i = 0; i < r.frames.length; i++) entries.push({ name: `frame_${String(i + 1).padStart(2, '0')}.jpg`, data: await blobOf(r.frames[i].u) });
-  entries.push({ name: 'roll.json', data: new TextEncoder().encode(JSON.stringify({ camera: r.cam, film: r.film, iso: r.iso, frames: r.frames.length, loaded: r.loadedAt, developed: r.developedAt, notes: r.notes })) });
-  return zipStore(entries);
-}
-function downloadBytes(bytes, name){
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([bytes])); a.download = name; a.click();
-}
-/* ---------- backup ----------
-   schemaVersion is what a future app reads to know how the file is shaped; counts let the
-   UI verify a file without loading every frame. */
-const BACKUP_SCHEMA = 2;
-function backupAll(){
-  if (!state.rolls.length && !state.scans.length) { toast('nothing to back up yet'); return; }
-  const frames = state.rolls.reduce((n, r) => n + (r.frames?.length || 0), 0);
-  const payload = { app: 'pocketroll', schemaVersion: BACKUP_SCHEMA, version: 1, exported: new Date().toISOString(),
-    counts: { rolls: state.rolls.length, frames, scans: state.scans.length },
-    rolls: state.rolls, scans: state.scans,
-    inCamera: state.rollId && state.frames.length && !state.developed ? rollRecord() : null };
-  const json = JSON.stringify(payload);
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-  a.download = 'pocketroll-archive-' + new Date().toISOString().slice(0, 10) + '.json';
-  a.click();
-  toast(`exported ${state.rolls.length} rolls · ${frames} frames · ${state.scans.length} scans · restore the file on any device`);
-}
-/* A restore never half-applies: the whole file is validated before anything is written, so
-   a damaged record cannot leave the archive half-replaced, and what is already kept stays kept. */
-function validateBackup(j){
-  if (!j || j.app !== 'pocketroll') return { ok: false, why: 'not a pocketroll backup file · your archive stays untouched' };
-  if (j.schemaVersion === undefined && j.version === undefined) return { ok: false, why: 'this file has no schema version · your archive stays untouched' };
-  const rolls = Array.isArray(j.rolls) ? j.rolls : [];
-  const scans = Array.isArray(j.scans) ? j.scans : [];
-  const goodRolls = [], bad = [];
-  for (const r of rolls) {
-    const fr = Array.isArray(r?.frames) ? r.frames : [];
-    const usable = fr.length > 0 && fr.every(f => f && typeof (f.u || f.url || f.t) === 'string');
-    if (!r || typeof r !== 'object' || !usable) { bad.push(String(r?.id || 'unnamed roll')); continue; }
-    goodRolls.push(migrateRoll({ ...r, frames: fr.map(f => ({ u: f.u || f.url || f.t, t: f.t || f.u || f.url, fav: !!f.fav })) }));
-  }
-  const goodScans = scans.filter(s => s && typeof s.u === 'string').map(s => ({
-    id: s.id || ('scan-' + Date.now().toString(36)), u: s.u, t: s.t || s.u, date: s.date || Date.now(),
-    cam: s.cam || 'unknown body', film: s.film || 'unknown stock', iso: s.iso || null }));
-  const frames = goodRolls.reduce((n, r) => n + r.frames.length, 0);
-  const inCamera = j.inCamera && Array.isArray(j.inCamera.frames) && j.inCamera.frames.length ? j.inCamera : null;
-  return { ok: goodRolls.length > 0 || goodScans.length > 0 || !!inCamera,
-    why: 'no usable records in this file · your archive stays untouched',
-    rolls: goodRolls, scans: goodScans, frames, bad, inCamera };
-}
-function planText(v){
-  return `will restore ${v.rolls.length} roll${v.rolls.length === 1 ? '' : 's'} · ${v.frames} frame${v.frames === 1 ? '' : 's'} · ${v.scans.length} scan${v.scans.length === 1 ? '' : 's'}`
-    + (v.inCamera ? ` · ${v.inCamera.frames.length} latent frames go back into the camera` : '')
-    + ` · what you already kept stays kept${v.bad.length ? ` · ${v.bad.length} incomplete record${v.bad.length === 1 ? '' : 's'} skipped` : ''}`;
-}
-async function restoreFile(file, { preview = false } = {}){
-  let j;
-  try { j = JSON.parse(await file.text()); } catch { toast('backup file could not be read · your archive stays untouched'); return; }
-  const v = validateBackup(j);
-  if (!v.ok) { toast(v.why); return; }
-  if (preview) {
-    const plan = $('restorePlan'), text = $('restorePlanText');
-    if (plan && text) {
-      pendingBackup = v;
-      text.textContent = planText(v);
-      plan.style.display = '';
-      toast('this is what the file contains · CONFIRM RESTORE to merge it');
-      return;
-    }
-  }
-  await applyBackup(v);
-}
-async function applyBackup(v){
-  if (!v || !v.ok) return;
-  const beforeRolls = state.rolls.slice(), beforeScans = state.scans.slice(), beforeRollId = state.rollId, beforePending = pendingRoll;
-  let added = 0, dupes = 0, scanAdded = 0;
-  try {
-    for (const rec of v.rolls) {
-      const i = state.rolls.findIndex(x => x.id === rec.id);
-      if (i >= 0) { state.rolls[i] = rec; dupes++; } else { state.rolls.push(rec); }
-      added++;
-      if (db) await idbPut(rec);
-    }
-    for (const s of v.scans) {
-      const i = state.scans.findIndex(x => x.id === s.id);
-      if (i >= 0) { state.scans[i] = s; dupes++; } else { state.scans.push(s); }
-      scanAdded++;
-      if (db) await idbPut(s, SCAN_STORE);
-    }
-    let camNote = '';
-    if (v.inCamera) {
-      if (db) await idbPut(v.inCamera);
-      /* A camera holds one roll. If the user is mid-roll, the imported latent roll stays on
-         record and comes back once that roll is developed or fogged — never silently replacing it. */
-      if (rollInCamera()) {
-        pendingRoll = v.inCamera;
-        camNote = ' · a roll is already in the camera: the restored latent roll waits in storage until it resolves';
-      } else {
-        if (state.rollId) await dropCurrentRoll();
-        state.frames = []; state.developed = false;
-        restoreCurrentRoll(v.inCamera);
-        camNote = ` · ${v.inCamera.frames.length} latent frames went back into the camera`;
-      }
-    }
-    state.rolls.sort((a, b) => (b.developedAt || 0) - (a.developedAt || 0));
-    state.scans.sort((a, b) => (b.date || 0) - (a.date || 0));
-    if (!db) { try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(state.rolls.slice(0, 6))); } catch {} }
-    renderArchive();
-    toast(`restored ${added} roll${added === 1 ? '' : 's'} · ${scanAdded} scan${scanAdded === 1 ? '' : 's'} · ${dupes} already here, refreshed${v.bad.length ? ` · ${v.bad.length} incomplete records skipped` : ''}${camNote}`);
-  } catch (e) {
-    // nothing partial: the archive the user already had comes back exactly as it was
-    state.rolls = beforeRolls; state.scans = beforeScans; state.rollId = beforeRollId; pendingRoll = beforePending;
-    renderArchive();
-    toast('could not write the restored records · your archive is unchanged');
-  } finally {
-    pendingBackup = null;
-    const plan = $('restorePlan'); if (plan) plan.style.display = 'none';
-  }
-}
+/* Whole-roll zip export and the backup file are storage concerns — they live in
+   storage/archive.js and storage/backup.js; this file only wires the buttons. */
 function rollMetaBlock(r){
   return `<div class="mrow"><span>CAMERA</span><span>${esc(r.cam)}</span></div>`
     + `<div class="mrow"><span>FILM</span><span>${esc(r.film)}${r.iso ? ' · ISO ' + r.iso : ''}</span></div>`
@@ -1148,47 +605,8 @@ function openFrame(r, i){
   $('rollViewer').classList.add('open');
 }
 
-/* ---------- loading gear ----------
-   A roll has a lifecycle, so changing stock cannot silently destroy one:
-   · empty camera → load freely
-   · exposed and undeveloped → develop it first, or open the back door and fog it
-   · developed → it is already archived; a fresh roll may go in */
-function applyFilm(f){
-  state.film = f;
-  engine.setCombo(state.cam, f);
-  $('vfFilm').textContent = f.name.toUpperCase();
-  // the nameplate prints the same noun in the same face; ISO is a number, so it stays mono
-  $('filmLine').textContent = f.name.toUpperCase();
-  $('filmIso').textContent = 'ISO ' + f.iso;
-  $('filmMark').innerHTML = canMark(f);
-  renderHud();
-}
-function loadFilm(f, { force = false } = {}){
-  if (!force && rollInCamera()) return false; // the caller has to resolve the roll first
-  applyFilm(f);
-  state.rollId = newRollId(); state.shotsLeft = 36;
-  state.frames = []; state.developed = false;
-  state.loadedAt = Date.now(); // roll record: the date this roll was loaded
-  state.sheet = null;
-  renderCounter();
-  $('openRoll').classList.remove('ready');
-  renderStrip();
-  const g = $('stripFrames'); g.classList.remove('slidein'); void g.offsetWidth; g.classList.add('slidein'); // film threading in
-  $('stripFrames').scrollLeft = 0;
-  renderRollPage();
-  saveCurrentRoll(); // a threaded roll is on record before the first shutter press
-  renderArchive();   // the shelf shows the roll sitting in the camera, stock and all
-  toast(`loading roll · ${f.name}`);
-  return true;
-}
-function loadCamera(c, { quiet = false } = {}){
-  state.cam = c;
-  engine.setCombo(c, state.film);
-  $('camModel').textContent = c.model.toUpperCase();
-  renderHud();
-  renderOpts();
-  if (!quiet) toast('camera swapped — roll untouched');
-}
+/* Loading gear: film/roll-manager.js owns applying stock and threading a new roll (with the
+   lifecycle gate), camera/camera-manager.js owns swapping bodies and the sensor. */
 
 /* ---------- modals ---------- */
 /* License gating: the free web demo exposes the classic 5+5; Pro content is shown
@@ -1499,22 +917,9 @@ async function boot(){
   // ask the browser to keep our data; best effort, and the result is stated in the storage note
   if (navigator.storage && navigator.storage.persist) { try { state.persisted = await navigator.storage.persist(); } catch {} }
   checkNewVersion();
-  // the finder sleeps when the page goes to the background: a live sensor nobody is looking at
-  // is battery drain, and the browser can interrupt the feed on its own meanwhile
-  document.addEventListener('visibilitychange', () => {
-    /* Background means nobody is looking at the finder: pause the feed and hand the sensor
-       back, so the phone stops spending battery on a preview no one can see. Coming back
-       re-acquires the stream — a paused video with a dead track would show a frozen frame. */
-    if (document.hidden) {
-      camPaused = true;
-      if (video) video.pause();
-      stopStream();
-      renderCamState();
-    } else {
-      camPaused = false;
-      initCamera().then(renderCamState).catch(() => {});
-    }
-  });
+  // the finder sleeps when the page goes to the background and wakes on foreground:
+  // sensor lifecycle is owned by camera/camera-manager.js
+  wireCameraLifecycle();
   loop();
   // autoshot fires after the feed is settled (live camera if granted, demo otherwise)
   initCamera().then(() => {

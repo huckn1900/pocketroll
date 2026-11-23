@@ -509,6 +509,17 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 <div class="updatebar" id="updateBar" style="display:none"></div>
 
 <div class="toast" id="toast"></div>
+<!-- Modules are plain scripts sharing one global scope (no bundler on purpose: the web demo
+     ships as files, and the service worker serves them network-first). Storage and camera
+     first, film next, app.js last — app.js owns the engine, the state object and the UI. -->
+<script src="storage/database.js"></script>
+<script src="storage/current-roll.js"></script>
+<script src="storage/archive.js"></script>
+<script src="storage/backup.js"></script>
+<script src="film/roll-manager.js"></script>
+<script src="film/development.js"></script>
+<script src="camera/camera-manager.js"></script>
+<script src="camera/capture.js"></script>
 <script src="app.js"></script>
 <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>

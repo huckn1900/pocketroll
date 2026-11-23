@@ -4,9 +4,13 @@
    Test pages and query-param URLs bypass the SW entirely.
    CACHE is bumped on every deploy; app.js compares it with its own BUILD and shows a
    RELOAD notice when the shipped build is older than this cache name. */
-const CACHE = 'pocketroll-v10'; // app.js compares BUILD with this; bump the two together on deploy
-const SHELL = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon.png', 'assets/cameras.json', 'assets/films.json', 'assets/samples/street.jpg', 'assets/fonts/roboto-condensed-700.woff2', 'assets/fonts/ibm-plex-mono-400.woff2'];
-const CODE = [/\/app\.js$/, /\/sounds\.js$/, /\/assets\/.*\.json$/, /\/index\.html$/, /\/sounds\.html$/, /\/$/];
+const CACHE = 'pocketroll-v10'; // app.js compares BUILD with this; bump the two together when shipping a release users should reload for
+const SHELL = ['./', 'index.html', 'app.js',
+  'storage/database.js', 'storage/current-roll.js', 'storage/archive.js', 'storage/backup.js',
+  'film/roll-manager.js', 'film/development.js',
+  'camera/camera-manager.js', 'camera/capture.js',
+  'manifest.webmanifest', 'icon.png', 'assets/cameras.json', 'assets/films.json', 'assets/samples/street.jpg', 'assets/fonts/roboto-condensed-700.woff2', 'assets/fonts/ibm-plex-mono-400.woff2'];
+const CODE = [/\/app\.js$/, /\/sounds\.js$/, /\/(storage|film|camera)\/[a-z-]+\.js$/, /\/assets\/.*\.json$/, /\/index\.html$/, /\/sounds\.html$/, /\/$/];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
