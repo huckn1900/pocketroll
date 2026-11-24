@@ -150,9 +150,16 @@ meta line, so a lab result can never be confused with a filter preset.
   archive back to exactly what was kept before. A per-roll `.zip` export (frames + roll.json) stays
   the sharing escape hatch.
 - **Camera**: `playsInline` + `muted` and an awaited `play()`; rear/front sensor choice persists in
-  settings; an interrupted or blocked stream falls back to the demo scene and states the state
-  ("camera: live feed · rear sensor" / "camera: blocked · demo scene") with RETRY CAMERA; unused
-  tracks are stopped when switching; the preview pauses when the page goes to the background.
+  settings. There is **no stand-in scene** — the finder shows the sensor or it shows nothing, so a
+  drawn picture never claims a camera that is not working. An interrupted stream retries; the state
+  is stated plainly ("camera: live feed · rear sensor" / "camera: blocked · no feed in the finder")
+  with RETRY CAMERA; unused tracks are stopped when switching; the preview pauses when the page goes
+  to the background; a shutter press with no feed prints no frame and says why; with no signal the
+  screen goes dark instead of holding its last frame, so a dead sensor never looks like a live one.
+- **Opening the app**: the first screen is a film leader (`#bootScreen`) that says what the app is
+  waiting for — "starting camera…" — instead of showing a placeholder image. It ends the moment the
+  sensor answers either way (feed in hand, green LED; blocked, red LED and the retry path), so the
+  page opens directly into a camera you can press.
 - **Storage management**: the archive page shows rolls/frames/scans plus approximate bytes used and
   quota (`navigator.storage.estimate()`), asks for `navigator.storage.persist()`, and states what
   survives refresh and offline.

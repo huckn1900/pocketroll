@@ -6,31 +6,18 @@
    phone, not a feature. What the finder is doing is stated plainly in #camState. */
 'use strict';
 
-let video = null, demoCanvas = null, usingDemo = false;
+let video = null;
 let stream = null, camPaused = false;
 
-function demoScene(){
-  // procedural fallback scene so filters can be tested without camera permission
-  const c = document.createElement('canvas'); c.width = 1280; c.height = 960;
-  const ctx = c.getContext('2d');
-  const sky = ctx.createLinearGradient(0,0,0,600);
-  sky.addColorStop(0,'#b8d4e8'); sky.addColorStop(1,'#f6e2c8');
-  ctx.fillStyle = sky; ctx.fillRect(0,0,1280,600);
-  ctx.fillStyle = '#ffd9a0'; ctx.beginPath(); ctx.arc(980,240,70,0,7); ctx.fill();
-  ctx.fillStyle = '#31424d';
-  for (let i=0;i<9;i++){ const x=i*150+20, hgt=120+Math.random()*260; ctx.fillRect(x,600-hgt,90,hgt); }
-  ctx.fillStyle = '#20262e'; ctx.fillRect(0,600,1280,360);
-  ctx.fillStyle = '#55616a'; ctx.fillRect(0,600,1280,8);
-  // a bright highlight to show halation
-  ctx.fillStyle = '#fff2d8'; ctx.beginPath(); ctx.arc(300,540,26,0,7); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(60,700,120,18);
-  return c;
-}
+/* There is no stand-in scene. The finder shows the sensor or it shows nothing, because a
+   drawn picture would claim the camera is working when it is not. Waiting for the sensor is
+   what the leader screen (index.html #bootScreen) is for; a blocked camera says so plainly. */
+function feedLive(){ return !!(video && video.videoWidth && video.videoHeight && stream); }
 function stopStream(){ if (!stream) return; for (const t of stream.getTracks()) t.stop(); stream = null; }
 async function initCamera(){
   stopStream();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    usingDemo = true; renderCamState(); toast('this browser has no camera · demo scene stands in'); return;
+    renderCamState(); toast('this browser has no camera · the finder stays dark'); return;
   }
   const rear = state.opts.facing !== 'user';
   try{
@@ -41,23 +28,30 @@ async function initCamera(){
     video.srcObject = stream;
     for (const t of stream.getTracks()) t.onended = () => {
       if (camPaused || !stream) return; // an intentional stop is not an interruption
-      usingDemo = true; renderCamState(); toast('camera interrupted · retrying'); setTimeout(initCamera, 800);
+      renderCamState(); toast('camera interrupted · retrying'); setTimeout(initCamera, 800);
     };
     await video.play();
-    usingDemo = false;
     renderCamState();
   }catch(e){
     stopStream();
-    usingDemo = true; renderCamState();
-    toast('camera blocked · demo scene stands in. allow camera access, then SETTINGS → RETRY CAMERA');
+    renderCamState();
+    toast('camera blocked · allow camera access, then SETTINGS → RETRY CAMERA');
   }
 }
 function renderCamState(){
   const el = $('camState'); if (!el) return;
   el.textContent = camPaused ? 'camera: resting · sensor released while the page is in the background'
-    : usingDemo ? 'camera: blocked · demo scene'
-    : 'camera: live feed · ' + (state.opts.facing === 'user' ? 'front sensor' : 'rear sensor');
+    : feedLive() ? 'camera: live feed · ' + (state.opts.facing === 'user' ? 'front sensor' : 'rear sensor')
+    : 'camera: blocked · no feed in the finder';
   const flip = $('optCamFlip'); if (flip) flip.classList.toggle('on', state.opts.facing === 'user');
+}
+/* The app waits for the sensor before it opens: the feed is the product, so an unanswered
+   request is a real state worth waiting on, and it must not hang forever — a permission prompt
+   the user ignores ends as a blocked camera, which the app then states and offers to retry. */
+async function waitForFeed(capMs = 5000){
+  const t0 = performance.now();
+  while (!feedLive() && performance.now() - t0 < capMs) await new Promise(r => setTimeout(r, 120));
+  return feedLive();
 }
 function wireCameraLifecycle(){
   /* Background means nobody is looking at the finder: pause the feed and hand the sensor

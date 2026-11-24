@@ -3,7 +3,9 @@
    Optional: DSH_CLIP="x,y,w,h,scale" — capture one region zoomed (inspecting a control's
    mark, a ring, a corner badge, without shrinking the whole page into the image).
    Why: headless --window-size floors viewport at ~500px, so phone-width layouts
-   cannot be verified with plain screenshots; CDP device emulation is the reliable way. */
+   cannot be verified with plain screenshots; CDP device emulation is the reliable way.
+   A fake camera is granted by default: the app has no stand-in scene any more, so without a
+   feed a screenshot would show the leader screen or a dark LCD instead of the camera UI. */
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 
@@ -16,6 +18,7 @@ const port = 9333 + Math.floor(Math.random() * 60);
 
 const proc = spawn(chrome, [
   '--headless=new', '--disable-gpu', '--no-sandbox',
+  '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream',
   ...(process.env.EXTRA_FLAGS ? process.env.EXTRA_FLAGS.split(' ') : []),
   `--user-data-dir=${process.env.TEMP}\\chrome-cdp-${port}-${Date.now().toString(36)}`,
   `--remote-debugging-port=${port}`,

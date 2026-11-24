@@ -53,14 +53,12 @@ const probe = await send('Runtime.evaluate', {
       im.onerror = () => res(null);
     });
     // deterministic scene for the cross-frame compares: the fake-device blob changes shape
-    // every shot, so brightness/orange-pixel comparisons across frames are flaky — swap BOTH
-    // sources to a uniform gray canvas (same capture pipeline, no moving content). capture()
-    // reads the video when a device is present and the fake canvas when it is not; swapping
-    // both covers either runner.
+    // every shot, so brightness/orange-pixel comparisons across frames are flaky — swap the
+    // feed itself to a uniform gray canvas stream. There is no stand-in scene any more, and
+    // capture() reads the sensor, so replacing video.srcObject keeps the real pipeline.
     const cv = document.createElement('canvas'); cv.width = 1280; cv.height = 960;
     const cx2 = cv.getContext('2d'); cx2.fillStyle = '#808080'; cx2.fillRect(0, 0, 1280, 960);
     video.srcObject = cv.captureStream(30); video.play();
-    demoCanvas = cv;
     await new Promise(r => setTimeout(r, 400));
     // Address the frames this probe captured by taking them as they are made, not by index:
     // the autoshot count in the URL shifts every index, so a fixed index compared an

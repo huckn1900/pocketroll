@@ -555,6 +555,16 @@ function finderSlack(){
   if (dev && dev.offsetParent !== null) bottom = Math.max(bottom, dev.getBoundingClientRect().bottom);
   return Math.floor(innerHeight - pb - bottom);
 }
+/* a screen with no signal is dark, not holding the last frame: a frozen picture on a dead
+   sensor would claim the camera is still working. Painted once, until a feed comes back. */
+let lcdDark = false;
+function deadLCD(){
+  if (lcdDark || !vf.width || !vf.height) return;
+  const ctx = vf.getContext('2d');
+  ctx.fillStyle = '#0d0b09';
+  ctx.fillRect(0, 0, vf.width, vf.height);
+  lcdDark = true;
+}
 function renderViewfinder(){
   // The finder box is the BODY's frame, not the sensor's: a gate body shows the shape it
   // prints (6×7 / 6×4.5 at real ratio), a 135 compact keeps a compact LCD box (~4:3). The
@@ -562,10 +572,11 @@ function renderViewfinder(){
   // aspect, never stretched to fill it, never trimmed to its corner. A phone sensor held
   // portrait therefore gets the dark bars a real compact screen shows around a frame it
   // cannot display, and the page never grows taller than the layout can hold.
-  const src = usingDemo ? demoCanvas : (video && video.videoWidth ? video : null);
-  if (!src) return;
-  const sw = src.width || video.videoWidth;
-  const sh = src.height || video.videoHeight;
+  const src = video;
+  if (!feedLive()){ deadLCD(); return; }   // no sensor means no picture: the LCD goes dark and the status line says so
+  lcdDark = false;
+  const sw = video.videoWidth;
+  const sh = video.videoHeight;
   if (!sw || !sh) return;
   const gate = state.cam?.gate?.aspect;   // what this body prints, when it prints at all
   const stage = $('vfStage');
@@ -1331,7 +1342,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v22';
+const BUILD = 'pocketroll-v23';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
@@ -1350,6 +1361,32 @@ async function checkNewVersion(){
   } catch {}
 }
 
+/* ---------- the leader screen ----------
+   A film leader, not a spinner. The app has no picture to show before the sensor answers, and
+   drawing a stand-in scene would claim the camera is working when it is not — so the first
+   screen says what it is waiting for, quietly. It leaves once the camera has answered either
+   way: a feed, or an honest blocked. The page then opens straight into the camera, ready to
+   press the shutter. */
+function bootSay(msg, st){
+  const line = document.querySelector('.bootline');
+  const msgEl = $('bootMsg');
+  if (msgEl) msgEl.textContent = msg;
+  if (line) line.className = 'bootline' + (st ? ' ' + st : '');
+}
+function bootHide(){
+  const b = $('bootScreen');
+  if (!b || b.classList.contains('gone')) return;
+  b.classList.add('gone');
+  setTimeout(() => { b.style.display = 'none'; }, 520); // out after the fade, never hidden underneath it
+}
+async function openCamera(){
+  await initCamera();
+  const live = await waitForFeed();
+  bootSay(live ? 'camera ready · roll in chamber' : 'camera blocked · SETTINGS → RETRY CAMERA', live ? 'ready' : 'blocked');
+  setTimeout(bootHide, live ? 420 : 950);
+  return live;
+}
+
 /* ---------- wire up ---------- */
 async function boot(){
   try{
@@ -1357,12 +1394,14 @@ async function boot(){
     state.cameras = (await camRes.json()).cameras;
     state.films = (await filmRes.json()).films;
   }catch(e){
+    bootSay('profiles failed to load', 'blocked');
+    bootHide();
     toast('assets load failed: ' + (e && e.message ? e.message : String(e)));
     return;
   }
   buildLists();
-  // show something immediately; real camera feed swaps in when granted
-  demoCanvas = demoScene(); usingDemo = true;
+  /* Nothing stands in for the sensor. The finder waits for the feed, and the leader screen
+     says what it is waiting for while profiles, the pending roll and storage are being read. */
   const q = new URLSearchParams(location.search);
   const cam = state.cameras.find(c => c.id === q.get('cam')) || state.cameras.find(c => c.id === 'trip35');
   const fil = state.films.find(f => f.id === q.get('film')) || state.films.find(f => f.id === 'gold200');
@@ -1394,8 +1433,10 @@ async function boot(){
   // sensor lifecycle is owned by camera/camera-manager.js
   wireCameraLifecycle();
   loop();
-  // autoshot fires after the feed is settled (live camera if granted, demo otherwise)
-  initCamera().then(() => {
+  /* The leader screen waits for the sensor; the shutter only answers when there is a feed.
+     Test hooks fire after that same settlement, exactly as a real first press would. */
+  openCamera().then(live => {
+    if (!live) return;
     if (q.get('autoshot') === '1') {
       const shots = Math.max(1, Number(q.get('shots')) || 3); // ?shots=36 to expose a whole roll
       setTimeout(() => { for (let i = 0; i < shots; i++) capture(); }, 900);
@@ -1440,7 +1481,7 @@ async function boot(){
   });
   // camera plumbing: retry after a denial, and choose which sensor the finder uses
   const retry = $('optCamRetry');
-  if (retry) retry.onclick = async () => { await initCamera(); renderCamState(); if (!usingDemo) toast('camera feed restored'); };
+  if (retry) retry.onclick = async () => { await initCamera(); renderCamState(); if (feedLive()) toast('camera feed restored'); };
   const flip = $('optCamFlip');
   if (flip) flip.onclick = async () => {
     state.opts.facing = state.opts.facing === 'user' ? 'environment' : 'user';

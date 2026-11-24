@@ -44,6 +44,10 @@ function capture(opts){
   if (!state.film){ toast('load a film first'); return; }
   if (!state.rollId){ toast('no roll in the camera · load a film'); return; }
   if (state.shotsLeft <= 0){ toast('roll finished · develop it'); return; }
+  /* An exposure needs a sensor. With no feed the shutter stays silent rather than
+     "exposing" a frame nothing captured — the press would print a number for a photograph
+     that never happened. */
+  if (!feedLive()){ toast('no camera feed · allow camera access in SETTINGS → RETRY CAMERA'); return; }
   shutterSound();
   // a body with a focusing aid snaps its indicator to locked; a scale-focus camera has
   // nothing on its glass to confirm, so nothing flashes
@@ -57,16 +61,15 @@ function capture(opts){
   const cap = document.createElement('canvas');
   // export at the stream's native pixel size (cap guards 4K+ streams from huge pixel loops),
   // cropped to the body's print gate when it prints one — the negative is that shape.
-  const w = usingDemo ? 1280 : Math.min(2560, video.videoWidth || 1280);
+  const w = Math.min(2560, video.videoWidth);
   const gate = state.cam?.gate?.aspect;
-  const h = gate ? Math.round(w / gate)
-    : usingDemo ? 960 : Math.round(w * (video.videoHeight / (video.videoWidth || 1)));
+  const h = gate ? Math.round(w / gate) : Math.round(w * (video.videoHeight / video.videoWidth));
   cap.width = w; cap.height = h;
   const tmp = new FilmEngine(cap); tmp.setCombo(state.cam, state.film);
   // a lens analysis may ask for the frame WITHOUT the chamber's quirk overlays: an LC-A light
   // leak seeps in from one edge and would read as a lighter vignette. The UI never asks — a
   // real exposure keeps its leaks, which is the whole point of the quirk.
-  tmp.process(usingDemo ? demoCanvas : video, usingDemo ? demoCanvas.width : video.videoWidth, usingDemo ? demoCanvas.height : video.videoHeight, { flash: flashShot, noLeak: !!(opts && opts.noLeak) });
+  tmp.process(video, video.videoWidth, video.videoHeight, { flash: flashShot, noLeak: !!(opts && opts.noLeak) });
   const cctx = cap.getContext('2d');
   rollLeak(cctx, w, h);            // per-frame chance, tuned by film stock + body
   if (state.opts.date) stampDate(cctx, w, h);
