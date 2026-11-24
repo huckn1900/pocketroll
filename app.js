@@ -456,13 +456,17 @@ function renderOpts(){
   $('optFlash').classList.toggle('on', capable && state.opts.flash);
 }
 
-/* main-screen counters: FRAMES LEFT card + bezel EXP readout */
+/* main-screen counters: the FRAMES LEFT plate, which states the roll's whole arithmetic in
+   one place — what is left, of how many exposures, how many were taken. The bezel no longer
+   repeats a count, so this plate is the only exposure readout on the main screen. */
 function renderCounter(){
   // no roll in the camera reads as a blank counter, the way a real camera does
-  $('counter').textContent = state.rollId ? String(state.shotsLeft).padStart(2, '0') : '—';
-  $('expCount').textContent = state.rollId ? state.shotsLeft + ' EXP' : '0 EXP';
+  const threaded = !!state.rollId;
+  $('counter').textContent = threaded ? String(state.shotsLeft).padStart(2, '0') : '—';
+  $('expTotal').textContent = threaded ? `OF ${rollCapacity()} EXP` : 'NO ROLL';
+  $('shotDone').textContent = threaded ? `SHOT ${String(state.frames.length).padStart(2, '0')}` : '';
   // a finished roll is a state, not a broken number: the LED goes dark instead of shouting
-  $('counterPlate').classList.toggle('done', !!state.rollId && state.shotsLeft === 0);
+  $('counterPlate').classList.toggle('done', threaded && state.shotsLeft === 0);
 }
 /* the shutter answers the counter: one short LED blink on the number that just changed.
    It is feedback at the number, not a dialog — the shot itself is shown on the glass. */
@@ -637,8 +641,16 @@ function renderStrip(){
     }
     g.appendChild(el);
   }
+  /* the frame the camera is sitting on — the newest exposure — takes the selection hairline,
+     the way a real camera knows which frame is under the gate. Tapping another cell moves it
+     there until the chamber changes again. */
+  if (state.frames.length) g.children[state.frames.length - 1]?.classList.add('sel');
 }
 function previewFrame(el, url){
+  /* one frame is under the loupe at a time: the selection hairline moves to the cell you
+     asked for, and renderStrip() drops it when the chamber changes. */
+  for (const s of $('stripFrames').querySelectorAll('.frame.sel')) s.classList.remove('sel');
+  el.classList.add('sel');
   el.style.backgroundImage = `url(${url})`;
   el.classList.add('preview');
   toast('latent preview · develop the roll to reveal');
@@ -1264,7 +1276,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v18';
+const BUILD = 'pocketroll-v19';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW

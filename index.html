@@ -15,6 +15,12 @@
 :root{
   --cream:#D8C9A9; --dark:#24211D; --ink:#39342D; --sub:#574f45; --red:#D94B37;
   --led:#ff5138; --latent:#2b2013; --dim:#a99a82; --dimmer:#998f7d;
+  /* Round 23: the counter plate owns a fixed, responsive width and its number is derived
+     from that width (see .counter .num) — the digits scale with the panel and can never
+     overflow it. --gap scales section spacing with the viewport height: short screens
+     pack tighter, tall ones keep their air. */
+  --cw:clamp(112px, 34vw, 150px);
+  --gap:clamp(7px, 1.6vh, 12px);
 }
 /* bundled OFL latin subsets (offline-safe): brand/print = Roboto Condensed, parameters = IBM Plex Mono */
 @font-face{font-family:'PC Cond';src:url('assets/fonts/roboto-condensed-700.woff2') format('woff2');font-weight:700;font-display:swap}
@@ -47,12 +53,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .headbtn:active{background:#c8b795}
 
 /* ── 2. viewfinder ── */
-.vfbox{background:var(--dark);border-radius:14px;padding:10px 12px;margin-top:10px}
-.vfmeta{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.1em;margin-bottom:7px}
+.vfbox{background:var(--dark);border-radius:14px;padding:10px 12px;margin-top:var(--gap)}
+.vfmeta{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;letter-spacing:.1em;margin-bottom:6px}
 /* one film identity on screen: the LCD strip and the nameplate print it in the same face
-   and size — only numbers on this bar are mono */
+   and size — only numbers on this bar are mono. Round 23: the bezel no longer repeats the
+   exposure count; that arithmetic lives in the FRAMES LEFT plate, which is the only place
+   the screen states it. */
 .vfmeta .filmname{font-family:'PC Cond',sans-serif;font-weight:700;font-size:11px;letter-spacing:.09em;color:#c9bda6}
-.vfmeta .exp{font-family:'PC Mono',ui-monospace,monospace;color:var(--led)}
 .vf-stage{position:relative;border-radius:8px;overflow:hidden;background:#0d0b09;aspect-ratio:4/3}
 .vf-stage canvas{display:block;width:100%;height:100%;object-fit:contain}
 /* glass: restrained vignette + faint reflection + scanlines */
@@ -119,22 +126,35 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 
 /* ── 3. status ── two matched dark plates, in the order the screen is read: the frame
    counter first (it is the number that changes), the body's nameplate second. Same radius,
-   same padding, same labels — one instrument, not two stray blocks. The counter owns the
-   red LED token; the nameplate stays cream and quiet, because which camera and which film
-   are facts, not actions. Type roles hold here too: proper nouns take the condensed face at
-   one size everywhere, numbers take mono. Nothing on this screen shouts at another size. */
-.status{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;margin-top:12px;align-items:stretch}
-.counter{min-width:96px;text-align:right;padding:9px 12px}
+   same labels, same label position — one instrument, not two stray blocks. Round 23: the
+   counter now uses the whole panel it was given — the label prints at the top like every
+   other plate, the remaining number takes the middle at a size derived from the plate's
+   own width, and the roll's arithmetic (OF n EXP, SHOT n) sits along the bottom. Nothing
+   on this plate is empty space. The counter owns the red LED token; the nameplate stays
+   cream and quiet, because which camera and which film are facts, not actions. */
+.status{display:grid;grid-template-columns:var(--cw) minmax(0,1fr);gap:8px;margin-top:var(--gap);align-items:stretch}
+.counter{width:var(--cw);padding:9px 10px;display:flex;flex-direction:column}
 .counter .lbl{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.18em;color:var(--dim)}
-.counter .num{font-family:'PC Mono',ui-monospace,monospace;font-size:24px;color:var(--led);line-height:1.15}
+/* the number is sized from the plate it lives in, so two digits plus the plate padding
+   always fit: 68–76px on phones that can carry it, smaller where they cannot. */
+.counter .num{font-family:'PC Mono',ui-monospace,monospace;font-size:clamp(34px, calc(var(--cw) * 0.52), 76px);
+  color:var(--led);line-height:1;flex:1;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+/* the roll's arithmetic stated once, at the foot of the panel: what is left of what,
+   and how many were taken — the same plate, not a second counter somewhere else. */
+.counter .foot{display:flex;justify-content:space-between;align-items:baseline;gap:4px;
+  font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.13em;color:var(--dim)}
 /* a finished roll reads empty on purpose: 00 is a state, not a broken number */
 .counter.done .num{color:#6d6455}
-.plate{background:var(--dark);border-radius:12px;padding:9px 13px;display:flex;flex-direction:column;justify-content:space-between}
+.counter.done .foot{color:#6d6455}
+/* The nameplate matches the counter plate's height and its own edges: the label prints at the
+   top on the same line as FRAMES LEFT, and the loaded can pins to the bottom edge, facing the
+   counter's OF n EXP / SHOT n row. Nothing in the middle is padding — a plate is a plate. */
+.plate{background:var(--dark);border-radius:12px;padding:9px 11px;display:flex;flex-direction:column;justify-content:space-between}
 .plate .lbl{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.18em;color:var(--dim)}
 .plate .model{font-family:'PC Cond',sans-serif;font-size:14px;font-weight:700;letter-spacing:.05em;color:#efe6d3;margin-top:4px}
 /* the film lives on the nameplate as a canister chip; at 18px the colour band carries the
-   identity, so no text is drawn on the can at this size */
-.filmchip{display:flex;align-items:center;gap:7px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(233,223,205,.14)}
+   identity, so no text is drawn on the can at this size. */
+.filmchip{display:flex;align-items:center;gap:7px;padding-top:6px;border-top:1px solid rgba(233,223,205,.14)}
 .filmchip svg{width:18px;height:22px;flex:none}
 .filmchip .fname{font-family:'PC Cond',sans-serif;font-size:11px;font-weight:700;letter-spacing:.09em;color:#c9bda6}
 .filmchip .fiso{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;color:var(--dim);margin-left:auto}
@@ -172,24 +192,34 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .bagbtn svg{width:20px;height:20px;display:block}
 .bagbtn:active{background:#c9b795}
 /* the one main-screen action that appears when the roll is done — shoot → develop is the ritual */
-.developbtn{display:block;width:100%;margin-top:12px;background:var(--red);color:#fff;border:none;border-radius:10px;
+.developbtn{display:block;width:100%;margin-top:var(--gap);background:var(--red);color:#fff;border:none;border-radius:10px;
   padding:13px;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.16em;cursor:pointer;
   box-shadow:0 2px 0 #8f3524}
 .developbtn:active{transform:translateY(2px);box-shadow:0 0 0 #8f3524}
 
-/* ── 5. the loaded roll (filmstrip) ── */
-.strip{background:var(--dark);border-radius:12px;margin-top:12px;padding:10px 12px;position:relative}
-.strip::before,.strip::after{content:'';position:absolute;left:12px;right:12px;height:6px;
+/* ── 5. the loaded roll (filmstrip) ── the housing is unchanged: sprocket bands top and
+   bottom, a horizontal sequence of frames, numbers and edge print inside each cell. Round 23
+   only tightens it: the housing gives up a few pixels of padding, the sprocket bands sit
+   closer to the housing edge so the clearance between holes and frames is the frames' own,
+   and every print in a cell starts on the same inset. */
+.strip{background:var(--dark);border-radius:12px;margin-top:var(--gap);padding:7px 10px;position:relative}
+.strip::before,.strip::after{content:'';position:absolute;left:10px;right:10px;height:5px;
   background:repeating-linear-gradient(90deg,#0d0b09 0 14px,transparent 14px 22px);opacity:.5}
-.strip::before{top:3px}.strip::after{bottom:3px}
-.frames{display:flex;gap:6px;overflow-x:auto;scroll-behavior:smooth;padding:4px 0}
+.strip::before{top:1px}.strip::after{bottom:1px}
+.frames{display:flex;gap:7px;overflow-x:auto;scroll-behavior:smooth;padding:5px 0}
 .frames::-webkit-scrollbar{height:3px}
 .frames::-webkit-scrollbar-thumb{background:#4a4238}
 .frame{width:96px;height:58px;flex:none;border-radius:3px;background:#17120d;position:relative;cursor:pointer}
 .frame.latent{background:linear-gradient(160deg,#2b2013,#221a12);box-shadow:inset 0 0 24px rgba(255,140,60,.08)}
 .frame.developed{background-size:cover;background-position:center}
-.frame .num{position:absolute;left:4px;top:3px;font-family:'PC Mono',ui-monospace,monospace;font-size:8px;color:#ff8a3d}
-.frame .edge{position:absolute;left:4px;bottom:3px;font-family:'PC Mono',ui-monospace,monospace;font-size:7px;color:#8d8371;letter-spacing:.06em}
+/* frame number and edge print share one inset, so every cell reads printed by the same
+   machine; the film's own edge print stays a step quieter than the number. */
+.frame .num{position:absolute;left:5px;top:5px;font-family:'PC Mono',ui-monospace,monospace;font-size:8px;color:#ff8a3d}
+.frame .edge{position:absolute;left:5px;bottom:5px;font-family:'PC Mono',ui-monospace,monospace;font-size:7px;color:#8d8371;letter-spacing:.06em}
+/* the frame under the loupe: the one cell you are looking at takes the red hairline the
+   rest of the app already uses for selection. Outline, not box-shadow — a latent cell's
+   inner glow and a previewed cell's bloom must survive being selected. */
+.frame.sel{outline:1px solid rgba(217,75,55,.6);outline-offset:-1px}
 /* a frame the light destroyed: the cell stays on the strip as a mark, not as a photo. Grey,
    hatched, with FOGGED printed where the edge print used to be — a roll that fogged reads
    as a roll that fogged. */
@@ -211,7 +241,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 @keyframes pull{to{transform:translateX(-105%)}}
 
 /* ── footer ── */
-footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);margin-top:14px;padding-bottom:6px}
+footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);margin-top:var(--gap);padding-bottom:6px}
 
 /* ── pages (roll / gallery / settings) ── */
 .modal{position:fixed;inset:0;background:rgba(20,16,12,.55);display:none;z-index:40}
@@ -377,7 +407,10 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   .head{grid-column:1/-1}
   .vfbox{grid-column:1;grid-row:2;align-self:start;margin-top:0}
   .vf-stage{aspect-ratio:auto;height:min(50vh,460px);width:min(100%,calc(50vh * 1.5));margin-inline:auto}
-  .status{grid-column:2;grid-row:2;margin-top:0;align-self:start}
+  /* the right column is narrow on a rotated phone, so the counter plate stays wide enough to
+     hold its foot row on one line while the number scales with it, exactly as in portrait. */
+  .status{grid-column:2;grid-row:2;margin-top:0;align-self:start;--cw:clamp(104px, 13vw, 130px)}
+  .counter .foot{font-size:7px;letter-spacing:.08em;gap:3px;white-space:nowrap}
   .strip{grid-column:2;grid-row:3}
   #developMain{grid-column:2;grid-row:4;margin-top:2px}
   /* rotated phones are short: the row lives in-flow under the finder, no pinned bar */
@@ -469,9 +502,10 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   <div class="right"><button class="headbtn" id="openSettings">SETTINGS</button></div>
 </div>
 
-<!-- viewfinder: film name + exposure count on the bezel, live feed inside, ISO/flash minimal -->
+<!-- viewfinder: the film it is shooting, live feed inside, ISO/flash minimal. The exposure
+     count is not repeated here — the FRAMES LEFT plate below is the only place it is stated. -->
 <div class="vfbox">
-  <div class="vfmeta"><span class="filmname" id="vfFilm">GOLD 200</span><span class="exp" id="expCount">36 EXP</span></div>
+  <div class="vfmeta"><span class="filmname" id="vfFilm">GOLD 200</span></div>
   <div class="vf-stage" id="vfStage">
     <canvas id="viewfinder"></canvas>
     <div class="vf-glass"></div>
@@ -489,12 +523,14 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 </div>
 
 <!-- status: two matched dark plates — the frame counter first (the number that answers the
-     shutter), then the body's nameplate with the loaded can. Both stay quiet in tone: the
-     screen must say three things at once — which camera, which film, how many frames left. -->
+     shutter), then the body's nameplate with the loaded can. The counter plate carries the
+     whole roll arithmetic: the label at the top, the number filling the middle, and the
+     totals along its bottom edge. -->
 <div class="status">
   <div class="plate counter" id="counterPlate">
     <div class="lbl">FRAMES LEFT</div>
     <div class="num" id="counter">36</div>
+    <div class="foot"><span id="expTotal">OF 36 EXP</span><span id="shotDone">SHOT 00</span></div>
   </div>
   <div class="plate">
     <div class="lbl">CAMERA</div>
