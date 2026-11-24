@@ -555,6 +555,24 @@ function finderSlack(){
   if (dev && dev.offsetParent !== null) bottom = Math.max(bottom, dev.getBoundingClientRect().bottom);
   return Math.floor(innerHeight - pb - bottom);
 }
+/* The rotated page spends its height on what sits below the finder — the strip, plus the
+   develop bar when a roll is finished — and on the header above it; the thumb rail is fixed,
+   so it spends none of it. The remainder is the room the LCD may take, measured every frame
+   from the page's own positions, so DEVELOP appearing takes room back and the page never
+   scrolls. The shape comes from the body's aspect, so the room only ever sizes the box. */
+function landscapeRoom(){
+  const stage = $('vfStage');
+  if (!stage) return 140;
+  const sr = stage.getBoundingClientRect();
+  const pb = parseFloat(getComputedStyle(document.body).paddingBottom) || 8;
+  let bottom = sr.bottom;
+  const strip = document.querySelector('.strip');
+  if (strip && strip.offsetParent !== null) bottom = Math.max(bottom, strip.getBoundingClientRect().bottom);
+  const dev = $('developMain');
+  if (dev && dev.offsetParent !== null) bottom = Math.max(bottom, dev.getBoundingClientRect().bottom);
+  const below = bottom - sr.bottom;   // the strip and the develop bar ride the box's bottom, so their offset is fixed
+  return Math.max(140, Math.floor(innerHeight - pb - below - sr.top));
+}
 /* a screen with no signal is dark, not holding the last frame: a frozen picture on a dead
    sensor would claim the camera is still working. Painted once, until a feed comes back. */
 let lcdDark = false;
@@ -593,6 +611,19 @@ function renderViewfinder(){
   if (Math.abs(vfAspect - box) > 0.005){
     vfAspect = box;
     stage.style.aspectRatio = String(box);
+  }
+  if (!matchMedia('(orientation:portrait)').matches){
+    // a rotated page sizes the box from the room it can spare, at this body's own shape —
+    // the thumb rail is fixed and spends none of that room, so it only ever goes to the LCD
+    const housing = stage.parentElement;
+    const cs = getComputedStyle(housing);
+    const availW = (housing.clientWidth || 320) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    const w = Math.max(120, Math.min(availW, Math.round(landscapeRoom() * box)));
+    const h = Math.max(96, Math.round(w / box));
+    if (Math.abs(stage.offsetWidth - w) > 1 || Math.abs(stage.offsetHeight - h) > 1){
+      stage.style.width = w + 'px';
+      stage.style.height = h + 'px';
+    }
   }
   const cw = previewW, ch = Math.max(2, Math.round(previewW / box));
   if (vf.width !== cw || vf.height !== ch){ vf.width = cw; vf.height = ch; }
@@ -1342,7 +1373,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v23';
+const BUILD = 'pocketroll-v24';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW

@@ -442,28 +442,44 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .pvbar .lbl{white-space:nowrap}
 .pvbar .track i{display:block;height:100%;background:var(--red)}
 .pvbar .val{text-align:right}
-/* landscape screens (rotated phones, tablets, desktops): split layout —
-   finder + shutter on the left (thumb zone under the finder),
-   status/roll/develop in a right column */
+/* landscape screens (rotated phones, tablets, desktops): a rotated phone is held in the RIGHT
+   hand, and the thumb runs down the right edge — so every control moves to that edge, in a
+   vertical rail, and the screen keeps the viewing side. The room the control row used to spend
+   under the finder now belongs to the finder, exactly as in portrait. */
 @media (orientation:landscape){
-  /* Two columns are a rotated phone, not a wide desktop sheet: the app stays capped and
-     centred so a browser window shows the same layout a rotated handset would. */
-  body{max-width:940px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,340px);
-    gap:8px 14px;padding:8px 14px;align-content:start}
+  /* The rail is a real column the page must never sit under, so its width is one value used
+     in both places: the rail itself, and the body's right padding that reserves it. */
+  :root{--rail:clamp(112px, 16vw, 138px)}
+  body{max-width:940px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,300px);
+    gap:8px 14px;padding:8px calc(var(--rail) + 8px) 8px 14px;align-content:start}
   .head{grid-column:1/-1}
   .vfbox{grid-column:1;grid-row:2;align-self:start;margin-top:0}
-  .vf-stage{aspect-ratio:auto;height:min(50vh,460px);width:min(100%,calc(50vh * 1.5));margin-inline:auto}
-  /* the right column is narrow on a rotated phone, so the counter plate stays wide enough to
-     hold its foot row on one line while the number scales with it, exactly as in portrait. */
+  /* freed vertical room goes to the LCD, and the box keeps the body's shape. app.js sizes this
+     box every frame from the room the rotated page can spare — header, gaps, the strip, the
+     develop bar; the fixed thumb rail spends none of it — so a rotated handset never scrolls,
+     including when a finished roll puts DEVELOP on the page, and the window is always the
+     largest honest one it holds. app.js also sets this body's real aspect inline (4:3 for a
+     compact, the print ratio for a medium-format gate), and the feed stays drawn contained. */
+  .vf-stage{height:auto;width:max(120px, min(100%, 560px));margin-inline:auto}
+  /* the right column IS the thumb column: the reading, the roll and DEVELOP all sit where the
+     thumb that presses the shutter already is. It stays narrow on a rotated phone, so the
+     counter plate keeps its width floor and the number still scales with it, as in portrait. */
   .status{grid-column:2;grid-row:2;margin-top:0;align-self:start;--cw:clamp(104px, 13vw, 130px)}
   .counter .foot{font-size:7px;letter-spacing:.08em;gap:3px;white-space:nowrap}
   .strip{grid-column:2;grid-row:3}
   #developMain{grid-column:2;grid-row:4;margin-top:2px}
-  /* rotated phones are short: the row lives in-flow under the finder, no pinned bar */
-  .dock{position:static;transform:none;width:100%;max-width:none;padding:0;background:none;border-top:none;
-    grid-column:1;grid-row:3}
-  .dockrow{gap:8px}
-  .toast{bottom:22px}
+  /* the thumb rail: pinned to the right edge, three slots with the shutter dead centre. The
+     two 1fr rows are equal by definition, so ARCHIVE is the exact midpoint between the top
+     edge and the shutter and the camera deck is the exact midpoint between the shutter and
+     the bottom edge — the portrait thumb row's rule, turned 90 degrees. In a wide browser the
+     app stays capped, so the rail rides the app's right edge, not the window's. */
+  .dock{position:fixed;left:auto;right:max(0px, calc((100vw - 940px) / 2));top:0;bottom:0;transform:none;
+    width:var(--rail);max-width:none;padding:12px 10px;background:var(--cream)}
+  .dockrow{grid-template-columns:1fr;grid-template-rows:1fr auto 1fr;gap:10px;height:100%}
+  .dockrow .sidebtn{justify-self:center;align-self:center}
+  .dockrow .shutter{justify-self:center}
+  /* toasts read against the screen, not under the rail, so they centre in the content area */
+  .toast{left:calc(50% - var(--rail) / 2);bottom:26px}
   footer{display:none}
 }
 .roll-card{background:var(--dark);border-radius:10px;padding:10px 12px;margin-top:8px;cursor:pointer}
