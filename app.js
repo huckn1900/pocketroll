@@ -29,6 +29,23 @@ const CAMERA_CAST = {
   hexaraf:    { gain:[1.01,1.0,0.99] },   // fast clean street prime
 };
 
+/* Grain calibration lives in ONE place, and the engine reads it instead of hard-coding
+   numbers in the pixel pass. These are the shipped values; the calibration page renders the
+   same frame twice with two configs and measures the difference before anything ships.
+   Round ㉒ calibration: amplitude −35%, clumps finer, colour speckle well below luminance
+   grain (grain is a brightness texture first), and the field no longer wraps. */
+const GRAIN = {
+  amp: 22,          // pixel units at the luminance bell peak (was 34)
+  size: 1.3,        // clump size × resolution × ISO × body bias (was 1.7)
+  chromatic: 0.18,  // colour speckle relative to luminance grain (was 0.35)
+  isoAmp: 0.35,     // how much ISO raises amplitude — the SIZE keeps the physical scaling,
+                    // so a fast stock reads bigger-grained without also reading louder
+  base: 0.85,       // flat floor under the ISO term (was 0.75 with a 0.5 ISO slope: the two
+                    // were compounded, which is what made fast stocks read loud as well as coarse)
+  tile: false,      // false: field sized to the frame, nothing repeats. true: legacy 256 tile
+  fineMax: 1.6      // below this clump size a grain cell is a pixel: no interpolation, no softening
+};
+
 class FilmEngine {
   constructor(canvas){ this.canvas = canvas; this.ctx = canvas.getContext('2d', {willReadFrequently:true}); }
   setCombo(cam, film){
@@ -37,6 +54,8 @@ class FilmEngine {
     this.lut = this.buildLUT(film);
     this.noise = this.makeNoise(film.filter_params);
   }
+  /* Calibration override only — the app never calls it, so every shipped film uses GRAIN. */
+  setGrain(o){ this.grainCfg = o ? Object.assign({}, GRAIN, o) : null; }
   distMap(w, h, d){
     // barrel coefficient: dest pixel samples a src point pulled toward centre;
     // edges stay pinned (no gaps), the centre magnifies — plastic wide-angle look
@@ -89,12 +108,53 @@ class FilmEngine {
     return { curve, wH, wS };
   }
   makeNoise(p){
-    // 256×256 luminance noise field, sampled per-pixel so grain can follow
-    // the printed luminance and scale with output resolution (film grain is a
-    // fixed physical size on film: scans at higher res show finer grain per px).
+    // legacy 256×256 field, kept so the calibration page can render the previous behaviour
+    // against the current one; sampled with & 255 it wraps every 256 grain cells.
     const arr = new Uint8Array(256 * 256);
     for (let i = 0; i < arr.length; i++) arr[i] = 128 + Math.round((Math.random()*2 - 1) * 90);
     return arr;
+  }
+  /* The shipped grain field is one value per grain CELL, sized to the frame being printed: a
+     1920px export has nothing to wrap around, so no speckle pattern ever repeats. Rebuilt
+     only when the frame size or the clump size changes. Grain is still a fixed physical size
+     on film — the cell size scales with resolution and ISO, the field just covers the frame. */
+  grainField(w, h, cell){
+    const key = w + 'x' + h + ':' + cell.toFixed(2);
+    if (this._gf && this._gf.key === key) return this._gf;
+    const lw = Math.min(w, Math.ceil(w / cell)) + 1, lh = Math.min(h, Math.ceil(h / cell)) + 1;
+    const f = new Uint8Array(lw * lh);
+    for (let i = 0; i < f.length; i++) f[i] = 128 + Math.round((Math.random()*2 - 1) * 90);
+    this._gf = { key, f, lw, lh };
+    return this._gf;
+  }
+  /* Colour grain is finer than the developed clump — the three dye layers read per pixel, not
+     per cell — so it gets its own per-pixel field at a fraction of the luminance amplitude.
+     A frame-sized field: nothing wraps, nothing repeats. */
+  chromaField(w, h){
+    const key = w + 'x' + h;
+    if (this._cf && this._cf.key === key) return this._cf;
+    const f = new Uint8Array(w * h);
+    for (let i = 0; i < f.length; i++) f[i] = 128 + Math.round((Math.random()*2 - 1) * 90);
+    this._cf = { key, f, w, h };
+    return this._cf;
+  }
+  /* Interpolating four cell values gives a clump soft edges instead of a hard square, and it
+     also lowers the clump's variance by however many pixels share a cell. Measuring the real
+     sampling grid keeps `amp` meaning the amplitude it always meant, so the change under
+     review here is the requested −35%, not that −35% multiplied by a second hidden factor. */
+  smoothNorm(w, h, cell){
+    const key = w + 'x' + h + ':' + cell.toFixed(2);
+    if (this._sn && this._sn.key === key) return this._sn.n;
+    let acc = 0, samples = 0;
+    for (let i = 0; i < 2048; i++){       // positions across the actual sampling grid
+      const gx = ((i * 97 + 13) % w) / cell, gy = ((i * 151 + 7) % h) / cell;
+      const fx = gx - (gx | 0), fy = gy - (gy | 0);
+      const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+      acc += (u * u + (1 - u) * (1 - u)) * (v * v + (1 - v) * (1 - v)); samples++;
+    }
+    const norm = 1 / Math.sqrt(Math.max(0.3, acc / samples));
+    this._sn = { key, n: norm };
+    return norm;
   }
   /* The viewfinder is a display, not a print. Whatever the sensor sends is drawn FULL, at
      its true aspect, centred inside the LCD box — never stretched to fill it, never trimmed
@@ -190,6 +250,7 @@ class FilmEngine {
     const hR = this.tintH.r*255, hG = this.tintH.g*255, hB = this.tintH.b*255;
     const sR = this.tintS.r*255, sG = this.tintS.g*255, sB = this.tintS.b*255;
     const grainOn = p.grain_strength > 0;
+    const G = this.grainCfg || GRAIN;
     // grain follows the stock: higher-ISO films have physically bigger grains,
     // underexposure makes grain more visible in shadows (like a pushed print)
     // (iso lives at the film profile top level; filter_params.iso is legacy)
@@ -199,10 +260,16 @@ class FilmEngine {
     // over far more area than a 135 frame, so a medium-format scan reads finer per pixel.
     // That is the body's doing, not the stock's — grain_bias comes from camera_character.
     const grainBias = this.cam?.camera_character?.grain_bias ?? 1;
-    const cell = Math.max(1, (p.grain_size || 1) * (w / 720) * 1.7 * isoScale * grainBias);
-    const ampMul = 0.75 + 0.5 * isoScale + Math.max(0, -(p.exposure || 0)) * 0.3;
+    const cell = Math.max(1, (p.grain_size || 1) * (w / 720) * G.size * isoScale * grainBias);
+    // ISO raises clump SIZE physically (that is what a fast stock is); it raises amplitude
+    // far less, so Tri-X reads coarse rather than loud. Underexposure still pushes grain.
+    const ampMul = G.base + G.isoAmp * isoScale + Math.max(0, -(p.exposure || 0)) * 0.3;
     const grainColor = p.grain_color !== false; // B&W stocks get pure luminance grain
+    const interpolate = cell > G.fineMax;       // below that a cell is a pixel: nothing to soften
     const noise = this.noise;
+    const gf = grainOn && !G.tile ? this.grainField(w, h, cell) : null;
+    const cf = grainOn && grainColor && !G.tile ? this.chromaField(w, h) : null;
+    const smooth = interpolate && !G.tile ? this.smoothNorm(w, h, cell) / 90 : 1 / 90;
     const fl = this.cam?.camera_character?.flash || {};
     const fGain = fl.gain ?? 0.68, fSpread = fl.spread ?? 0.14;
     let col = 0, row = 0;
@@ -234,14 +301,42 @@ class FilmEngine {
         // fades out in blown highlights — like real grain on a scan
         const vo = (rr*0.299 + gg*0.587 + bb*0.114) / 255;
         const bell = 1 - clamp01(Math.abs(vo - 0.42) / 0.45);
-        const amp = p.grain_strength * (0.30 + 0.80 * bell) * 34 * ampMul;
-        const nx = (col / cell | 0) & 255, ny = (row / cell | 0) & 255;
-        const nL = (noise[ny*256 + nx] - 128) / 90;
-        if (grainColor){ // mostly luminance grain + a little chromatic noise
-          const nr = (noise[((ny+53)&255)*256 + ((nx+91)&255)] - 128) / 90;
-          const ng = (noise[((ny+107)&255)*256 + ((nx+37)&255)] - 128) / 90;
-          const nb = (noise[((ny+171)&255)*256 + ((nx+13)&255)] - 128) / 90;
-          rr += nL*amp + nr*amp*0.35; gg += nL*amp + ng*amp*0.35; bb += nL*amp + nb*amp*0.35;
+        const amp = p.grain_strength * (0.30 + 0.80 * bell) * G.amp * ampMul;
+        let nL;
+        if (G.tile){                       // legacy tiled field — kept for calibration comparison
+          const nx = (col / cell | 0) & 255, ny = (row / cell | 0) & 255;
+          nL = (noise[ny*256 + nx] - 128) / 90;
+        } else if (interpolate){
+          // a grain cell is a CLUMP, not a pixel: interpolate between its four centres so the
+          // clump has soft edges instead of a hard square of identical values. Hard squares at
+          // 4–16px is exactly what read as coarse digital noise in skies and flat walls.
+          const gx = col / cell, gy = row / cell;
+          const xi = gx | 0, yi = gy | 0, fx = gx - xi, fy = gy - yi;
+          const u = fx * fx * (3 - 2 * fx), vv = fy * fy * (3 - 2 * fy);
+          const x1 = xi + 1 < gf.lw ? xi + 1 : gf.lw - 1, y1 = yi + 1 < gf.lh ? yi + 1 : gf.lh - 1;
+          const r0 = yi * gf.lw, r1 = y1 * gf.lw;
+          const t0 = gf.f[r0 + xi] + (gf.f[r0 + x1] - gf.f[r0 + xi]) * u;
+          const t1 = gf.f[r1 + xi] + (gf.f[r1 + x1] - gf.f[r1 + xi]) * u;
+          nL = (t0 + (t1 - t0) * vv - 128) * smooth;  // smooth returns the variance the softening
+                                                    // took away, so amp still means the amp asked for
+        } else {                           // a fine stock at this resolution: the cell is a pixel
+          nL = (gf.f[(row / cell | 0) * gf.lw + (col / cell | 0)] - 128) / 90;
+        }
+        if (grainColor){ // luminance grain carries the texture; the dye layers add a far finer and
+                         // far quieter colour speckle — that is what sprinkled magenta into skies
+          const ampC = amp * G.chromatic;
+          let nr, ng, nb;
+          if (G.tile){
+            const nx = (col / cell | 0) & 255, ny = (row / cell | 0) & 255;
+            nr = (noise[((ny+53)&255)*256 + ((nx+91)&255)] - 128) / 90;
+            ng = (noise[((ny+107)&255)*256 + ((nx+37)&255)] - 128) / 90;
+            nb = (noise[((ny+171)&255)*256 + ((nx+13)&255)] - 128) / 90;
+          } else {
+            nr = (cf.f[(row % cf.h) * cf.w + ((col + 91) % cf.w)] - 128) / 90;
+            ng = (cf.f[((row + 37) % cf.h) * cf.w + ((col + 13) % cf.w)] - 128) / 90;
+            nb = (cf.f[((row + 71) % cf.h) * cf.w + ((col + 53) % cf.w)] - 128) / 90;
+          }
+          rr += nL*amp + nr*ampC; gg += nL*amp + ng*ampC; bb += nL*amp + nb*ampC;
         } else { rr += nL*amp; gg += nL*amp; bb += nL*amp; }
       }
       d[i] = rr; d[i+1] = gg; d[i+2] = bb;
@@ -1169,7 +1264,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v17';
+const BUILD = 'pocketroll-v18';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
