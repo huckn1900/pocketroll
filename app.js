@@ -810,10 +810,30 @@ function renderArchive(){
     state.rolls.forEach(r => {
       const el = document.createElement('div'); el.className = 'roll-card';
       const favs = r.frames.filter(f => f.fav).length;
-      el.innerHTML = `<div class="meta"><span>${esc(r.film)} · ${r.frames.length} frames</span><span class="sub">${esc(r.cam)} · ${fmtDate(r.loadedAt)}</span></div>`
+      el.innerHTML = `<div class="meta"><span>${esc(r.film)} · ${r.frames.length} frames</span><span class="sub">${esc(r.cam)} · ${fmtDate(r.loadedAt)}</span>`
+        + `<button class="delbtn" title="take this roll off the shelf — its prints go with it">DELETE</button></div>`
         + `<div class="rollmeta">LOADED ${fmtDate(r.loadedAt)} · DEVELOPED ${fmtDate(r.developedAt)} · STATUS DEVELOPED${r.iso ? ' · ISO ' + r.iso : ''}${r.format && !/135/.test(r.format) ? ' · ' + esc(r.format) : ''}${favs ? ' · ★ ' + favs : ''}${r.notes ? ' · ' + esc(r.notes) : ''}</div>`
         + `<div class="mini">${r.frames.slice(0, 8).map(f => `<img src="${f.t}" alt="">`).join('')}</div>`;
       el.onclick = () => openRoll(r);
+      /* Taking a roll off the shelf is irreversible, so the button arms on the first press and
+         only the second press removes it; an arm nobody acts on expires by itself, and the
+         shelf says what left with the roll. */
+      const del = el.querySelector('.delbtn');
+      let armed = 0;
+      del.onclick = async (e) => {
+        e.stopPropagation();
+        if (!armed){
+          del.classList.add('armed'); del.textContent = 'CONFIRM';
+          armed = setTimeout(() => { armed = 0; del.classList.remove('armed'); del.textContent = 'DELETE'; }, 6000);
+          return;
+        }
+        clearTimeout(armed); armed = 0;
+        const gone = r.frames.length;
+        if (await deleteArchivedRoll(r)){
+          renderArchive();
+          toast(`${r.film} removed from the shelf · ${gone} prints gone · a backup file keeps anything you exported`);
+        }
+      };
       a.appendChild(el);
     });
   } else {
@@ -1193,8 +1213,6 @@ function buildFilmList(){
   const byBrand = {};
   visible.forEach(f => { (byBrand[f.brand] = byBrand[f.brand] || []).push(f); });
   const brands = Object.keys(byBrand).sort((a, b) => byBrand[b].length - byBrand[a].length || a.localeCompare(b));
-  const count = $('filmCount');
-  if (count) count.textContent = `${visible.length} films · ${filmCatOn === 'all' ? 'all' : filmCatOn.toUpperCase()}`;
   const capline = $('filmBrands');
   if (capline) capline.textContent = brands.join(' · ');
   /* A test build has to say so: the shelf still shows which catalog tier each stock belongs
@@ -1373,7 +1391,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v24';
+const BUILD = 'pocketroll-v25';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW

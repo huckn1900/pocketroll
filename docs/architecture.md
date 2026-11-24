@@ -136,6 +136,12 @@ meta line, so a lab result can never be confused with a filter preset.
   resolved first — DEVELOP it or open the back door (frames fog); a developed roll is archived
   before anything new is threaded. The film preview offers those choices instead of a generic
   confirm dialog, because this is the product's physical lifecycle.
+- **Removing a roll from the shelf**: `deleteArchivedRoll()` in `storage/archive.js` takes the
+  record and its prints out of the store together, so a half-deleted shelf never holds missing
+  photos; a failed write puts the roll back exactly where it was. DELETE is offered on developed
+  records only -- the roll still in the camera is resolved on the deck roll page (DEVELOP or back
+  door), never deleted here. The button arms on the first press and only the second press removes,
+  which keeps the physical-choice language instead of adding a generic confirm dialog.
 - **One developer tank**: `developRoll()` is guarded by `isDeveloping` — a second tap is refused,
   related actions go disabled while the tank runs, and a thrown step leaves the roll latent rather
   than half-developed, so a retry is safe. One develop → one archive record → one contact sheet.

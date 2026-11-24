@@ -51,6 +51,22 @@ async function updateRoll(rec){
   if (db) { try { await idbPut(rec); } catch { toast('could not save that change · export a backup from GALLERY'); } }
   else { try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(state.rolls.slice(0, 6))); } catch {} }
 }
+/* A roll the user no longer wants. The record and its prints leave the store together — a
+   half-deleted shelf would be a shelf of missing photos. A failed delete puts the roll back
+   exactly where it was: nothing disappears until the store agrees. The roll still in the
+   camera is never handled here; that one is resolved on the deck's roll page. */
+async function deleteArchivedRoll(rec){
+  const at = state.rolls.findIndex(r => r.id === rec.id);
+  if (at < 0) return false;
+  state.rolls.splice(at, 1);
+  if (db) {
+    try { await idbDelete(rec.id); }
+    catch { state.rolls.splice(at, 0, rec); toast('could not remove that roll · export a backup from GALLERY to keep anything else'); return false; }
+  } else {
+    try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(state.rolls.slice(0, 6))); } catch {}
+  }
+  return true;
+}
 function thumbOf(url){
   return new Promise(res => {
     const img = new Image(); img.src = url;

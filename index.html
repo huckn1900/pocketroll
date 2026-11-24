@@ -483,8 +483,15 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   footer{display:none}
 }
 .roll-card{background:var(--dark);border-radius:10px;padding:10px 12px;margin-top:8px;cursor:pointer}
-.roll-card .meta{display:flex;justify-content:space-between;font-size:11px;color:#cfc5b4}
-.roll-card .sub{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:var(--dim)}
+.roll-card .meta{display:flex;align-items:center;gap:8px;font-size:11px;color:#cfc5b4}
+.roll-card .meta>span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roll-card .sub{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);flex:none}
+/* taking a roll off the shelf. A quiet mono button that arms only under the press that means
+   it: the armed state inverts to cream-on-ink rather than borrowing red or amber, because those
+   hues already mean shutter, frames left, selection and locked — a deletion borrows none of them. */
+.delbtn{flex:none;font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;
+  background:none;border:1px solid #4a4238;color:var(--dim);padding:4px 7px;border-radius:6px;cursor:pointer}
+.delbtn.armed{background:#cfc5b4;color:var(--dark);border-color:#cfc5b4}
 .roll-card .mini{display:flex;gap:4px;margin-top:7px;overflow:hidden}
 .roll-card .mini img{width:52px;height:34px;object-fit:cover;border-radius:2px}
 .roll-card .rollmeta{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);margin-top:6px;letter-spacing:.03em}
@@ -527,14 +534,23 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .devnote{font-family:'PC Mono',ui-monospace,monospace;font-size:10px;line-height:1.6;
   color:var(--dimmer);margin:4px 0 10px}
 /* what the strip's cells mean, drawn exactly as they look in the strip — the roll is the
-   distinctive part of this app, so its states have to be readable, not guessed */
+   distinctive part of this app, so its states have to be readable, not guessed. Four near-black
+   squares told nobody anything, so each state now carries its own lightness AND its own hue:
+   flat black = nothing shot yet (the cell a fresh roll shows), warm brown = a frame that exists
+   but has never been seen (the latent cell's glow, same temperature), the app's green = developed
+   — the same hue an AVAILABLE chip means, because a developed roll is the one that is usable
+   (its strip cell carries the real print, so the swatch states the state, not the photo), and
+   grey with a hatch = the light destroyed it, exactly as a fogged cell reads. Labels are printed
+   centred under their own swatch, in the readable ink, not pushed against the left edge. */
 .legend{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 2px}
+.legend div{text-align:center}
 .legend i{display:block;height:22px;border-radius:3px;border:1px solid #4a4238;margin-bottom:5px}
-.legend .un{background:#17120d}
-.legend .lat{background:linear-gradient(160deg,#2b2013,#221a12);box-shadow:inset 0 0 14px rgba(255,140,60,.12)}
-.legend .dev{background:#4c443c}
-.legend .fog{background:linear-gradient(135deg,#2a2622,#1d1a16)}
-.legend div{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;color:var(--dimmer)}
+.legend .un{background:#0d0b09}
+.legend .lat{background:linear-gradient(160deg,#7c4a26,#452a18);box-shadow:inset 0 0 14px rgba(255,140,60,.18)}
+.legend .dev{background:#5d8355}
+.legend .fog{background:repeating-linear-gradient(135deg,rgba(216,201,169,.24) 0 3px,transparent 3px 7px),
+  linear-gradient(135deg,#7d7364,#584f44)}
+.legend div{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;color:var(--sub)}
 .optsw{display:flex;align-items:center;gap:10px;background:var(--dark);color:var(--dim);border-radius:10px;
   padding:10px 12px;margin-top:7px;font-size:11px;letter-spacing:.12em;cursor:pointer}
 .optsw.on{color:#e8dcc9}
@@ -684,12 +700,13 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
         <div class="divide"></div>
         <h2>LOAD A FILM</h2>
         <div class="note">each stock has its own colour science; tapping a film opens its preview first</div>
+        <!-- The tabs are the filter; how many stocks sit behind one is a count, not a fact
+             about the shelf, and the shelf itself already lists every stock — so no number here. -->
         <div class="tabs" id="filmTabs">
           <button class="tab on" data-cat="all">ALL FILMS</button>
           <button class="tab" data-cat="color">COLOR</button>
           <button class="tab" data-cat="bw">B&amp;W</button>
           <button class="tab" data-cat="cinema">CINEMA</button>
-          <span class="chip" id="filmCount">films</span>
         </div>
         <div class="brandline" id="filmBrands"></div>
         <!-- only filled when the web gate is opened for testing; empty in the released build -->
