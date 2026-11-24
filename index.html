@@ -172,9 +172,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .dock{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:560px;z-index:30;
   padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:var(--cream)}
 .dockrow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
-.dockrow .sidebtn{justify-self:start}
-/* camera-side entries share the right cell: the roll you loaded, and the bag of bodies */
-.dockrow .camgroup{justify-self:end;display:flex;gap:8px}
+/* each side button is centred in its own half: the archive sits between the left edge and
+   the shutter, the camera deck between the shutter and the right edge. The half columns are
+   equal by definition, so both centres are exact whatever the buttons' widths are. */
+.dockrow .sidebtn{justify-self:center}
 /* the cream ring is symmetric, so the red dome sits in its exact centre; press feedback is
    a small travel plus a deeper inner shadow, no offset drop shadow that reads as off-centre */
 .shutter{width:84px;height:84px;border-radius:50%;border:none;background:var(--red);color:#fff;cursor:pointer;
@@ -188,15 +189,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .sidebtn svg{width:20px;height:20px;display:block}
 .sidebtn .cap{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.16em;color:var(--dim)}
 .sidebtn:active{transform:translateY(1px)}
+/* the red pulse marks "the roll in this body is waiting for the developer" — it rides on the
+   camera deck entry, whose left page is that roll */
 .sidebtn.ready{border-color:var(--red);animation:pulse 1.6s infinite}
 .sidebtn.ready .cap{color:#ffd9c2}
 @keyframes pulse{50%{box-shadow:0 0 0 3px rgba(217,75,55,.35)}}
-/* camera bag: third in the hierarchy — same footprint, cream outline instead of a dark card */
-.bagbtn{background:none;border:1px solid #b3a184;color:var(--ink);border-radius:11px;padding:8px 10px;cursor:pointer;
-  min-width:56px;display:flex;flex-direction:column;align-items:center;gap:3px;
-  font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.16em}
-.bagbtn svg{width:20px;height:20px;display:block}
-.bagbtn:active{background:#c9b795}
 /* the one main-screen action that appears when the roll is done — shoot → develop is the ritual */
 .developbtn{display:block;width:100%;margin-top:var(--gap);background:var(--red);color:#fff;border:none;border-radius:10px;
   padding:13px;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.16em;cursor:pointer;
@@ -249,13 +246,26 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 /* ── footer ── */
 footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);margin-top:var(--gap);padding-bottom:6px}
 
-/* ── pages (roll / gallery / settings) ── */
+/* ── pages (camera deck / archive / settings) ── */
 .modal{position:fixed;inset:0;background:rgba(20,16,12,.55);display:none;z-index:40}
 .modal.open{display:block}
 .sheet{position:fixed;left:50%;top:0;transform:translateX(-50%);width:100%;max-width:560px;height:100%;
   background:var(--cream);padding:18px 16px;overflow-y:auto}
 .sheet h2{font-size:12px;font-weight:700;letter-spacing:.18em;margin-bottom:2px}
 .sheet .note{font-family:'PC Mono',ui-monospace,monospace;font-size:10px;color:var(--sub);margin-bottom:12px;letter-spacing:.06em}
+/* ── the camera deck ── two pages of one sheet on a horizontal track: the roll on the left,
+   bodies on the right. A swipe moves between them and the tab row follows the track, so both
+   ways of switching say the same thing. Each page scrolls on its own; the header and tabs stay
+   put while a long shelf scrolls. No chrome on the track — pages are pages, not a scrollbar. */
+.decksheet{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.deckhead{padding:18px 16px 10px;flex:none}
+.deckhead .tabs{margin:0}
+.deckhint{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;color:var(--sub);margin-top:7px}
+.decktrack{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+  scroll-behavior:smooth;overscroll-behavior-x:contain;scrollbar-width:none}
+.decktrack::-webkit-scrollbar{display:none}
+.deckpage{flex:0 0 100%;min-width:100%;scroll-snap-align:start;overflow-y:auto;
+  padding:2px 16px calc(24px + env(safe-area-inset-bottom))}
 .closebtn{float:right;background:none;border:none;color:var(--sub);font-size:16px;cursor:pointer}
 .divide{border-top:1px solid #b8a88f;margin:16px 0}
 .darkbtn{width:100%;background:var(--dark);color:#e8dcc9;border:1px solid #4a4238;border-radius:10px;
@@ -555,7 +565,9 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 <!-- the one main-screen action that appears when the roll is done — shoot → develop is the ritual -->
 <button class="developbtn" id="developMain" style="display:none">DEVELOP ROLL · 36 EXPOSURES DONE</button>
 
-<!-- controls: one thumb row — archive left, shutter centred, the loaded roll + camera bag right -->
+<!-- controls: one thumb row — archive centred between the edge and the shutter, the camera
+     deck centred between the shutter and the other edge. The camera deck is one entry with
+     two pages: the roll this body holds on the left, the bag of bodies on the right. -->
 <div class="dock">
   <div class="dockrow">
     <button class="sidebtn" id="openGallery" title="film archive">
@@ -572,53 +584,69 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
         <path d="M10.7 4.1 L18 17.2"/>
       </svg>
     </button>
-    <div class="camgroup">
-      <button class="sidebtn" id="openRoll" title="the loaded roll">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="8" x2="21" y2="8"/><line x1="3" y1="16" x2="21" y2="16"/></svg>
-        <span class="cap">ROLL</span>
-      </button>
-      <!-- the camera bag used to be buried inside settings; it is its own entry now -->
-      <button class="bagbtn" id="openBag" title="camera bodies">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="12" rx="2.5"/><circle cx="12" cy="13" r="3.4"/><rect x="6" y="4.4" width="6" height="2.6" rx="1"/></svg>
-        <span>BAG</span>
-      </button>
-    </div>
+    <!-- one entry for everything camera-side. It pulses red when the roll in this body is
+       finished and waiting for the developer — same warning the separate roll button carried. -->
+    <button class="sidebtn" id="openDeck" title="the roll in this camera, and the bag of bodies">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="12" rx="2.5"/><circle cx="12" cy="13" r="3.4"/><rect x="6" y="4.4" width="6" height="2.6" rx="1"/></svg>
+      <span class="cap">CAMERA</span>
+    </button>
   </div>
 </div>
 
-<!-- ── ROLL page: everything about the current roll ── -->
-<div class="modal" id="rollModal">
-  <div class="sheet">
-    <button class="closebtn" data-close>✕</button>
-    <h2>THE ROLL</h2>
-    <div class="note" id="rollStatus">roll loaded · 36 frames</div>
-    <!-- the roll's own numbers, the same LED tone the camera uses -->
-    <div class="rollcount" id="rollCount"><b>36</b><span>of 36 frames left</span></div>
-    <!-- shown only while a roll is waiting in the camera: the tank cannot be un-run -->
-    <div class="devnote" id="devNote" style="display:none">development runs every exposed frame through developer → stop bath → fixer → wash. it is irreversible: once the roll comes out it is archived, and this camera takes a fresh roll.</div>
-    <button class="darkbtn" id="developRoll" style="display:none">DEVELOP ROLL</button>
-    <button class="darkbtn" id="sheetBtn" style="display:none">CONTACT SHEET ↓</button>
-    <button class="darkbtn small" id="doorBtn">OPEN BACK DOOR — spool out (undeveloped frames fog)</button>
-    <div class="legend" id="stripLegend">
-      <div><i class="un"></i>UNEXPOSED</div>
-      <div><i class="lat"></i>EXPOSED · LATENT</div>
-      <div><i class="dev"></i>DEVELOPED</div>
-      <div><i class="fog"></i>FOGGED</div>
+<!-- ── CAMERA DECK: one entry, two pages. The roll this body holds is the left page, the bag
+     of bodies is the right page — swiping sideways moves between them, the tab row follows the
+     track so a swipe and a tap mean the same thing. Everything the separate roll page and bag
+     page used to hold is here unchanged; only the entry is one instead of two. ── -->
+<div class="modal" id="deckModal">
+  <div class="sheet decksheet">
+    <div class="deckhead">
+      <button class="closebtn" data-close>✕</button>
+      <div class="tabs">
+        <button class="tab on" id="deckRollTab">THE ROLL</button>
+        <button class="tab" id="deckCamTab">CAMERA BAG</button>
+      </div>
+      <div class="deckhint">swipe sideways · the tabs switch pages</div>
     </div>
-    <div class="divide"></div>
-    <h2>LOAD A FILM</h2>
-    <div class="note">each stock has its own colour science; tapping a film opens its preview first</div>
-    <div class="tabs" id="filmTabs">
-      <button class="tab on" data-cat="all">ALL FILMS</button>
-      <button class="tab" data-cat="color">COLOR</button>
-      <button class="tab" data-cat="bw">B&amp;W</button>
-      <button class="tab" data-cat="cinema">CINEMA</button>
-      <span class="chip" id="filmCount">films</span>
+    <div class="decktrack" id="deckTrack">
+      <!-- page 1: everything about the roll in the camera -->
+      <section class="deckpage" id="deckRollPage">
+        <div class="note" id="rollStatus">roll loaded · 36 frames</div>
+        <!-- the roll's own numbers, the same LED tone the camera uses -->
+        <div class="rollcount" id="rollCount"><b>36</b><span>of 36 frames left</span></div>
+        <!-- shown only while a roll is waiting in the camera: the tank cannot be un-run -->
+        <div class="devnote" id="devNote" style="display:none">development runs every exposed frame through developer → stop bath → fixer → wash. it is irreversible: once the roll comes out it is archived, and this camera takes a fresh roll.</div>
+        <button class="darkbtn" id="developRoll" style="display:none">DEVELOP ROLL</button>
+        <button class="darkbtn" id="sheetBtn" style="display:none">CONTACT SHEET ↓</button>
+        <button class="darkbtn small" id="doorBtn">OPEN BACK DOOR — spool out (undeveloped frames fog)</button>
+        <div class="legend" id="stripLegend">
+          <div><i class="un"></i>UNEXPOSED</div>
+          <div><i class="lat"></i>EXPOSED · LATENT</div>
+          <div><i class="dev"></i>DEVELOPED</div>
+          <div><i class="fog"></i>FOGGED</div>
+        </div>
+        <div class="divide"></div>
+        <h2>LOAD A FILM</h2>
+        <div class="note">each stock has its own colour science; tapping a film opens its preview first</div>
+        <div class="tabs" id="filmTabs">
+          <button class="tab on" data-cat="all">ALL FILMS</button>
+          <button class="tab" data-cat="color">COLOR</button>
+          <button class="tab" data-cat="bw">B&amp;W</button>
+          <button class="tab" data-cat="cinema">CINEMA</button>
+          <span class="chip" id="filmCount">films</span>
+        </div>
+        <div class="brandline" id="filmBrands"></div>
+        <!-- only filled when the web gate is opened for testing; empty in the released build -->
+        <div class="note" id="filmGate"></div>
+        <div id="filmList"></div>
+      </section>
+      <!-- page 2: choosing a body — the film stays on the roll, only the lens character changes -->
+      <section class="deckpage" id="deckCamPage">
+        <div class="note">the body changes lens character; your roll keeps the film</div>
+        <div id="camList"></div>
+        <!-- only filled when the web gate is opened for testing; empty in the released build -->
+        <div class="note" id="bagGate"></div>
+      </section>
     </div>
-    <div class="brandline" id="filmBrands"></div>
-    <!-- only filled when the web gate is opened for testing; empty in the released build -->
-    <div class="note" id="filmGate"></div>
-    <div id="filmList"></div>
   </div>
 </div>
 
@@ -680,18 +708,6 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
     <div class="divide"></div>
     <button class="darkbtn small" id="loadPhoto">SCAN IN A PHOTO — lab-developed through the loaded film</button>
     <input type="file" id="fileInput" accept="image/*" hidden>
-  </div>
-</div>
-
-<!-- ── CAMERA BAG page: choosing a body, its own entry from the dock ── -->
-<div class="modal" id="cameraBagModal">
-  <div class="sheet">
-    <button class="closebtn" data-close>✕</button>
-    <h2>CAMERA BAG</h2>
-    <div class="note">the body changes lens character; your roll keeps the film</div>
-    <div id="camList"></div>
-    <!-- only filled when the web gate is opened for testing; empty in the released build -->
-    <div class="note" id="bagGate"></div>
   </div>
 </div>
 

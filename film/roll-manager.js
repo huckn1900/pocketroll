@@ -28,7 +28,8 @@ function loadFilm(f, { force = false } = {}){
   state.loadedAt = Date.now(); // roll record: the date this roll was loaded
   state.sheet = null;
   renderCounter();
-  $('openRoll').classList.remove('ready');
+  // a fresh roll clears the deck's warning: nothing is waiting for the developer any more
+  $('openDeck').classList.remove('ready');
   renderStrip();
   const g = $('stripFrames'); g.classList.remove('slidein'); void g.offsetWidth; g.classList.add('slidein'); // film threading in
   $('stripFrames').scrollLeft = 0;

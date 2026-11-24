@@ -476,7 +476,28 @@ function pulseCounter(){
   n.classList.remove('tick'); void n.offsetWidth;   // restart the animation on every frame
   n.classList.add('tick');
 }
-/* the roll page owns everything about the current roll: develop appears only
+/* the camera deck: one dock entry, two pages. The roll this body holds is the left page and
+   the bag of bodies is the right page. A swipe moves the track; the tabs follow wherever the
+   track actually is, so tapping a tab and dragging a page mean the same thing. */
+function deckSync(){
+  const track = $('deckTrack');
+  if (!track || !track.clientWidth) return;
+  const atCam = track.scrollLeft > track.clientWidth * 0.5;
+  $('deckRollTab').classList.toggle('on', !atCam);
+  $('deckCamTab').classList.toggle('on', atCam);
+}
+function deckShow(page){
+  const track = $('deckTrack');
+  if (!track || !track.clientWidth) return;
+  track.scrollTo({ left: page === 'camera' ? track.clientWidth : 0, behavior: 'smooth' });
+  deckSync();
+}
+function openDeck(page){
+  $('deckModal').classList.add('open');
+  deckShow(page === 'camera' ? 'camera' : 'roll');
+}
+
+/* the deck's roll page owns everything about the current roll: develop appears only
    after shooting, the contact sheet only after developing (the main screen
    is just the shutter — feature entries never share its visual weight). */
 function renderRollPage(){
@@ -503,7 +524,9 @@ function renderRollPage(){
      taken back: development is not a preview you can cancel. */
   $('devNote').style.display = has && !state.developed && !isDeveloping ? '' : 'none';
   $('sheetBtn').style.display = state.sheet ? '' : 'none';
-  $('openRoll').classList.toggle('ready', !!state.rollId && has && state.shotsLeft === 0 && !state.developed);
+  /* the deck's red pulse is the roll's own warning: a finished roll sitting in this body is
+     waiting for the developer, and the deck's left page is where it is resolved */
+  $('openDeck').classList.toggle('ready', !!state.rollId && has && state.shotsLeft === 0 && !state.developed);
   // standalone develop action on the main screen: shoot → develop, right here
   $('developMain').style.display = !!state.rollId && has && state.shotsLeft === 0 && !state.developed ? '' : 'none';
   $('developMain').textContent = `DEVELOP ROLL · ${state.frames.length} EXPOSURES DONE`;
@@ -721,7 +744,8 @@ function renderArchive(){
       + `<span class="sub">${esc(state.film ? state.film.name : 'a roll')}</span></div>`
       + `<div class="rollmeta">${state.frames.length} FRAMES LATENT · DEVELOP IT TO ARCHIVE</div>`
       + `<div class="mini">${state.frames.slice(0, 8).map(f => `<img src="${f.t || f.url}" alt="">`).join('')}</div>`;
-    el.onclick = () => { $('galleryModal').classList.remove('open'); $('rollModal').classList.add('open'); };
+    // a roll still in the camera is resolved on the deck's left page, not in the archive
+    el.onclick = () => { $('galleryModal').classList.remove('open'); openDeck('roll'); };
     a.appendChild(el);
   }
   // an empty tab says so, but never over the roll that is still in the camera
@@ -1107,7 +1131,9 @@ function buildLists(){
         if (st === 'lock'){ proHint(); return; }
         // a body that holds a different roll refuses the swap until the roll is resolved
         if (!loadCamera(c)) return;
-        buildLists(); $('cameraBagModal').classList.remove('open');
+        // the deck stays open on its camera page: the shelf itself says SELECTED now,
+        // so closing the page would be the page saying nothing at the moment it changed
+        buildLists();
       };
       cl.appendChild(el);
     });
@@ -1305,7 +1331,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v21';
+const BUILD = 'pocketroll-v22';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
@@ -1378,10 +1404,13 @@ async function boot(){
   });
 
   $('shutter').onclick = capture;
-  $('openRoll').onclick = () => $('rollModal').classList.add('open');
+  // the camera deck opens on the roll page — the roll in the camera is what matters at the shutter
+  $('openDeck').onclick = () => openDeck('roll');
+  $('deckRollTab').onclick = () => deckShow('roll');
+  $('deckCamTab').onclick = () => deckShow('camera');
+  $('deckTrack').addEventListener('scroll', deckSync, { passive: true });
   $('openGallery').onclick = () => $('galleryModal').classList.add('open');
   $('openSettings').onclick = () => $('settingsModal').classList.add('open');
-  $('openBag').onclick = () => $('cameraBagModal').classList.add('open');
   $('doorBtn').onclick = backDoor;
   $('developRoll').onclick = developRoll;
   $('developMain').onclick = developRoll;
@@ -1425,11 +1454,12 @@ async function boot(){
   const sc = $('swapCancel'); if (sc) sc.onclick = () => { hideSwapGate(); toast('roll kept in the camera'); };
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { hideSwapGate(); b.closest('.modal').classList.remove('open'); });
   // test hook: ?page=roll|gallery|settings|bag opens that page directly
+  // (roll and bag are the two pages of the camera deck — bag lands on the right page)
   const page = q.get('page');
-  if (page === 'roll') $('rollModal').classList.add('open');
+  if (page === 'roll') openDeck('roll');
   if (page === 'gallery') $('galleryModal').classList.add('open');
   if (page === 'settings') $('settingsModal').classList.add('open');
-  if (page === 'bag') $('cameraBagModal').classList.add('open');
+  if (page === 'bag') openDeck('camera');
   // test hook: ?preview=<film id> opens that stock's preview page (engine samples)
   const pvId = q.get('preview');
   if (pvId){
