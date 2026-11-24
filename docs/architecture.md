@@ -41,6 +41,8 @@ pocketroll/
 │   └── capture.js      the moment of exposure: frame, leak, date stamp, thumbnail, roll record
 ├── assets/             cameras.json · films.json · samples · fonts
 ├── sw.js               shell pre-cache + network-first for code
+├── scripts/            idempotent profile patches + make-icon.mjs (renders the brand mark)
+├── icon.svg · icon.png · icon-192.png    the launcher mark, generated — never hand-edited
 └── licensing/          (Pro APK stage) license-manager.js · entitlement-manager.js
 ```
 
@@ -169,6 +171,12 @@ meta line, so a lab result can never be confused with a filter preset.
 - **Storage management**: the archive page shows rolls/frames/scans plus approximate bytes used and
   quota (`navigator.storage.estimate()`), asks for `navigator.storage.persist()`, and states what
   survives refresh and offline.
+- **Brand mark**: `icon.svg`, `icon.png` (512, maskable-safe) and `icon-192.png` are rendered by
+  `node scripts/make-icon.mjs` — the 35mm can with the strip and the `35` in the bundled brand
+  face, drawn in `#ef9c23` (the develop-orange × amber blend that reads as orange-yellow) on the
+  splash ground `#141311`. The PNGs are generated, never hand-edited; the manifest points at both
+  sizes and iOS reads `apple-touch-icon`, so an installed shortcut on Android and iPhone gets the
+  same mark. Chrome caches the icon of an already-installed app, so a new mark needs a re-install.
 - **Build notice**: `sw.js` only caches `res.ok` responses and never fails a request over a cache
   write; `CACHE` in sw.js and `BUILD` in app.js are bumped together on deploy, and a mismatch shows
   "NEW VERSION AVAILABLE · RELOAD" instead of quietly running an older build.
