@@ -15,10 +15,12 @@
 :root{
   --cream:#D8C9A9; --dark:#24211D; --ink:#39342D; --sub:#574f45; --red:#D94B37;
   --led:#ff5138; --latent:#2b2013; --dim:#a99a82; --dimmer:#998f7d;
-  /* Round 23: the counter plate owns a fixed, responsive width and its number is derived
-     from that width (see .counter .num) — the digits scale with the panel and can never
-     overflow it. --gap scales section spacing with the viewport height: short screens
-     pack tighter, tall ones keep their air. */
+  /* The counter plate owns a fixed, responsive width and its number is derived from that
+     width (see .counter .num) — the digits scale with the panel and can never overflow it.
+     Round 24 took the size back down: the plate stays wide so its arithmetic row prints on
+     one line, but the number is a readout the eye glances at, not a headline. --gap scales
+     section spacing with the viewport height: short screens pack tighter, tall ones keep
+     their air; the room a screen leaves unused belongs to the viewfinder (see renderViewfinder). */
   --cw:clamp(112px, 34vw, 150px);
   --gap:clamp(7px, 1.6vh, 12px);
 }
@@ -126,19 +128,19 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 
 /* ── 3. status ── two matched dark plates, in the order the screen is read: the frame
    counter first (it is the number that changes), the body's nameplate second. Same radius,
-   same labels, same label position — one instrument, not two stray blocks. Round 23: the
-   counter now uses the whole panel it was given — the label prints at the top like every
-   other plate, the remaining number takes the middle at a size derived from the plate's
-   own width, and the roll's arithmetic (OF n EXP, SHOT n) sits along the bottom. Nothing
-   on this plate is empty space. The counter owns the red LED token; the nameplate stays
-   cream and quiet, because which camera and which film are facts, not actions. */
+   same labels, same label position — one instrument, not two stray blocks. Round 24: the
+   counter keeps its layout (label at the top, remaining number in the middle, the roll's
+   arithmetic along the bottom) but the number is no longer drawn to fill the panel — a
+   readout in a plate that carries it is calmer than a headline shouting out of it. The
+   counter owns the red LED token; the nameplate stays cream and quiet, because which camera
+   and which film are facts, not actions. */
 .status{display:grid;grid-template-columns:var(--cw) minmax(0,1fr);gap:8px;margin-top:var(--gap);align-items:stretch}
 .counter{width:var(--cw);padding:9px 10px;display:flex;flex-direction:column}
-.counter .lbl{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.18em;color:var(--dim)}
-/* the number is sized from the plate it lives in, so two digits plus the plate padding
-   always fit: 68–76px on phones that can carry it, smaller where they cannot. */
-.counter .num{font-family:'PC Mono',ui-monospace,monospace;font-size:clamp(34px, calc(var(--cw) * 0.52), 76px);
-  color:var(--led);line-height:1;flex:1;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.counter .lbl{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.18em;color:var(--dim);line-height:1.1}
+/* sized from the plate it lives in at a quiet ratio (~1:3 of the panel): large enough to
+   read at a glance, small enough that the plate still looks like an instrument panel. */
+.counter .num{font-family:'PC Mono',ui-monospace,monospace;font-size:clamp(20px, calc(var(--cw) * 0.28), 42px);
+  letter-spacing:.04em;color:var(--led);line-height:1;flex:1;display:flex;align-items:center;justify-content:center;white-space:nowrap}
 /* the roll's arithmetic stated once, at the foot of the panel: what is left of what,
    and how many were taken — the same plate, not a second counter somewhere else. */
 .counter .foot{display:flex;justify-content:space-between;align-items:baseline;gap:4px;
@@ -148,13 +150,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .counter.done .foot{color:#6d6455}
 /* The nameplate matches the counter plate's height and its own edges: the label prints at the
    top on the same line as FRAMES LEFT, and the loaded can pins to the bottom edge, facing the
-   counter's OF n EXP / SHOT n row. Nothing in the middle is padding — a plate is a plate. */
+   counter's OF n EXP / SHOT n row. Nothing in the middle is padding — a plate is a plate, and
+   its rows print on tight line-heights so the status row stays short and the finder gets the
+   rest of the screen. */
 .plate{background:var(--dark);border-radius:12px;padding:9px 11px;display:flex;flex-direction:column;justify-content:space-between}
-.plate .lbl{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.18em;color:var(--dim)}
-.plate .model{font-family:'PC Cond',sans-serif;font-size:14px;font-weight:700;letter-spacing:.05em;color:#efe6d3;margin-top:4px}
+.plate .lbl{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.18em;color:var(--dim);line-height:1.1}
+.plate .model{font-family:'PC Cond',sans-serif;font-size:14px;font-weight:700;letter-spacing:.05em;color:#efe6d3;line-height:1.1;margin-top:5px}
 /* the film lives on the nameplate as a canister chip; at 18px the colour band carries the
    identity, so no text is drawn on the can at this size. */
-.filmchip{display:flex;align-items:center;gap:7px;padding-top:6px;border-top:1px solid rgba(233,223,205,.14)}
+.filmchip{display:flex;align-items:center;gap:7px;padding-top:6px;border-top:1px solid rgba(233,223,205,.14);line-height:1}
 .filmchip svg{width:18px;height:22px;flex:none}
 .filmchip .fname{font-family:'PC Cond',sans-serif;font-size:11px;font-weight:700;letter-spacing:.09em;color:#c9bda6}
 .filmchip .fiso{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;color:var(--dim);margin-left:auto}

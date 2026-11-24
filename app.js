@@ -158,9 +158,10 @@ class FilmEngine {
   }
   /* The viewfinder is a display, not a print. Whatever the sensor sends is drawn FULL, at
      its true aspect, centred inside the LCD box — never stretched to fill it, never trimmed
-     to its corner. What the box itself is shaped like comes from the body (a print gate is
-     the frame the film carries); anything that does not fit gets the dark bars a real
-     compact screen shows around a frame it cannot display. */
+     to its corner. What the box itself is shaped like is decided outside this class — a
+     print gate is the frame the film carries, a compact's window is the feed it is being
+     handed — and anything that still does not fit gets the dark bars a real compact screen
+     shows around a frame it cannot display. */
   _drawContained(src, sx, sy, sw2, sh2){
     const w = this.canvas.width, h = this.canvas.height;
     let dw = w, dh = Math.round(w * sh2 / sw2);
@@ -512,7 +513,25 @@ function renderRollPage(){
 /* sleep is a shared util: the developer phases and the preview both wait on it. */
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
+/* test hook: ?feed=0.56 pretends the sensor feed is a phone held portrait, so the window's
+   tall path can be measured without a real camera. Nothing in the app ever passes a number. */
+const FEED_OVERRIDE = parseFloat(new URLSearchParams(location.search).get('feed')) || 0;
+
 let vfAspect = 0;
+/* The vertical room a screen leaves unused below the film strip belongs to the finder: the
+   strip, the develop action and the reserved dock row are fixed, so whatever sits below them
+   is slack nobody is using. The slack is signed — negative means the page has crossed the
+   line the dock reserves and the window gives room back. Each frame moves toward zero, so the
+   page never scrolls and the strip ends up resting above the thumb row. */
+function finderSlack(){
+  const strip = document.querySelector('.strip');
+  if (!strip || strip.offsetParent === null) return 0;
+  const pb = parseFloat(getComputedStyle(document.body).paddingBottom) || 112;
+  let bottom = strip.getBoundingClientRect().bottom;
+  const dev = $('developMain');
+  if (dev && dev.offsetParent !== null) bottom = Math.max(bottom, dev.getBoundingClientRect().bottom);
+  return Math.floor(innerHeight - pb - bottom);
+}
 function renderViewfinder(){
   // The finder box is the BODY's frame, not the sensor's: a gate body shows the shape it
   // prints (6×7 / 6×4.5 at real ratio), a 135 compact keeps a compact LCD box (~4:3). The
@@ -526,10 +545,20 @@ function renderViewfinder(){
   const sh = src.height || video.videoHeight;
   if (!sw || !sh) return;
   const gate = state.cam?.gate?.aspect;   // what this body prints, when it prints at all
-  const box = gate ? Math.min(1.6, Math.max(0.7, gate)) : 1.333;
+  const stage = $('vfStage');
+  const cssW = stage.clientWidth || 320;
+  let box = gate ? Math.min(1.6, Math.max(0.7, gate)) : 1.333;
+  if (!gate && matchMedia('(orientation:portrait)').matches){
+    // the window is the compact's own screen: it takes the feed's shape, standing tall when
+    // the phone is held portrait, and grows only into the vertical space the page leaves free
+    const feed = Math.min(1.333, Math.max(0.5, FEED_OVERRIDE || sw / sh));
+    const cur = stage.clientHeight || Math.round(cssW / 1.333);
+    const tall = Math.max(140, Math.min(Math.round(cssW / feed), cur + finderSlack()));
+    box = cssW / tall;
+  }
   if (Math.abs(vfAspect - box) > 0.005){
     vfAspect = box;
-    $('vfStage').style.aspectRatio = String(box);
+    stage.style.aspectRatio = String(box);
   }
   const cw = previewW, ch = Math.max(2, Math.round(previewW / box));
   if (vf.width !== cw || vf.height !== ch){ vf.width = cw; vf.height = ch; }
@@ -1276,7 +1305,7 @@ async function openFilmPreview(f){
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v19';
+const BUILD = 'pocketroll-v20';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW

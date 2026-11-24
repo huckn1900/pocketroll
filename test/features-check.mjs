@@ -52,24 +52,35 @@ const probe = await send('Runtime.evaluate', {
       };
       im.onerror = () => res(null);
     });
-    const w = new Image(); w.src = state.frames[0].url; await w.decode();
-    const W = w.naturalWidth, H = w.naturalHeight;
-    // deterministic scene for the flash delta: the fake-device blob changes shape
-    // every shot, so cross-frame brightness compares are flaky — swap the stream to
-    // a uniform gray canvas (same capture pipeline, no moving content).
+    // deterministic scene for the cross-frame compares: the fake-device blob changes shape
+    // every shot, so brightness/orange-pixel comparisons across frames are flaky — swap BOTH
+    // sources to a uniform gray canvas (same capture pipeline, no moving content). capture()
+    // reads the video when a device is present and the fake canvas when it is not; swapping
+    // both covers either runner.
     const cv = document.createElement('canvas'); cv.width = 1280; cv.height = 960;
     const cx2 = cv.getContext('2d'); cx2.fillStyle = '#808080'; cx2.fillRect(0, 0, 1280, 960);
     video.srcObject = cv.captureStream(30); video.play();
+    demoCanvas = cv;
     await new Promise(r => setTimeout(r, 400));
-    state.opts.flash = true; capture(); await new Promise(r => setTimeout(r, 350));
-    state.opts.flash = false; capture(); await new Promise(r => setTimeout(r, 350));
-    const on = await patch(state.frames[3].url, Math.round(W * .40), Math.round(H * .42), 40);
-    const off = await patch(state.frames[4].url, Math.round(W * .40), Math.round(H * .42), 40);
-    const corner = await patch(state.frames[3].url, W - 140, H - 55, 30);
-    state.opts.date = false; capture(); // same gray scene, no stamp — control frame
+    // Address the frames this probe captured by taking them as they are made, not by index:
+    // the autoshot count in the URL shifts every index, so a fixed index compared an
+    // autoshot of the moving scene against a gray frame.
+    state.opts.flash = true; capture({ noLeak: true }); await new Promise(r => setTimeout(r, 350));
+    const onUrl = state.frames[state.frames.length - 1].url;
+    state.opts.flash = false; capture({ noLeak: true }); await new Promise(r => setTimeout(r, 350));
+    const offUrl = state.frames[state.frames.length - 1].url;
+    const g = new Image(); g.src = onUrl; await g.decode();
+    const GW = g.naturalWidth, GH = g.naturalHeight;   // the gray frames' own geometry
+    const on = await patch(onUrl, Math.round(GW * .40), Math.round(GH * .42), 40);
+    const off = await patch(offUrl, Math.round(GW * .40), Math.round(GH * .42), 40);
+    const corner = await patch(onUrl, GW - 140, GH - 55, 30);
+    // noLeak on every comparison frame: a light leak is a random orange wash, and a frame
+    // that happened to get one out-measures a stamped frame that did not — the leak is not
+    // what this assertion is about.
+    state.opts.date = false; capture({ noLeak: true }); // same gray scene, no stamp — control frame
     await new Promise(r => setTimeout(r, 350));
-    const cornerNo = await patch(state.frames[5].url, W - 140, H - 55, 30);
-    // count orange stamp pixels in the bottom-right stamp zone of both frames
+    const controlUrl = state.frames[state.frames.length - 1].url;
+    const cornerNo = await patch(controlUrl, GW - 140, GH - 55, 30);
     const orangeCount = (u) => new Promise(res => {
       const im = new Image(); im.src = u;
       im.onload = () => {
@@ -83,8 +94,12 @@ const probe = await send('Runtime.evaluate', {
       };
       im.onerror = () => res(-1);
     });
-    const stamped = await orangeCount(state.frames[0].url);
-    const unstamped = await orangeCount(state.frames[5].url);
+    // count orange stamp pixels in the bottom-right stamp zone of both frames. Both sides are
+    // the SAME gray scene with the leak suppressed: the autoshot frame is the procedural demo
+    // scene, whose content changes every run, so counting orange pixels there measured the
+    // scene — and a random light leak — instead of the stamp.
+    const stamped = await orangeCount(onUrl);
+    const unstamped = await orangeCount(controlUrl);
     state.opts.flash = true;
     developRoll();
     await new Promise(r => setTimeout(r, 6500)); // developer phases + reveal + archive + sheet
