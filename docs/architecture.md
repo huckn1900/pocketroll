@@ -172,11 +172,14 @@ meta line, so a lab result can never be confused with a filter preset.
   quota (`navigator.storage.estimate()`), asks for `navigator.storage.persist()`, and states what
   survives refresh and offline.
 - **Brand mark**: `icon.svg`, `icon.png` (512, maskable-safe) and `icon-192.png` are rendered by
-  `node scripts/make-icon.mjs` — the 35mm can with the strip and the `35` in the bundled brand
-  face, drawn in `#ef9c23` (the develop-orange × amber blend that reads as orange-yellow) on the
-  splash ground `#141311`. The PNGs are generated, never hand-edited; the manifest points at both
-  sizes and iOS reads `apple-touch-icon`, so an installed shortcut on Android and iPhone gets the
-  same mark. Chrome caches the icon of an already-installed app, so a new mark needs a re-install.
+-   `node scripts/make-icon.mjs` at the proportions of the original mark: a lid bar above a wide
+   top rim and bottom rim, only the LEFT edge of the body, and a short film strip coming out on
+   the right — the sprocket holes and the carved corner are ground-colour cut-outs, so the mark
+   never uses a third colour — with the `35` in the bundled brand face filling the body. Drawn in
+   `#D94B37`, the exact colour the header prints its `35` in (`--red`), on the splash ground
+   `#141311`. The PNGs are generated, never hand-edited; the manifest points at both sizes and iOS
+   reads `apple-touch-icon`, so an installed shortcut on Android and iPhone gets the same mark.
+   Chrome caches the icon of an already-installed app, so a new mark needs a re-install.
 - **Build notice**: `sw.js` only caches `res.ok` responses and never fails a request over a cache
   write; `CACHE` in sw.js and `BUILD` in app.js are bumped together on deploy, and a mismatch shows
   "NEW VERSION AVAILABLE · RELOAD" instead of quietly running an older build.
