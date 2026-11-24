@@ -1,0 +1,158 @@
+(async () => {
+  const out = {};
+  const IN = __INSETS__;   // the insets this device reserves, supplied by the matrix per device
+  try {
+    const ivw = innerWidth, ivh = innerHeight;
+    out.portrait = matchMedia('(orientation:portrait)').matches;
+    out.scrollH = document.documentElement.scrollHeight;
+    out.noScroll = out.scrollH <= ivh + 2;
+    out.overflowX = document.documentElement.scrollWidth > ivw + 2;
+    out.leaderGone = document.getElementById('bootScreen').classList.contains('gone');
+    out.engine = (() => { try { return { rollId: state.rollId || null, frames: state.frames.length, developed: !!state.developed, archived: state.rolls.length }; } catch (e) { return { error: String(e) }; } })();
+
+    const rect = el => el.getBoundingClientRect();
+    const inView = el => { const r = rect(el); return r.width > 0 && r.height > 0 && r.top >= -2 && r.bottom <= ivh + 2 && r.left >= -2 && r.right <= ivw + 2; };
+    const visible = el => { const r = rect(el); return r.width > 0 && r.height > 0 && r.top < ivh && r.bottom > 0 && r.left < ivw && r.right > 0; };
+    const centre = el => rect(el).left + rect(el).width / 2;
+
+    const dock = document.querySelector('.dock');
+    out.dockInView = inView(dock);
+    out.dockPadBottom = getComputedStyle(dock).paddingBottom;
+    out.bodyPadTop = getComputedStyle(document.body).paddingTop;
+
+    const stage = document.getElementById('vfStage');
+    const sr = rect(stage);
+    out.stage = { w: Math.round(sr.width), h: Math.round(sr.height), aspect: +(sr.width / sr.height).toFixed(3), inView: inView(stage) };
+    const cv = document.getElementById('viewfinder');
+    out.canvas = cv ? { w: cv.width, h: cv.height } : null;
+    out.feedPixels = (() => { try { const d = cv.getContext('2d').getImageData(Math.round(cv.width / 2), Math.round(cv.height / 2), 1, 1).data; return [d[0], d[1], d[2]]; } catch (e) { return String(e); } })();
+
+    const strip = document.querySelector('.strip');
+    out.stripInView = inView(strip);
+    out.stripClearsDock = rect(strip).bottom <= rect(dock).top + 2;
+
+    const cp = document.getElementById('counterPlate');
+    out.plateOverflow = cp.scrollWidth > cp.clientWidth + 1;
+    const foot = cp.querySelector('.foot');
+    const spans = foot.querySelectorAll('span');
+    out.footOneLine = Math.abs(rect(spans[0]).top - rect(spans[1]).top) <= 2;
+    out.numFont = Math.round(parseFloat(getComputedStyle(document.getElementById('counter')).fontSize) * 100) / 100;
+
+    const shutter = document.getElementById('shutter');
+    const deckBtn = document.getElementById('openDeck');
+    const galBtn = document.getElementById('openGallery');
+    const row = document.querySelector('.dockrow');
+    if (out.portrait) {
+      const rr = rect(row);
+      out.shutterCentreOff = Math.round(centre(shutter) - (rr.left + rr.right) / 2);
+      /* the two side entries must be equidistant from the shutter — the thumb row's rule */
+      out.symmetric = Math.abs((centre(shutter) - centre(galBtn)) - (centre(deckBtn) - centre(shutter))) <= 3;
+      out.sideGapLeft = Math.round(centre(galBtn) - rr.left);
+      out.sideGapRight = Math.round(rr.right - centre(deckBtn));
+      out.stripClearsDock = rect(strip).bottom <= rect(dock).top + 2;
+    } else {
+      const app = document.body.getBoundingClientRect();
+      out.railOnAppEdge = Math.abs(rect(dock).right - app.right) <= 3;
+      out.railWidth = Math.round(rect(dock).width);
+      out.controlsRightOfStage = rect(dock).left >= rect(stage).right - 2;
+      out.dockFullHeight = Math.round(rect(dock).height);
+      out.stripClearsRail = rect(strip).right <= rect(dock).left + 2;
+      out.railSymmetric = Math.abs((rect(shutter).top + rect(shutter).height / 2 - rect(galBtn).top - rect(galBtn).height / 2)
+        - (rect(deckBtn).top + rect(deckBtn).height / 2 - rect(shutter).top - rect(shutter).height / 2)) <= 3;
+    }
+    out.shutterSize = Math.round(Math.min(rect(shutter).width, rect(shutter).height));
+
+    /* the camera deck: the sheet must fit the visible height, the swipe page must match the track,
+       and both shelves must render so a thumb can reach them */
+    deckBtn.click();
+    await new Promise(r => setTimeout(r, 450));
+    const sheet = document.querySelector('#deckModal .decksheet');
+    const track = document.getElementById('deckTrack');
+    const page = track.querySelector('.deckpage');
+    const insideSheet = el => { const r = rect(el), s = rect(sheet); return !visible(el) || (r.top >= s.top - 2 && r.bottom <= s.bottom + 2 && r.left >= s.left - 2 && r.right <= s.right + 2); };
+    out.deck = {
+      open: document.getElementById('deckModal').classList.contains('open'),
+      fits: rect(sheet).top >= -2 && rect(sheet).bottom <= ivh + 2,
+      sheetH: Math.round(rect(sheet).height),
+      trackW: track.clientWidth, pageW: page.clientWidth, pageMatchesTrack: page.clientWidth === track.clientWidth,
+      sheetOverflowX: sheet.scrollWidth > sheet.clientWidth + 1,
+      filmItems: document.querySelectorAll('#filmList .filmitem').length,
+      camItems: document.querySelectorAll('#camList .camitem').length,
+      /* only the deck header tabs must be on the sheet; the film category tabs live inside the
+         scrollable page and are meant to be reached by scrolling that page */
+      tabsInView: [...document.querySelectorAll('#deckModal .deckhead .tabs .tab')].every(insideSheet),
+      pageScrollable: page.scrollHeight > page.clientHeight,
+      catTabsReachable: (() => {
+        const all = [...document.querySelectorAll('#deckModal .tabs .tab')];
+        const head = [...document.querySelectorAll('#deckModal .deckhead .tabs .tab')];
+        const cat = all.filter(t => !head.includes(t));
+        if (!cat.length) return null;
+        page.scrollTop = 0;
+        const hidden = cat.filter(b => !insideSheet(b)).length;
+        page.scrollTop = page.scrollHeight;
+        return { total: cat.length, belowFoldAtTop: hidden, visibleAfterScroll: cat.every(b => insideSheet(b)) };
+      })(),
+    };
+    const deckBtns = [...document.querySelectorAll('#deckModal button')].filter(visible);
+    out.deckSmallestTap = deckBtns.length ? Math.round(Math.min(...deckBtns.map(b => Math.min(rect(b).width, rect(b).height)))) : null;
+    document.querySelector('#deckModal .closebtn').click();
+    await new Promise(r => setTimeout(r, 300));
+
+    /* the archive: roll cards carrying DELETE must sit inside the sheet, not below the fold */
+    galBtn.click();
+    await new Promise(r => setTimeout(r, 600));
+    const gsheet = document.querySelector('#galleryModal .sheet');
+    const cards = [...document.querySelectorAll('#archive .roll-card')];
+    const dels = cards.map(c => c.querySelector('.delbtn')).filter(Boolean);
+    out.gallery = {
+      open: document.getElementById('galleryModal').classList.contains('open'),
+      fits: rect(gsheet).top >= -2 && rect(gsheet).bottom <= ivh + 2,
+      overflowX: gsheet.scrollWidth > gsheet.clientWidth + 1,
+      rollCards: cards.length,
+      deleteButtons: dels.length,
+      deleteReachable: dels.every(d => visible(d)),
+      deleteTap: dels.length ? Math.round(Math.min(...dels.map(d => Math.min(rect(d).width, rect(d).height)))) : null,
+      miniImgs: document.querySelectorAll('#archive .mini img').length,
+    };
+    const galBtns = [...document.querySelectorAll('#galleryModal button')].filter(visible);
+    out.gallerySmallestTap = galBtns.length ? Math.round(Math.min(...galBtns.map(b => Math.min(rect(b).width, rect(b).height)))) : null;
+    document.querySelector('#galleryModal .closebtn').click();
+
+    /* settings is the same sheet contract */
+    document.getElementById('settingsModal').classList.add('open');
+    await new Promise(r => setTimeout(r, 250));
+    const ssheet = document.querySelector('#settingsModal .sheet');
+    out.settings = { fits: rect(ssheet).bottom <= ivh + 2, overflowX: ssheet.scrollWidth > ssheet.clientWidth + 1 };
+    const setBtns = [...document.querySelectorAll('#settingsModal button')].filter(visible);
+    out.settingsSmallestTap = setBtns.length ? Math.round(Math.min(...setBtns.map(b => Math.min(rect(b).width, rect(b).height)))) : null;
+    document.querySelector('#settingsModal .closebtn').click();
+
+    /* anything that a reserved inset covers — notch, home indicator, Android nav bar — is a control
+       the finger cannot reach, so this is a fit check, not a style note */
+    const inBand = el => { const q = rect(el); return (IN.bottom > 0 && q.bottom > ivh - IN.bottom)
+      || (IN.right > 0 && q.right > ivw - IN.right) || (IN.left > 0 && q.left < IN.left)
+      || (IN.top > 0 && q.top < IN.top); };
+    const clash = [...document.querySelectorAll('body button')].filter(visible).filter(inBand);
+    out.insetClash = { count: clash.length, where: clash.slice(0, 3).map(b => (b.id || b.className || b.tagName) + ' @' + Math.round(rect(b).bottom)) };
+
+    /* the smallest printed text and the smallest tap target anywhere on screen: on a phone these
+       are legibility and reach limits, not style notes */
+    let minFont = 99, minWhere = '';
+    for (const el of document.querySelectorAll('body *')) {
+      if (el.children.length) continue;
+      const t = (el.textContent || '').trim();
+      if (!t) continue;
+      const r = rect(el);
+      if (r.width < 2 || r.top > ivh || r.bottom < 0) continue;
+      const fs = parseFloat(getComputedStyle(el).fontSize);
+      if (fs < minFont) { minFont = fs; minWhere = (el.id || el.className || el.tagName) + ' · ' + t.slice(0, 14); }
+    }
+    out.smallestText = { px: Math.round(minFont * 10) / 10, where: minWhere };
+    const anyBtns = [...document.querySelectorAll('body button')].filter(visible);
+    out.minTapPx = anyBtns.length ? Math.round(Math.min(...anyBtns.map(b => Math.min(rect(b).width, rect(b).height)))) : null;
+    out.tap44 = !!out.minTapPx && out.minTapPx >= 44;
+  } catch (e) {
+    out.error = String(e && e.stack ? e.stack.split('\n')[0] : e);
+  }
+  return JSON.stringify(out);
+})()
