@@ -612,6 +612,187 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   font-family:'PC Mono',ui-monospace,monospace;font-size:11px;padding:9px 16px;border-radius:8px;
   opacity:0;pointer-events:none;transition:.25s;z-index:60;letter-spacing:.06em;max-width:90vw}
 .toast.show{opacity:1}
+
+/* ── 6. the type scale ── a phone-legibility pass (Round 34). Every page is read on a phone at
+   arm's length, and the print was set at a desktop's distance: 8–11px prose nobody could read.
+   So there is now ONE scale, declared here and used everywhere — nothing on any page may print
+   below 11px, prose reads at 15px, section titles at 17px, a page's own title at 20px, and the
+   technical mono voice stays mono but at 12px. Nothing else changes: the palette is the same six
+   tokens, the shapes and the geometry are untouched, contrast is still raised with the warm-grey
+   tokens (--sub on cream, --dim on dark) and never with white or black. The room a page used to
+   leave empty now carries its text and its samples instead — wider padding, taller samples, a
+   taller meter bar, more air between blocks, so the sheet reads as a printed page rather than a
+   list of small captions. */
+:root{
+  --fs-micro:11px; /* the smallest print the app is allowed to make anywhere */
+  --fs-label:12px; /* mono labels, badges, captions, edge print */
+  --fs-meta:13px;  /* secondary lines, hints, small technical values */
+  --fs-body:15px;  /* prose you are meant to read */
+  --fs-head:17px;  /* section titles, bold uppercase */
+  --fs-page:20px;  /* a page's own title */
+  --lh:1.75;
+}
+/* the counter plate's arithmetic row is the one line that must fit inside the plate, so the
+   plate got a wider floor instead of the letters getting smaller; the number still derives from
+   the plate's own width, exactly as before. */
+:root{--cw:clamp(124px, 34vw, 152px)}
+
+/* ── the main screen keeps its instrument print, but nothing on it sits below the floor ──
+   the wordmark and the header entry are reading matter, not decoration; the dark plates keep
+   their tiny labels (9px is the smallest a plate label may be) and their 8px arithmetic row,
+   which is a gauge readout, not prose; the loaded film's identity is prose and goes up a step. */
+.brand{font-size:18px}
+.head .tag{font-size:var(--fs-label)}
+.headbtn{font-size:var(--fs-label);padding:8px 12px}
+.leader .mark{font-size:22px}
+.bootline{font-size:var(--fs-label)}
+.leader .edgeprint{font-size:var(--fs-micro)}
+.vfmeta{font-size:var(--fs-meta)}
+.vfmeta .filmname{font-size:var(--fs-body)}
+.hud,.vf-corner,.shotpeek b{font-size:10px}
+.counter .lbl,.plate .lbl{font-size:10px}
+.plate .model{font-size:var(--fs-body)}
+/* the film identity gets one step larger and gains its own truncation: the name is the longest
+   string on this plate, and it must never push the ISO readout off the screen. */
+.filmchip .fname{font-size:var(--fs-label);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.filmchip .fiso{font-size:var(--fs-micro);flex:none}
+.developbtn{font-size:var(--fs-head);padding:14px}
+/* the strip's cells are small, so their print stays at the floor and truncates inside the cell
+   instead of spilling over its neighbours */
+.frame .num{font-size:var(--fs-micro);left:6px;top:6px}
+.frame .edge{font-size:9px;left:6px;bottom:6px;right:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+footer{font-size:10px}
+.toast{font-size:var(--fs-meta);padding:11px 16px}
+.devmask .step{font-size:var(--fs-head)}
+.updatebar{font-size:var(--fs-label);padding:10px}
+
+/* ── every page ── a sheet is a printed page now: wider margins, a real title, notes that
+   read, buttons you can press without squinting. */
+.sheet{padding:22px 18px calc(26px + env(safe-area-inset-bottom))}
+.sheet h2{font-size:var(--fs-page);letter-spacing:.14em;margin-bottom:6px}
+.sheet .note{font-size:var(--fs-label);line-height:1.6;letter-spacing:.06em;margin-bottom:14px}
+.closebtn{font-size:22px;padding:2px 4px}
+.divide{margin:22px 0}
+.darkbtn{font-size:var(--fs-head);padding:14px;letter-spacing:.14em;margin-top:8px}
+.darkbtn.small{font-size:var(--fs-meta);padding:11px;letter-spacing:.1em}
+.rowbtns{gap:10px}
+.item{padding:12px;margin-top:9px}
+.item .t{font-size:var(--fs-body)}
+.item .d{font-size:var(--fs-meta);line-height:1.5;margin-top:4px}
+.item .d.op{font-size:var(--fs-label);color:var(--dim)}
+.badge{font-size:var(--fs-micro)}
+.stchip{font-size:var(--fs-label);height:30px;min-width:106px;border-radius:7px}
+.protag{font-size:var(--fs-micro);padding:3px 7px;letter-spacing:.1em}
+.getpro{font-size:var(--fs-head);padding:14px}
+.prohint{font-size:var(--fs-label);line-height:1.6;margin-top:8px;text-align:center}
+.swapgate,.restoreplan{padding:12px;margin-top:10px}
+
+/* ── the camera deck ── tabs are buttons you tap with a thumb, so they grew; they wrap rather
+   than push the page sideways, and the roll's own numbers stay the loudest thing on its page. */
+.deckhead{padding:22px 18px 12px}
+.deckpage{padding:6px 18px calc(28px + env(safe-area-inset-bottom))}
+.deckhint{font-size:var(--fs-label);margin-top:9px}
+.tabs{flex-wrap:wrap;gap:8px;margin:14px 0 6px}
+.tab{font-size:var(--fs-meta);padding:11px 14px;letter-spacing:.12em;border-radius:9px}
+.chip{font-size:var(--fs-label);padding:10px 12px}
+.rollcount{font-size:var(--fs-label);gap:12px;margin:10px 0 14px}
+.rollcount b{font-size:34px}
+.devnote{font-size:var(--fs-body);line-height:var(--lh);color:var(--sub);margin:6px 0 14px}
+/* four states on a phone are two columns, not four: a label of four words cannot fit in a
+   76px square, and a legend nobody can read states nothing */
+@media (max-width:430px){
+  .legend{grid-template-columns:repeat(2,1fr);gap:10px}
+}
+.legend i{height:26px}
+.legend div{font-size:var(--fs-label);letter-spacing:.08em;color:var(--sub)}
+.brandline{font-size:var(--fs-label);letter-spacing:.14em;margin:4px 0 10px}
+.brandcap{font-size:var(--fs-label);letter-spacing:.16em;margin:18px 0 2px;padding-top:10px}
+/* the film and body cards keep their three rails and their equal height; they just got taller
+   so the larger identity line, the second line and the badge all sit inside them */
+.item.filmitem,.item.camitem{min-height:116px;padding:16px}
+.item.filmitem .d,.item.camitem .d,.item.camitem .d.vibe{font-size:var(--fs-meta);margin-top:6px}
+.item.filmitem .d.op{font-size:var(--fs-label);color:var(--dim)}
+.item.filmitem .d.vibe{font-size:var(--fs-meta);color:var(--dim)}
+.look{margin-top:8px;gap:3px}
+.look i{width:14px;height:10px;border-radius:2px}
+.specrow{font-size:var(--fs-label);margin-top:12px;padding-top:12px;letter-spacing:.12em;color:var(--dim)}
+.spec{font-size:var(--fs-meta);line-height:1.7;color:var(--dim)}
+.spec span{color:var(--dim)}
+@media (max-width:430px){
+  .item.filmitem,.item.camitem{min-height:104px;padding:13px 12px}
+  .item.filmitem .t,.item.camitem .t{font-size:var(--fs-body)}
+  .item.filmitem .d,.item.camitem .d,.item.camitem .d.vibe{font-size:var(--fs-meta)}
+  .stchip{min-width:88px;height:26px;font-size:var(--fs-micro);padding:0 8px}
+  .look i{width:11px;height:8px}
+}
+/* ── settings ── a switch is a control, so its label is body text and its track is thumb-sized */
+.optsw{font-size:var(--fs-body);letter-spacing:.1em;padding:13px 14px;margin-top:9px}
+.sw{width:40px;height:18px;border-radius:9px}
+.sw::after{width:14px;height:14px;top:2px;left:2px}
+.optsw.on .sw::after{left:24px}
+.storage{font-size:var(--fs-label);line-height:1.6;margin-top:12px}
+
+/* ── the film preview ── the samples are the whole point of this page, so they take the width
+   the page actually has instead of sitting in 150px boxes: on a phone each crop is the full
+   page width, and on a wider sheet the first one leads and the other two sit beside it. The
+   meters read as a panel of parameters rather than a column of tiny captions. */
+.pvsamples{grid-template-columns:1fr;gap:10px;margin:14px 0}
+.pvcell{border-radius:9px}
+.pvcap{font-size:var(--fs-label);letter-spacing:.12em;padding:8px 10px;color:var(--dim)}
+.pvstory{font-size:var(--fs-body);line-height:var(--lh);color:var(--sub);margin:16px 0}
+.pvbar{grid-template-columns:104px 1fr 44px;gap:10px;font-size:var(--fs-label);margin-top:9px;color:var(--sub)}
+.pvbar .track{height:8px}
+.pvbar .val{font-size:var(--fs-meta)}
+@media (min-width:430px){
+  .pvsamples{grid-template-columns:repeat(2,1fr)}
+  .pvcell:first-child{grid-column:1/-1}
+}
+
+/* ── the user manual ── the booklet is read for two minutes, so its body is body text: the
+   cover carries a larger wordmark, each step is numbered and set like a paragraph, and the
+   spec rows are divided by hairlines with room to breathe between them. */
+.manualsheet{padding:24px 20px calc(28px + env(safe-area-inset-bottom))}
+.manualsheet h2{font-size:var(--fs-head);letter-spacing:.16em;margin-bottom:6px}
+.manualcover{padding:28px 22px 24px;margin:16px 0 28px;border-radius:14px}
+.manualcover .kick{font-size:var(--fs-label);letter-spacing:.22em}
+.manualcover .mk{font-size:24px;margin-top:12px}
+.manualcover svg{width:190px;height:38px;margin:18px auto 10px}
+.manualcover .sub{font-size:var(--fs-meta);line-height:1.8;margin-top:12px}
+.mkbody{margin:8px 0 12px}
+.mkbody p{font-size:var(--fs-body);line-height:var(--lh);margin:0 0 12px}
+.mkrow{grid-template-columns:38px 1fr;gap:12px;margin:22px 0}
+.mkrow .n{font-size:var(--fs-label);padding-top:4px}
+.mkrow .t{font-size:var(--fs-head);letter-spacing:.14em;margin-bottom:8px}
+.mkrow .b{font-size:var(--fs-body);line-height:var(--lh)}
+.mkdef{padding:14px 0 12px}
+.mkdef .k{font-size:var(--fs-label);letter-spacing:.16em}
+.mkdef .v{font-size:var(--fs-body);line-height:var(--lh);margin-top:6px;color:var(--sub)}
+.mkclosing{font-size:var(--fs-body);line-height:var(--lh);margin:0 0 12px}
+.mksign{font-size:var(--fs-meta);line-height:1.8;margin-top:18px}
+.edition{font-size:var(--fs-micro);letter-spacing:.18em;margin-top:24px}
+
+/* ── the archive ── a darkroom record is read, not scanned: the roll line is body text, its
+   dates and counts are mono at a readable size, and its thumbnails are big enough to judge. */
+.roll-card{padding:14px;margin-top:10px}
+.roll-card .meta{font-size:var(--fs-body);gap:10px}
+.roll-card .sub{font-size:var(--fs-label);letter-spacing:.06em}
+/* the thumbnails take the card's own width rather than sitting as 64px chips: a contact strip
+   the size of the record is what you judge a roll by */
+.roll-card .mini{gap:6px;margin-top:9px}
+.roll-card .mini img{flex:1 1 0;min-width:0;width:auto;height:auto;aspect-ratio:3/2;border-radius:3px}
+.roll-card .rollmeta{font-size:var(--fs-label);margin-top:8px}
+.delbtn{font-size:var(--fs-label);padding:6px 10px}
+.framecell{margin-top:10px;border-radius:9px}
+.fmeta{font-size:var(--fs-label);padding:8px 12px}
+.favbtn,.dlbtn{width:34px;height:34px;font-size:15px;border-radius:9px}
+.rollmeta{padding:8px 12px;margin:10px 0 14px}
+.rollmeta .mrow{font-size:var(--fs-meta);padding:5px 0}
+.rollmeta .mrow span:first-child{color:var(--dim)}
+.rollnotes{font-size:var(--fs-body);line-height:1.6;padding:12px}
+.rollgrid{gap:8px;margin-top:10px}
+
+/* landscape is untouched by this scale: a rotated phone keeps the narrow plate it already
+   had, and its arithmetic row keeps the 7px gauge print above — the row must not wrap there. */
 </style>
 </head>
 <body>

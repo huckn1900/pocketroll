@@ -1,9 +1,10 @@
 /* scripts/make-icon.mjs — render the app icon (the installed launcher icon in Chrome/Android).
    node scripts/make-icon.mjs        → icon.svg (source), icon.png (512×512 maskable-safe), icon-192.png
 
-   Headless Chrome rasterises the mark (solid shapes only — no type, so no font dependency),
-   so there is no image library and nothing new to install. The geometry is written once, in
-   svg(), and every output comes from it. */
+   Headless Chrome rasterises the mark (the brand face comes from the bundled
+   roboto-condensed-700.woff2, the same face the wordmark uses), so there is no image
+   library and nothing new to install. The geometry is written once, in svg(), and every
+   output comes from it. */
 import { spawn } from 'node:child_process';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -15,34 +16,45 @@ import path from 'node:path';
 const GROUND = '#141311';
 const MARK = '#D94B37';
 
-/* The mark, redrawn for the launcher (Round ㉝): a solid film can, readable at 40px.
-   Three shapes carry the whole idea — a lid bar that overhangs the body (that overhang is what
-   says "can"), a filled body, and one strip of film coming out beside the lid, perforated down
-   its length in the ground colour. No outline strokes, no text, no third colour, and nothing
-   thin: at 40px anything fine turns to mush, so every element is a solid block. A 35mm can is
-   wider than it is tall, so the body is deliberately squat (212×186).
-   Content stays inside x 70–406 / y 132–364: clear of the maskable safe area (41–471) and of a
-   circular crop (worst corner is 223px from the centre of a 256 radius). */
-const LID_X = 70, LID_W = 232, LID_Y = 132, LID_H = 32;   // overhangs the body by 10px each side
-const CAN_X = 80, CAN_W = 212, BODY_Y = 176, BODY_H = 186;
-const STRIP_X = 306, STRIP_W = 100, STRIP_Y = 132, STRIP_H = 232;  // starts at the lid's right end
-const HOLE_W = 24, HOLE_H = 16;
-const HOLE_X = STRIP_X + (STRIP_W - HOLE_W) / 2;                  // one legible column, centred
-const HOLE_ROWS = [152, 200, 248, 296];                           // ≥10px inset from the strip ends
-const HOLES = HOLE_ROWS.map(y => `<rect x="${HOLE_X}" y="${y}" width="${HOLE_W}" height="${HOLE_H}" rx="6" fill="${GROUND}"/>`).join('');
+/* The brand's film can, measured off the reference mark and scaled onto the 512 canvas: a lid
+   bar floating above (wider than it was, sitting left of the body's centre), a wide top rim, a
+   wide bottom rim, and only the LEFT edge of the body — the can is open on the right, where a
+   strip of film comes out that runs down to the bottom rim. Three sprocket holes punch the top
+   of that strip and one punches its lower-left corner; its lower-right corner is carved inward
+   with the ground colour, so the mark never uses a third colour. The 35 is the brand face set
+   at the reference's own size — it fills the body's middle, not every inch of it.
+   Everything stays inside x 77–435 / y 171–342, so the mark survives a circular crop (worst
+   corner is 198px from the centre) and sits inside the maskable safe area (41–471). */
+const CAN_X = 77, CAN_W = 251;
+const CAP_X = 107, CAP_W = 143, CAP_Y = 171, CAP_H = 27;
+const TOP_Y = 208, TOP_H = 20;
+const BOT_Y = 322, BOT_H = 20;
+const EDGE_X = 77, EDGE_W = 12;
+const FLANK_X = 340, FLANK_W = 95, FLANK_Y = 224, FLANK_H = 98;
+const HOLE_W = 18, HOLE_H = 19, HOLE_RX = 5, HOLE_TOP_Y = 231;
+const HOLES = [354, 377, 399].map(x => `<rect x="${x}" y="${HOLE_TOP_Y}" width="${HOLE_W}" height="${HOLE_H}" rx="${HOLE_RX}" fill="${GROUND}"/>`).join('')
+  + `<rect x="352" y="294" width="${HOLE_W}" height="${HOLE_H}" rx="${HOLE_RX}" fill="${GROUND}"/>`;
+/* the carved corner: a ground-coloured block over the strip's lower right, rounded so the cut
+   reads as a curve rather than a bite */
+const CARVE_X = 398, CARVE_Y = 272, CARVE_W = 44, CARVE_H = 60, CARVE_RX = 16;
+const TEXT_X = 168, TEXT_LEN = 134, TEXT_BASE = 291, TEXT_SIZE = 78;
 
 function svg(size, { face = '' } = {}){
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 512 512">`
     + (face ? `<defs><style>${face}</style></defs>` : '')
     + `<rect width="512" height="512" fill="${GROUND}"/>`
-    + `<rect x="${LID_X}" y="${LID_Y}" width="${LID_W}" height="${LID_H}" rx="${LID_H / 2}" fill="${MARK}"/>`
-    + `<rect x="${CAN_X}" y="${BODY_Y}" width="${CAN_W}" height="${BODY_H}" rx="18" fill="${MARK}"/>`
-    + `<rect x="${STRIP_X}" y="${STRIP_Y}" width="${STRIP_W}" height="${STRIP_H}" rx="14" fill="${MARK}"/>`
-    + HOLES + `</svg>`;
+    + `<rect x="${CAP_X}" y="${CAP_Y}" width="${CAP_W}" height="${CAP_H}" rx="${CAP_H / 2}" fill="${MARK}"/>`
+    + `<rect x="${CAN_X}" y="${TOP_Y}" width="${CAN_W}" height="${TOP_H}" rx="${TOP_H / 2}" fill="${MARK}"/>`
+    + `<rect x="${EDGE_X}" y="${TOP_Y + TOP_H - 2}" width="${EDGE_W}" height="${BOT_Y - TOP_Y - TOP_H + 4}" fill="${MARK}"/>`
+    + `<rect x="${CAN_X}" y="${BOT_Y}" width="${CAN_W}" height="${BOT_H}" rx="${BOT_H / 2}" fill="${MARK}"/>`
+    + `<rect x="${FLANK_X}" y="${FLANK_Y}" width="${FLANK_W}" height="${FLANK_H}" rx="14" fill="${MARK}"/>`
+    + `<rect x="${CARVE_X}" y="${CARVE_Y}" width="${CARVE_W}" height="${CARVE_H}" rx="${CARVE_RX}" fill="${GROUND}"/>`
+    + HOLES
+    + `<text x="${TEXT_X}" y="${TEXT_BASE}" text-anchor="middle" fill="${MARK}" textLength="${TEXT_LEN}" lengthAdjust="spacingAndGlyphs"`
+    + ` style="font-family:'POCKETROLL Brand';font-size:${TEXT_SIZE}px;font-weight:700">35</text></svg>`;
 }
 
-/* No type in the mark anymore, so nothing here depends on the bundled brand face. */
-const FACE = '';
+const FACE = `@font-face{font-family:'POCKETROLL Brand';src:url("assets/fonts/roboto-condensed-700.woff2") format('woff2');font-weight:700}`;
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const outSvg = path.join(ROOT, 'icon.svg');
 const page = path.join(ROOT, 'test', 'icon-render.html');
@@ -86,7 +98,7 @@ for (const [out, size] of targets) {
   writeFileSync(page, pageHtml(size));
   await send('Page.navigate', { url: pathToFileURL(page).href });
   await new Promise(r => setTimeout(r, 800));
-  /* nothing in the mark depends on a font, but settle the page before rasterising anyway */
+  /* the 35 only exists once the bundled face is loaded, so wait for it before rasterising */
   await send('Runtime.evaluate', { expression: 'document.fonts.ready.then(()=>true)', awaitPromise: true, returnByValue: true });
   await send('Emulation.setDeviceMetricsOverride', { width: size, height: size, deviceScaleFactor: 1, mobile: false });
   await new Promise(r => setTimeout(r, 250));
