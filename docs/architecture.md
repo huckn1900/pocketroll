@@ -73,6 +73,7 @@ Every content item/pack carries:
 - `buildLists()` shows locked Pro profiles with an amber `PRO` tag; tapping one hints the Pro APK instead of loading (`proHint()`). URL hooks (`?cam=`, `?film=`) bypass gating for testing/development only.
 - Settings carries the **GET PRO APK · US$6.99 · PATREON** button + a one-time/Android/iOS-later hint. The Patreon page URL is a placeholder (`https://www.patreon.com/`) until the creator page exists — swap it then.
 - License state on the web is fixed to `free` (`state.license` concept); PurchaseVerification for the APK will validate the Patreon purchase and store entitlements locally (offline-capable).
+- **User Manual (`#manualModal`)** — opened from SETTINGS (`#openManual`), which closes the settings page so closing the manual lands back on the camera; `?page=manual` opens it directly for tests. The copy is print in `index.html`: a booklet on the same cream sheet (dark cover panel with sprocket bands, a small film-strip graphic in `--red`, exposure-numbered steps, hairline-divided spec rows, an edition line at the foot). It reuses `.modal/.sheet/.closebtn[data-close]/.divide`, the two type faces and the existing tokens — no new hue, no new layout token, no engine/roll/archive/storage code. The edition number exists in exactly one place: `app.js MANUAL_EDITION`; the markup carries no number. Reading the manual must never change camera or roll state (`test/probe-manual.txt` asserts open → state identical → close → shutter still answers).
 
 ## Film library roadmap (Round⑰, user-defined)
 

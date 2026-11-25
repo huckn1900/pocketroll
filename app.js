@@ -1386,12 +1386,18 @@ async function openFilmPreview(f){
   await renderSamples(f);
 }
 
+/* ---------- the user manual ----------
+   The booklet itself is print in index.html, not code; only its edition number is written
+   here, in one place. Bump it when the camera bag, the film shelf, or the workflows the
+   booklet describes change materially — updating a number needs no redesign. */
+const MANUAL_EDITION = '01';
+
 /* ---------- build notice ----------
    CACHE in sw.js is bumped on every deploy. The page compares it with the build it was
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v28';
+const BUILD = 'pocketroll-v29';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
@@ -1501,6 +1507,11 @@ async function boot(){
   $('deckTrack').addEventListener('scroll', deckSync, { passive: true });
   $('openGallery').onclick = () => $('galleryModal').classList.add('open');
   $('openSettings').onclick = () => $('settingsModal').classList.add('open');
+  // the manual is a page, not a feature: opening it changes nothing about camera or roll.
+  // it replaces the settings page rather than stacking over it, so closing it lands on the camera.
+  $('openManual').onclick = () => { $('settingsModal').classList.remove('open'); $('manualModal').classList.add('open'); };
+  const ed = $('manualEdition');
+  if (ed) ed.textContent = 'POCKETROLL 35 · USER MANUAL · EDITION ' + MANUAL_EDITION;
   $('doorBtn').onclick = backDoor;
   $('developRoll').onclick = developRoll;
   $('developMain').onclick = developRoll;
@@ -1543,13 +1554,14 @@ async function boot(){
   const sf = $('swapFog'); if (sf) sf.onclick = swapFog;
   const sc = $('swapCancel'); if (sc) sc.onclick = () => { hideSwapGate(); toast('roll kept in the camera'); };
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { hideSwapGate(); b.closest('.modal').classList.remove('open'); });
-  // test hook: ?page=roll|gallery|settings|bag opens that page directly
+  // test hook: ?page=roll|gallery|settings|bag|manual opens that page directly
   // (roll and bag are the two pages of the camera deck — bag lands on the right page)
   const page = q.get('page');
   if (page === 'roll') openDeck('roll');
   if (page === 'gallery') $('galleryModal').classList.add('open');
   if (page === 'settings') $('settingsModal').classList.add('open');
   if (page === 'bag') openDeck('camera');
+  if (page === 'manual') $('manualModal').classList.add('open');
   // test hook: ?preview=<film id> opens that stock's preview page (engine samples)
   const pvId = q.get('preview');
   if (pvId){

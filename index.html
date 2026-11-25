@@ -331,6 +331,39 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .darkbtn[disabled]{opacity:.55;cursor:default}
 .darkbtn.locked{background:#3a3126;border-color:#7a5a3a;color:#c9a45a;box-shadow:0 2px 0 #2a2118}
 .darkbtn.ghost{background:#3a3126;color:#b3a68e}
+/* ── the user manual ── a printed booklet on the same paper, not a help page: a cover that
+   carries a short strip of film in the shutter's own colour, steps numbered like exposures,
+   spec rows divided by hairlines, and one edition line whose number comes from
+   app.js MANUAL_EDITION — the single place an edition is written. */
+.manualcover{background:var(--dark);border-radius:12px;padding:20px 16px 18px;position:relative;margin:12px 0 18px}
+.manualcover::before,.manualcover::after{content:'';position:absolute;left:12px;right:12px;height:6px;
+  background:repeating-linear-gradient(90deg,var(--red) 0 11px,transparent 11px 19px);opacity:.4}
+.manualcover::before{top:3px}.manualcover::after{bottom:3px}
+.manualcover .kick{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.2em;color:var(--dim)}
+.manualcover .mk{font-size:17px;font-weight:700;letter-spacing:.06em;color:#e8dcc9;text-align:center;margin-top:9px}
+.manualcover .mk .num{color:var(--red)}
+/* the strip is film, not an illustration: three empty frames, sprockets punched out of the
+   base in the ground colour, everything else stroked in the accent */
+.manualcover svg{display:block;width:150px;height:30px;margin:14px auto 6px;color:var(--red)}
+.manualcover .sub{font-family:'PC Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.12em;
+  color:var(--dim);text-align:center;margin-top:10px;line-height:1.7}
+/* a step is an exposure: the number is the frame number, the copy is what it takes */
+.mkrow{display:grid;grid-template-columns:30px 1fr;gap:10px;margin:13px 0}
+.mkrow .n{font-family:'PC Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.12em;color:var(--red);padding-top:3px}
+.mkrow .t{font-size:11px;font-weight:700;letter-spacing:.14em;margin-bottom:5px}
+.mkrow .b,.mkbody p,.mkdef .v,.mkclosing{font-size:11px;font-weight:700;line-height:1.75;color:var(--ink)}
+.mkbody p{margin:0 0 9px}
+/* the control table: the term in mono, its line under it, divided like a printed spec sheet */
+.mkdef{border-top:1px solid #b8a88f;padding:9px 0 7px}
+.mkdef .k{font-family:'PC Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.14em;color:var(--ink)}
+.mkdef .v{margin-top:4px;color:var(--sub)}
+.mkclosing{margin:0 0 9px}
+.mksign{font-family:'PC Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.1em;color:var(--sub);margin-top:12px;line-height:1.7}
+.edition{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.18em;color:var(--sub);
+  text-align:center;margin-top:16px;padding-bottom:env(safe-area-inset-bottom)}
+/* on a wide screen the booklet stays a column of readable measure, not a spread */
+.manualsheet{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+@media (orientation:landscape){ .manualcover{width:min(420px,100%)} }
 /* a roll still in the camera is shown in the archive as what it is: frames the user owns,
    not photos that went missing */
 .roll-card.incamera{border-left:3px solid var(--red)}
@@ -828,10 +861,163 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
     <button class="darkbtn small" id="optCamRetry">RETRY CAMERA — if the browser blocked it, allow camera access, then tap this</button>
     <div class="prohint" id="camState">camera: live feed</div>
     <div class="divide"></div>
+    <!-- the booklet is an entry here, not a feature of the camera: reading it never touches
+        the roll, the body, or any setting -->
+    <button class="darkbtn small" id="openManual">USER MANUAL — how this camera works, in two minutes</button>
+    <div class="divide"></div>
     <!-- business: free web demo → Pro APK (one-time, Patreon) → expansion packs later -->
     <a class="getpro" href="https://www.patreon.com/" target="_blank" rel="noopener">GET PRO APK · US$6.99 · PATREON</a>
     <div class="prohint">one-time purchase · unlocks all 15 finished stocks + 10 camera bodies · Android APK · iOS coming later</div>
     <div class="prohint" style="margin-top:14px">A SIMPLE CAMERA FOR STORING MEMORIES</div>
+  </div>
+</div>
+
+<!-- ── USER MANUAL ── the booklet, opened from SETTINGS. The copy lives here as print, not in
+     app.js; only the edition number comes from app.js MANUAL_EDITION so an edition update is
+     one line. Reading it changes nothing about the camera or the roll. ── -->
+<div class="modal" id="manualModal">
+  <div class="sheet manualsheet">
+    <button class="closebtn" data-close aria-label="close the manual">✕</button>
+
+    <div class="manualcover">
+      <div class="kick">USER MANUAL · 35 mm</div>
+      <div class="mk">POCKETROLL <span class="num">35</span></div>
+      <svg viewBox="0 0 150 30" aria-hidden="true">
+        <rect x="1" y="1" width="148" height="28" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <g style="fill:var(--dark)">
+          <rect x="8" y="4" width="5" height="4" rx="1"/><rect x="22" y="4" width="5" height="4" rx="1"/>
+          <rect x="36" y="4" width="5" height="4" rx="1"/><rect x="50" y="4" width="5" height="4" rx="1"/>
+          <rect x="64" y="4" width="5" height="4" rx="1"/><rect x="78" y="4" width="5" height="4" rx="1"/>
+          <rect x="92" y="4" width="5" height="4" rx="1"/><rect x="106" y="4" width="5" height="4" rx="1"/>
+          <rect x="120" y="4" width="5" height="4" rx="1"/><rect x="134" y="4" width="5" height="4" rx="1"/>
+          <rect x="8" y="22" width="5" height="4" rx="1"/><rect x="22" y="22" width="5" height="4" rx="1"/>
+          <rect x="36" y="22" width="5" height="4" rx="1"/><rect x="50" y="22" width="5" height="4" rx="1"/>
+          <rect x="64" y="22" width="5" height="4" rx="1"/><rect x="78" y="22" width="5" height="4" rx="1"/>
+          <rect x="92" y="22" width="5" height="4" rx="1"/><rect x="106" y="22" width="5" height="4" rx="1"/>
+          <rect x="120" y="22" width="5" height="4" rx="1"/><rect x="134" y="22" width="5" height="4" rx="1"/>
+        </g>
+        <g fill="none" stroke="currentColor" stroke-width="1.3">
+          <rect x="14" y="11" width="38" height="8" rx="1.5"/>
+          <rect x="56" y="11" width="38" height="8" rx="1.5"/>
+          <rect x="98" y="11" width="38" height="8" rx="1.5"/>
+        </g>
+      </svg>
+      <div class="sub">A 35mm film camera. In your browser.<br>how to load a roll, shoot it, develop it, and keep it</div>
+    </div>
+
+    <h2>ABOUT POCKETROLL</h2>
+    <div class="mkbody">
+      <p><b>POCKETROLL 35</b> is a 35mm film camera running in your browser: choose a classic
+        body, load a film stock, shoot one frame at a time.</p>
+      <p>No endless editing. No endless shooting. Just you, your camera, and one roll of film.</p>
+    </div>
+
+    <div class="divide"></div>
+    <h2>QUICK START</h2>
+    <div class="note">five steps · the first roll takes about two minutes</div>
+
+    <div class="mkrow"><div class="n">01</div><div>
+      <div class="t">CHOOSE YOUR CAMERA</div>
+      <div class="b">The camera-and-film mark right of the shutter opens CAMERA BAG. Every body
+        is simulated separately: its lens, colour cast, sharpness, quirks.</div>
+    </div></div>
+
+    <div class="mkrow"><div class="n">02</div><div>
+      <div class="t">LOAD YOUR FILM</div>
+      <div class="b">Its left page is THE ROLL. Tap a stock to read its preview — samples
+        rendered by this app itself, not photographs from the net — then LOAD FILM.</div>
+    </div></div>
+
+    <div class="mkrow"><div class="n">03</div><div>
+      <div class="t">TAKE YOUR SHOTS</div>
+      <div class="b">Press the red shutter. Tap the viewfinder for ISO, shutter and exposure
+        value. Each shot takes one exposure off the counter.</div>
+    </div></div>
+
+    <div class="mkrow"><div class="n">04</div><div>
+      <div class="t">DEVELOP YOUR ROLL</div>
+      <div class="b">Exposed frames stay latent until the print is finished. THE ROLL offers
+        DEVELOP ROLL when the roll is done, or earlier if you choose to stop.</div>
+    </div></div>
+
+    <div class="mkrow"><div class="n">05</div><div>
+      <div class="t">VISIT YOUR ARCHIVE</div>
+      <div class="b">The frame-grid mark left of the shutter opens FILM ARCHIVE: BY ROLLS, ALL
+        FRAMES, LAB SCANS. Tap a frame to download it; open a roll to export it as a .zip.</div>
+    </div></div>
+
+    <div class="divide"></div>
+    <h2>KNOW YOUR CAMERA</h2>
+    <div class="note">what each part of the screen is for</div>
+
+    <div class="mkdef"><div class="k">VIEWFINDER</div>
+      <div class="v">The LCD window: the frame exactly as the camera will print it. Tap it for
+        the full readouts.</div></div>
+
+    <div class="mkdef"><div class="k">FRAMES LEFT</div>
+      <div class="v">Exposures remaining on the roll in the camera: 36 on a 35mm body, less on
+        a 120 body (8 for 6×7, 16 for 6×4.5). Reading 00 means finished, not broken.</div></div>
+
+    <div class="mkdef"><div class="k">THE ROLL · CAMERA BAG</div>
+      <div class="v">The square right of the shutter: its left page is the roll (count, DEVELOP
+        ROLL, CONTACT SHEET, OPEN BACK DOOR, the film shelf), its right page is the bodies.</div></div>
+
+    <div class="mkdef"><div class="k">FILM ARCHIVE</div>
+      <div class="v">The square left of the shutter: developed rolls, kept frames, imported
+        scans, favorites, backup.</div></div>
+
+    <div class="mkdef"><div class="k">SHUTTER</div>
+      <div class="v">The red circle in the middle. It exposes a frame; it never edits one.
+        Spacebar works while no page is open.</div></div>
+
+    <div class="mkdef"><div class="k">SETTINGS</div>
+      <div class="v">The header button: print options, camera recovery, Pro access, this manual.</div></div>
+
+    <div class="divide"></div>
+    <h2>SETTINGS</h2>
+    <div class="note">four switches · none of them changes your roll</div>
+
+    <div class="mkdef"><div class="k">DATE STAMP</div>
+      <div class="v">An orange corner mark printed at the moment of exposure, the way a lab
+        prints a stamp. Scanned-in photographs are stamped too.</div></div>
+
+    <div class="mkdef"><div class="k">ON-CAMERA FLASH</div>
+      <div class="v">Only bodies with a built-in flash offer it. The centre lifts, highlights
+        lose a little saturation, the background goes deeper.</div></div>
+
+    <div class="mkdef"><div class="k">FRONT SENSOR</div>
+      <div class="v">The front camera, for self-portraits. Roll and film stay as they are.</div></div>
+
+    <div class="mkdef"><div class="k">RETRY CAMERA</div>
+      <div class="v">If the browser blocked the sensor: allow camera access, then tap this.</div></div>
+
+    <div class="note" style="margin-top:10px">light leaks follow the film stock · grain follows
+      the ISO · nothing here is a filter preset</div>
+
+    <div class="divide"></div>
+    <h2>A NOTE ABOUT FILM</h2>
+    <div class="mkclosing">A roll is more than a collection of photographs.</div>
+    <div class="mkclosing">Every frame counts. Once exposed, your photographs wait in the roll
+      until development.</div>
+    <div class="mkclosing">Developing reveals the photographs and prints a contact sheet for the
+      roll you just developed.</div>
+    <div class="mkclosing">Opening the back door before development fogs the undeveloped
+      photographs. Take your time. Make every frame count.</div>
+
+    <div class="divide"></div>
+    <h2>THANK YOU</h2>
+    <div class="mkclosing"><b>THANK YOU FOR SHOOTING WITH POCKETROLL.</b></div>
+    <div class="mkclosing">POCKETROLL started with a simple idea: turning a phone into a 35mm
+      film camera.</div>
+    <div class="mkclosing">Built from a love of photography, analog cameras, and the little
+      imperfections that make photographs feel personal.</div>
+    <div class="mkclosing">Thank you for trying this project and being part of its journey.
+      I hope it gives you a reason to slow down, look around, and enjoy photography again.</div>
+    <div class="mksign"><b>See you on the next roll.</b><br>— The Creator of POCKETROLL 35</div>
+
+    <button class="darkbtn ghost" data-close>CLOSE THE MANUAL — back to the camera</button>
+    <!-- the edition number is written by app.js from MANUAL_EDITION; nothing else carries it -->
+    <div class="edition" id="manualEdition"></div>
   </div>
 </div>
 
