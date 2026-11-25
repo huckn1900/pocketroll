@@ -216,15 +216,19 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .shutter:active{transform:translateY(2px);
   box-shadow:inset 0 2px 7px rgba(120,40,28,.35), 0 0 0 4px #efe6d3, 0 0 0 8px rgba(57,52,45,.12)}
 .shutter svg{width:34px;height:34px;display:block;margin:0 auto}
-.sidebtn{background:var(--dark);color:#e8dcc9;border:1px solid #4a4238;border-radius:11px;padding:8px 10px;cursor:pointer;
-  min-width:56px;display:flex;flex-direction:column;align-items:center;gap:3px}
-.sidebtn svg{width:20px;height:20px;display:block}
-.sidebtn .cap{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.16em;color:var(--dim)}
+/* both side entries are the same square and carry no words — the row is read by its glyphs,
+   not by labels. Identical width and height by construction; each one still centres in its own
+   half column, so the shutter keeps its exact midpoint between them. */
+.sidebtn{background:var(--dark);color:#e8dcc9;border:1px solid #4a4238;border-radius:12px;
+  width:56px;height:56px;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.sidebtn svg{width:22px;height:22px;display:block}
+/* the deck entry is a two-glyph mark (a body plus the brand's film can), so its art is wider
+   than tall; it still sits centred inside the same square as the other button */
+.sidebtn.deck svg{width:38px;height:19px}
 .sidebtn:active{transform:translateY(1px)}
 /* the red pulse marks "the roll in this body is waiting for the developer" — it rides on the
    camera deck entry, whose left page is that roll */
 .sidebtn.ready{border-color:var(--red);animation:pulse 1.6s infinite}
-.sidebtn.ready .cap{color:#ffd9c2}
 @keyframes pulse{50%{box-shadow:0 0 0 3px rgba(217,75,55,.35)}}
 /* the one main-screen action that appears when the roll is done — shoot → develop is the ritual */
 .developbtn{display:block;width:100%;margin-top:var(--gap);background:var(--red);color:#fff;border:none;border-radius:10px;
@@ -645,9 +649,8 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
      two pages: the roll this body holds on the left, the bag of bodies on the right. -->
 <div class="dock">
   <div class="dockrow">
-    <button class="sidebtn" id="openGallery" title="film archive">
+    <button class="sidebtn" id="openGallery" title="film archive" aria-label="film archive">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
-      <span class="cap">ARCHIVE</span>
     </button>
     <!-- shutter mark: an aperture iris — barrel ring plus three blade chords closing to a
        triangular opening. Reads as a lens stop at 34px, and it is three strokes, not a sketch. -->
@@ -659,11 +662,32 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
         <path d="M10.7 4.1 L18 17.2"/>
       </svg>
     </button>
-    <!-- one entry for everything camera-side. It pulses red when the roll in this body is
-       finished and waiting for the developer — same warning the separate roll button carried. -->
-    <button class="sidebtn" id="openDeck" title="the roll in this camera, and the bag of bodies">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="12" rx="2.5"/><circle cx="12" cy="13" r="3.4"/><rect x="6" y="4.4" width="6" height="2.6" rx="1"/></svg>
-      <span class="cap">CAMERA</span>
+    <!-- one entry for everything camera-side, drawn as two glyphs: a body (barrel, lens,
+       viewfinder bump) and the brand's film can at its own proportions — cap bar, wide rims,
+       only the left edge, a short strip with sprocket cut-outs and the corner carved inward,
+       the 35 in the bundled brand face. It pulses red when the roll in this body is finished
+       and waiting for the developer — same warning the separate roll button carried. -->
+    <button class="sidebtn deck" id="openDeck" title="the roll in this camera, and the bag of bodies"
+      aria-label="camera: the roll in this body, and the bag of bodies">
+      <svg viewBox="0 0 44 19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="2.5" y="4.5" width="15" height="12" rx="2.5"/>
+        <circle cx="10" cy="10.5" r="3.6"/>
+        <rect x="5.5" y="1.8" width="5.4" height="2.6" rx="1.2"/>
+        <g fill="currentColor" stroke="none">
+          <rect x="28" y="0.9" width="7.5" height="1.6" rx="0.8"/>
+          <rect x="22.5" y="3.5" width="13" height="2.2" rx="1.1"/>
+          <rect x="22.8" y="5.6" width="1.3" height="9.9"/>
+          <rect x="22.5" y="15.5" width="13" height="2.2" rx="1.1"/>
+          <rect x="35.2" y="5.9" width="8" height="7.8" rx="1.4"/>
+          <rect x="36.2" y="6.5" width="2" height="1.5" rx="0.5" style="fill:var(--dark)"/>
+          <rect x="38.4" y="6.5" width="2" height="1.5" rx="0.5" style="fill:var(--dark)"/>
+          <rect x="40.6" y="6.5" width="2" height="1.5" rx="0.5" style="fill:var(--dark)"/>
+          <rect x="35.6" y="12.2" width="2.2" height="1.5" rx="0.5" style="fill:var(--dark)"/>
+          <rect x="41" y="11.5" width="4" height="4" rx="1.2" style="fill:var(--dark)"/>
+        </g>
+        <text x="24.9" y="14.3" textLength="9" lengthAdjust="spacingAndGlyphs"
+          font-family="'PC Cond',sans-serif" font-size="6.5" font-weight="700" fill="currentColor">35</text>
+      </svg>
     </button>
   </div>
 </div>
