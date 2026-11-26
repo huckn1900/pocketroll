@@ -89,7 +89,7 @@ function capture(opts){
   setTimeout(() => shutter.classList.remove('fired'), 400);
   pulseCounter();
   const peek = $('shotPeek'), last = state.frames[state.frames.length - 1];
-  peek.style.backgroundImage = `url(${last.t})`;
+  peek.style.backgroundImage = cssUrl(last.t);
   $('shotPeekCap').textContent = `${String(state.frames.length).padStart(2, '0')} · LATENT`;
   const stage = $('vfStage');   // the live meter and focus box step out while the frame is held
   peek.classList.add('on'); stage.classList.add('peeking');

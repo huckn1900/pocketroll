@@ -722,7 +722,7 @@ function renderStrip(){
       el.appendChild(edge);
     }
     if (f && dev){
-      el.style.backgroundImage = `url(${f.url})`;
+      el.style.backgroundImage = cssUrl(f.url);
       el.title = `${state.film?.name || 'frame'} · frame ${i + 1} — tap to print`;
       el.onclick = () => download(f.url, i + 1);
     } else if (f){
@@ -745,7 +745,7 @@ function previewFrame(el, url){
      asked for, and renderStrip() drops it when the chamber changes. */
   for (const s of $('stripFrames').querySelectorAll('.frame.sel')) s.classList.remove('sel');
   el.classList.add('sel');
-  el.style.backgroundImage = `url(${url})`;
+  el.style.backgroundImage = cssUrl(url);
   el.classList.add('preview');
   toast('latent preview · develop the roll to reveal');
   setTimeout(() => { el.classList.remove('preview'); el.style.backgroundImage = ''; }, 1250);
@@ -755,7 +755,9 @@ function scrollStripToLast(){
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 }
 function download(url, n){
-  const a = document.createElement('a'); a.href = url;
+  const href = safeImageURL(url);
+  if (!href) { toast('this print cannot be downloaded · the record stays on the shelf'); return; }
+  const a = document.createElement('a'); a.href = href;
   a.download = `${(state.film?.id || 'frame')}_${String(n).padStart(2, '0')}.jpg`; a.click();
 }
 /* light leak: 1–2 warm red/orange seeps drawn only at exposure (never in the
@@ -769,6 +771,22 @@ function download(url, n){
    storage/backup.js (export, validation, plan, restore). app.js keeps the shelf UI only. */
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function fmtDate(iso){ const d = new Date(iso); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
+/* Every picture the shelf shows comes from data — a record on the device or a crafted backup
+   file — so its URL is validated against the formats this app writes and placed through a real
+   element. An untrusted string never becomes markup, a CSS value, or a link. */
+function imgEl(url, alt){
+  const src = safeImageURL(url);
+  if (!src) return null;
+  const img = document.createElement('img'); img.src = src; img.alt = alt || '';
+  return img;
+}
+/* The strip of contact prints at the bottom of a record: prints that cannot be shown are left
+   out rather than written as markup, and the record still names itself above them. */
+function miniStrip(list, n){
+  const box = document.createElement('div'); box.className = 'mini';
+  for (const f of list.slice(0, n)) { const im = imgEl(f.t || f.u || f.url, ''); if (im) box.appendChild(im); }
+  return box;
+}
 let archTab = 'rolls', favOnly = false;
 function renderArchive(){
   const a = $('archive'); a.innerHTML = '';
@@ -784,8 +802,8 @@ function renderArchive(){
     const el = document.createElement('div'); el.className = 'roll-card incamera';
     el.innerHTML = `<div class="meta"><span>IN CAMERA</span>`
       + `<span class="sub">${esc(state.film ? state.film.name : 'a roll')}</span></div>`
-      + `<div class="rollmeta">${state.frames.length} FRAMES LATENT · DEVELOP IT TO ARCHIVE</div>`
-      + `<div class="mini">${state.frames.slice(0, 8).map(f => `<img src="${f.t || f.url}" alt="">`).join('')}</div>`;
+      + `<div class="rollmeta">${state.frames.length} FRAMES LATENT · DEVELOP IT TO ARCHIVE</div>`;
+    el.appendChild(miniStrip(state.frames, 8));
     // a roll still in the camera is resolved on the deck's left page, not in the archive
     el.onclick = () => { $('galleryModal').classList.remove('open'); openDeck('roll'); };
     a.appendChild(el);
@@ -796,11 +814,11 @@ function renderArchive(){
     if (!state.scans.length) { note('no lab scans yet — SCAN IN PHOTO runs a photo through the loaded film'); renderStorage(); return; }
     state.scans.forEach((s) => {
       const el = document.createElement('div'); el.className = 'framecell';
-      el.innerHTML = `<img src="${s.t || s.u}" alt="">`
-        + `<button class="dlbtn" title="download full scan">↓</button>`
+      el.innerHTML = `<button class="dlbtn" title="download full scan">↓</button>`
         + `<div class="fmeta">SCAN · ${esc(s.film)}${s.iso ? ' · ISO ' + s.iso : ''} · ${fmtDate(s.date)}</div>`;
+      const im = imgEl(s.t || s.u, '');
+      if (im) { im.onclick = () => openScan(s); el.insertBefore(im, el.firstChild); }
       el.querySelector('.dlbtn').onclick = (e) => { e.stopPropagation(); download(s.u, `scan_${s.id}`); };
-      el.querySelector('img').onclick = () => openScan(s);
       a.appendChild(el);
     });
     renderStorage(); return;
@@ -812,8 +830,8 @@ function renderArchive(){
       const favs = r.frames.filter(f => f.fav).length;
       el.innerHTML = `<div class="meta"><span>${esc(r.film)} · ${r.frames.length} frames</span><span class="sub">${esc(r.cam)} · ${fmtDate(r.loadedAt)}</span>`
         + `<button class="delbtn" title="take this roll off the shelf — its prints go with it">DELETE</button></div>`
-        + `<div class="rollmeta">LOADED ${fmtDate(r.loadedAt)} · DEVELOPED ${fmtDate(r.developedAt)} · STATUS DEVELOPED${r.iso ? ' · ISO ' + r.iso : ''}${r.format && !/135/.test(r.format) ? ' · ' + esc(r.format) : ''}${favs ? ' · ★ ' + favs : ''}${r.notes ? ' · ' + esc(r.notes) : ''}</div>`
-        + `<div class="mini">${r.frames.slice(0, 8).map(f => `<img src="${f.t}" alt="">`).join('')}</div>`;
+        + `<div class="rollmeta">LOADED ${fmtDate(r.loadedAt)} · DEVELOPED ${fmtDate(r.developedAt)} · STATUS DEVELOPED${r.iso ? ' · ISO ' + r.iso : ''}${r.format && !/135/.test(r.format) ? ' · ' + esc(r.format) : ''}${favs ? ' · ★ ' + favs : ''}${r.notes ? ' · ' + esc(r.notes) : ''}</div>`;
+      el.appendChild(miniStrip(r.frames, 8));
       el.onclick = () => openRoll(r);
       /* Taking a roll off the shelf is irreversible, so the button arms on the first press and
          only the second press removes it; an arm nobody acts on expires by itself, and the
@@ -843,13 +861,13 @@ function renderArchive(){
     if (!list.length) { note(favOnly ? 'no favorited frames yet — ★ marks a keeper' : 'no frames yet — develop a roll to see its prints'); renderStorage(); return; }
     list.forEach(x => {
       const el = document.createElement('div'); el.className = 'framecell';
-      el.innerHTML = `<img src="${x.f.t}" alt="">`
-        + `<button class="favbtn${x.f.fav ? ' on' : ''}" title="favorite">★</button>`
+      el.innerHTML = `<button class="favbtn${x.f.fav ? ' on' : ''}" title="favorite">★</button>`
         + `<button class="dlbtn" title="download full frame">↓</button>`
         + `<div class="fmeta">${esc(x.r.film)} · FRAME ${x.i + 1} · ${fmtDate(x.r.loadedAt)}${x.f.fav ? ' · ★' : ''}</div>`;
+      const im = imgEl(x.f.t || x.f.u, '');
+      if (im) { im.onclick = () => openFrame(x.r, x.i); el.insertBefore(im, el.firstChild); }
       el.querySelector('.favbtn').onclick = async (e) => { e.stopPropagation(); x.f.fav = !x.f.fav; await updateRoll(x.r); renderArchive(); };
       el.querySelector('.dlbtn').onclick = (e) => { e.stopPropagation(); download(x.f.u, `roll_${x.r.id}_frame_${x.i + 1}`); };
-      el.querySelector('img').onclick = () => openFrame(x.r, x.i);
       a.appendChild(el);
     });
   }
@@ -865,7 +883,8 @@ function openScan(s){
   const n = $('rollNotes'); if (n) { n.value = ''; }
   const z = $('zipBtn'); if (z) z.style.display = 'none';
   const grid = $('rollGrid'); grid.innerHTML = '';
-  const img = document.createElement('img'); img.src = s.u;
+  const img = imgEl(s.u, '');
+  if (!img) { $('rollViewer').classList.remove('open'); toast('this scan has no image the app can show · the record stays on the shelf'); return; }
   img.title = 'tap to download full-res scan';
   img.onclick = () => download(s.u, `scan_${s.id}`);
   grid.appendChild(img);
@@ -909,7 +928,8 @@ function openRoll(r){
   if (z) { z.style.display = ''; z.onclick = async () => { downloadBytes(await rollZip(r), `roll_${r.id}.zip`); toast('roll exported as zip'); }; }
   const grid = $('rollGrid'); grid.innerHTML = '';
   r.frames.forEach((f, i) => {
-    const img = document.createElement('img'); img.src = f.t;
+    const img = imgEl(f.t || f.u, '');
+    if (!img) return;
     img.title = `frame ${i + 1} · tap to download full-res print`;
     img.onclick = () => download(f.u, `roll_${r.id}_${i + 1}`);
     grid.appendChild(img);
@@ -923,7 +943,8 @@ function openFrame(r, i){
   const n = $('rollNotes'); if (n) { n.value = r.notes || ''; n.onchange = async () => { r.notes = n.value.trim(); await updateRoll(r); renderArchive(); }; }
   const z = $('zipBtn'); if (z) z.style.display = 'none';
   const grid = $('rollGrid'); grid.innerHTML = '';
-  const img = document.createElement('img'); img.src = r.frames[i].u;
+  const img = imgEl(r.frames[i].u, '');
+  if (!img) { $('rollViewer').classList.remove('open'); toast('this frame has no image the app can show · the record stays on the shelf'); return; }
   img.title = 'tap to download full-res print';
   img.onclick = () => download(r.frames[i].u, `roll_${r.id}_${i + 1}`);
   grid.appendChild(img);
@@ -1411,7 +1432,7 @@ const MANUAL_EDITION = '01';
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v37';
+const BUILD = 'pocketroll-v38';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW

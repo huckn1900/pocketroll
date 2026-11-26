@@ -8,16 +8,17 @@
     measures each <text> run against the band, and compares every can's geometry against the
     first can plus every ISO baseline against the first one. */
 import { spawn } from 'node:child_process';
+import { chromeBin, tmpProfile } from './browser.mjs';
 import { writeFileSync } from 'node:fs';
 
 const url = process.argv[2];
 const out = process.argv[3] || 'test/out-cans.png';
-const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const chrome = chromeBin(); // DSH_CHROME overrides the browser executable — see test/browser.mjs
 const port = 9333 + Math.floor(Math.random() * 60);
 const proc = spawn(chrome, [
   '--headless=new', '--disable-gpu', '--no-sandbox',
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream',
-  `--user-data-dir=${process.env.TEMP}\\chrome-cans-${port}-${Date.now().toString(36)}`,
+  `--user-data-dir=${tmpProfile('cans', port)}`,
   `--remote-debugging-port=${port}`,
 ], { stdio: 'ignore', detached: true });
 

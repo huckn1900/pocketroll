@@ -2,15 +2,16 @@
    The expression may also be given as "@path/to/file.js" (or DSH_PROBE_EXPR_FILE) — PowerShell
    strips quotes from native args, which breaks JS string literals, so a file is the reliable way. */
 import { spawn } from 'node:child_process';
+import { chromeBin, tmpProfile } from './browser.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 const url = process.argv[2];
 let expr = process.argv[3];
 if (process.env.DSH_PROBE_EXPR_FILE) expr = readFileSync(process.env.DSH_PROBE_EXPR_FILE, 'utf8');
 else if (expr && expr.startsWith('@')) expr = readFileSync(expr.slice(1), 'utf8');
-const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const chrome = chromeBin(); // DSH_CHROME overrides the browser executable — see test/browser.mjs
 const port = 9333 + Math.floor(Math.random() * 60);
 const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox',
-  `--user-data-dir=${process.env.TEMP}\\chrome-probe-${port}-${Date.now().toString(36)}`, `--remote-debugging-port=${port}`,
+  `--user-data-dir=${tmpProfile('probe', port)}`, `--remote-debugging-port=${port}`,
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], { stdio: 'ignore', detached: true });
 async function waitPort() {
   for (let i = 0; i < 20; i++) { try { const r = await fetch(`http://127.0.0.1:${port}/json/list`); if (r.ok) return await r.json(); } catch {} await new Promise(r => setTimeout(r, 400)); }

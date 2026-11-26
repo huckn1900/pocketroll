@@ -3,14 +3,15 @@
    against video.videoWidth/Height (must match exactly).
    Usage: node test/export-check.mjs <url> */
 import { spawn } from 'node:child_process';
+import { chromeBin, tmpProfile } from './browser.mjs';
 
 const url = process.argv[2];
-const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const chrome = chromeBin(); // DSH_CHROME overrides the browser executable — see test/browser.mjs
 const port = 9333 + Math.floor(Math.random() * 60);
 const proc = spawn(chrome, [
   '--headless=new', '--disable-gpu', '--no-sandbox',
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream',
-  `--user-data-dir=${process.env.TEMP}\\chrome-exp-${port}-${Date.now().toString(36)}`,
+  `--user-data-dir=${tmpProfile('exp', port)}`,
   `--remote-debugging-port=${port}`,
 ], { stdio: 'ignore', detached: true });
 

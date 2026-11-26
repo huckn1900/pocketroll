@@ -32,7 +32,7 @@ pocketroll/
 │   ├── database.js     IndexedDB v2 (rolls + scans), openDB/getAll/put/delete, storage estimate
 │   ├── current-roll.js the roll in the camera: identity, record, save/drop/restore, scan save
 │   ├── archive.js      developed rolls, legacy migration, thumbs, whole-roll zip export
-│   └── backup.js       schemaVersion 2 payload, validation, restore plan, merge + rollback
+│   └── backup.js       schemaVersion 2 payload, validation (rolls + inCamera), restore plan, merge committed in one transaction
 ├── film/
 │   ├── roll-manager.js applying stock, threading a new roll, the lifecycle gate
 │   └── development.js  back door, the one-tank develop run, bell, contact sheet
@@ -69,11 +69,18 @@ Every content item/pack carries:
 
 ## Current implementation status (web prototype)
 
-- `scripts/patch-tiers.mjs` tags every profile with `tier: free|pro` — **5 free films** (gold200, portra400, hp5plus, velvia50, colorplus — one per film family) and **5 free cameras** (trip35, instamatic, af35m, lca, t4); premium compacts (Contax T2, MJU-II, GR1v, TC-01, L35AF) and the remaining stocks are `pro`. Expansion items will get `tier: expansion`.
+- The shipped library is measured from `assets/`, not written in docs: **28 film profiles** and
+  **18 camera bodies**. Distribution today — films: 5 `free/current`, 21 `pro/current`, 1
+  `pro/discontinued (2009)` (Kodachrome 64, D-70 lab, rendered as an approximation), 1
+  `expansion/coming`; bodies: 5 `free/ready`, 13 `pro` (premium compacts such as Contax T2,
+  MJU-II, GR1v, TC-01, L35AF). `scripts/patch-tiers.mjs` tags every profile with
+  `tier: free|pro|expansion` — the free five are gold200, portra400, hp5plus, velvia50, colorplus
+  (one per film family) and trip35, instamatic, af35m, lca, t4. Adding content = adding a profile
+  file plus its entitlement; nothing else changes.
 - `buildLists()` shows locked Pro profiles with an amber `PRO` tag; tapping one hints the Pro APK instead of loading (`proHint()`). URL hooks (`?cam=`, `?film=`) bypass gating for testing/development only.
 - Settings carries a **PRO APK · US$6.99 · COMING SOON** block (`.getpro.soon`, the ink-panel/amber vocabulary of a LOCKED · PRO card, nothing presses) plus lines saying it is not on sale yet, Android first, iOS later. When the creator page exists this becomes a real Patreon link and the wording becomes the purchase.
 - License state on the web is fixed to `free` (`state.license` concept); PurchaseVerification for the APK will validate the Patreon purchase and store entitlements locally (offline-capable).
-- **User Manual (`#manualModal`)** — opened from SETTINGS (`#openManual`), which closes the settings page so closing the manual lands back on the camera; `?page=manual` opens it directly for tests. The copy is print in `index.html`: a booklet on the same cream sheet (dark cover panel with sprocket bands, a small film-strip graphic in `--red`, exposure-numbered steps, hairline-divided spec rows, an edition line at the foot). It reuses `.modal/.sheet/.closebtn[data-close]/.divide`, the two type faces and the existing tokens — no new hue, no new layout token, no engine/roll/archive/storage code. The edition number exists in exactly one place: `app.js MANUAL_EDITION`; the markup carries no number. Reading the manual must never change camera or roll state (`test/probe-manual.txt` asserts open → state identical → close → shutter still answers).
+- **User Manual (`#manualModal`)** — opened from SETTINGS (`#openManual`), which closes the settings page so closing the manual lands back on the camera; `?page=manual` opens it directly for tests. The copy is print in `index.html`: a booklet on the same cream sheet (a dark cover panel carrying **text only** — kicker, name, two tagline lines — with sprocket bands as printed edges, exposure-numbered steps, hairline-divided spec rows, an edition line at the foot). It reuses `.modal/.sheet/.closebtn[data-close]/.divide`, the two type faces and the existing tokens — no new hue, no new layout token, no engine/roll/archive/storage code. The edition number exists in exactly one place: `app.js MANUAL_EDITION`; the markup carries no number. Reading the manual must never change camera or roll state (`test/probe-manual.txt` asserts open → state identical → close → shutter still answers).
 
 ## Film library roadmap (Round⑰, user-defined)
 
@@ -157,12 +164,25 @@ meta line, so a lab result can never be confused with a filter preset.
   same record the Pro APK's RollManager/gallery will ship, so the archive format doubles as the
   interchange format.
 - **Backup & Restore** (`schemaVersion: 2`): one JSON export carrying counts + rolls + scans + the
-  roll currently in the camera. Import validates structure first, skips records with unusable
-  frames (reported, not silently repaired), shows a plan — "will restore N rolls · N frames · N
-  scans · latent frames go back into the camera · what you already kept stays kept" — and only
-  applies on CONFIRM. Re-imports merge by id (refresh, never pile up); a failed write rolls the
-  archive back to exactly what was kept before. A per-roll `.zip` export (frames + roll.json) stays
-  the sharing escape hatch.
+  roll currently in the camera — a user holding only an undeveloped roll is exportable, because the
+  exposures in the chamber are what they own right now (`backupPayload()` answers eligibility, so
+  `backupAll()` never refuses a live roll). Import validates structure first: shelf records and the
+  `inCamera` record are held to the same standard (identity, body, stock, gate, real exposures with
+  an image source this app can actually write), unusable records are reported as skipped, never
+  silently repaired. The plan — "will restore N rolls · N frames · N scans · latent frames go back
+  into the camera · what you already kept stays kept" — is shown before CONFIRM. Re-imports merge by
+  id (refresh, never pile up).
+- **The restore is atomic**: the merged shelf is computed in memory, then committed as **one**
+  IndexedDB readwrite transaction across both stores (`idbApply()`) — including the delete that
+  clears the chamber's old record when an empty camera takes the imported roll. The transaction
+  completes or aborts as a unit, so no partial restore is possible; the app applies the restored
+  state (rolls, scans, camera, frames, counter, film) only after the store agrees, and a failed
+  write leaves both the database and the current camera state exactly as they were.
+- **Backup data is untrusted**: image URLs are validated against the formats the app writes
+  (`safeImageURL()` — canvas data URLs, blob URLs) and placed through real elements
+  (`document.createElement('img')` + `img.src`) or an escaped CSS `url()` (`cssUrl()`), never
+  interpolated into HTML. A crafted backup file therefore cannot inject markup, CSS, or a link.
+  A per-roll `.zip` export (frames + roll.json) stays the sharing escape hatch.
 - **Camera**: `playsInline` + `muted` and an awaited `play()`; rear/front sensor choice persists in
   settings. There is **no stand-in scene** — the finder shows the sensor or it shows nothing, so a
   drawn picture never claims a camera that is not working. An interrupted stream retries; the state

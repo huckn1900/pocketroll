@@ -10,6 +10,7 @@
    Safe-area insets are emulated (iPhone home indicator 48px / notch 32px) so the reserved padding
    can be verified, not assumed. */
 import { spawn } from 'node:child_process';
+import { chromeBin, tmpProfile } from './browser.mjs';
 import { readFileSync } from 'node:fs';
 
 const base = process.argv[2] || 'https://huckn1900.github.io/pocketroll/index.html';
@@ -66,10 +67,10 @@ const insetsFor = d => {
   return d.w > d.h ? { top: 0, bottom: 21, left: 44, right: 44 } : { top: 50, bottom: 34, left: 0, right: 0 };
 };
 
-const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const chrome = chromeBin(); // DSH_CHROME overrides the browser executable — see test/browser.mjs
 const port = 9333 + Math.floor(Math.random() * 60);
 const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox',
-  `--user-data-dir=${process.env.TEMP}\\chrome-mc-${port}-${Date.now().toString(36)}`, `--remote-debugging-port=${port}`,
+  `--user-data-dir=${tmpProfile('mc', port)}`, `--remote-debugging-port=${port}`,
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], { stdio: 'ignore', detached: true });
 
 async function waitPort() {

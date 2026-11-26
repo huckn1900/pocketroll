@@ -7,20 +7,21 @@
    A fake camera is granted by default: the app has no stand-in scene any more, so without a
    feed a screenshot would show the leader screen or a dark LCD instead of the camera UI. */
 import { spawn } from 'node:child_process';
+import { chromeBin, tmpProfile } from './browser.mjs';
 import { writeFileSync } from 'node:fs';
 
 const url = process.argv[2];
 const out = process.argv[3] || 'shot-mobile.png';
 const width = Number(process.argv[4] || 390);
 const height = Number(process.argv[5] || 844);
-const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const chrome = chromeBin(); // DSH_CHROME overrides the browser executable — see test/browser.mjs
 const port = 9333 + Math.floor(Math.random() * 60);
 
 const proc = spawn(chrome, [
   '--headless=new', '--disable-gpu', '--no-sandbox',
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream',
   ...(process.env.EXTRA_FLAGS ? process.env.EXTRA_FLAGS.split(' ') : []),
-  `--user-data-dir=${process.env.TEMP}\\chrome-cdp-${port}-${Date.now().toString(36)}`,
+  `--user-data-dir=${tmpProfile('cdp', port)}`,
   `--remote-debugging-port=${port}`,
 ], { stdio: 'ignore', detached: true });
 

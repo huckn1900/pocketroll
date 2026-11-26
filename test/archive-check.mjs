@@ -4,14 +4,15 @@
    3) favorites toggle persists; backup JSON round-trips through restoreFile().
    Usage: node test/archive-check.mjs <base-url> */
 import { spawn } from 'node:child_process';
+import { chromeBin, tmpProfile } from './browser.mjs';
 
 const base = process.argv[2];
-const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const chrome = chromeBin(); // DSH_CHROME overrides the browser executable — see test/browser.mjs
 const port = 9333 + Math.floor(Math.random() * 60);
 const proc = spawn(chrome, [
   '--headless=new', '--disable-gpu', '--no-sandbox',
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream',
-  `--user-data-dir=${process.env.TEMP}\\chrome-ac-${port}-${Date.now().toString(36)}`,
+  `--user-data-dir=${tmpProfile('ac', port)}`,
   `--remote-debugging-port=${port}`,
 ], { stdio: 'ignore', detached: true });
 

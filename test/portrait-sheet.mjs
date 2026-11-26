@@ -4,15 +4,16 @@
    the sheet must be portrait, and the jpg is saved for visual inspection.
    Usage: node test/portrait-sheet.mjs <url> [out.jpg] */
 import { spawn } from 'node:child_process';
+import { chromeBin, tmpProfile } from './browser.mjs';
 import { writeFileSync } from 'node:fs';
 
 const url = process.argv[2];
 const out = process.argv[3] || 'test/out-sheet-portrait.jpg';
-const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const chrome = chromeBin(); // DSH_CHROME overrides the browser executable — see test/browser.mjs
 const port = 9333 + Math.floor(Math.random() * 60);
 const proc = spawn(chrome, [
   '--headless=new', '--disable-gpu', '--no-sandbox',
-  `--user-data-dir=${process.env.TEMP}\\chrome-ps-${port}-${Date.now().toString(36)}`,
+  `--user-data-dir=${tmpProfile('ps', port)}`,
   `--remote-debugging-port=${port}`,
 ], { stdio: 'ignore', detached: true });
 
