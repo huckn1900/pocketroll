@@ -42,6 +42,24 @@
         "flash": "off",
         "shutter": "PRGM 1/60",
         "focus_hint": "scale focus · pick the zone, nothing confirms it"
+      },
+      "viewfinder": {
+        "id": "trip35-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [
+          1.2
+        ],
+        "lamps": [],
+        "focus": "none",
+        "focusShape": null,
+        "focusGeom": null,
+        "readout": null,
+        "meter": null,
+        "meterScale": null,
+        "optics": "albada",
+        "frame": 0.035
       }
     },
     {
@@ -87,6 +105,22 @@
         "flash": "on",
         "shutter": "PRGM 1/60",
         "focus_hint": "zone scale · point and hope"
+      },
+      "viewfinder": {
+        "id": "instamatic-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [],
+        "focus": "none",
+        "focusShape": null,
+        "focusGeom": null,
+        "readout": null,
+        "meter": null,
+        "meterScale": null,
+        "optics": "window",
+        "frame": false
       }
     },
     {
@@ -131,6 +165,22 @@
       "hud": {
         "flash": "on",
         "shutter": "PRGM"
+      },
+      "viewfinder": {
+        "id": "af35m-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [],
+        "focus": "none",
+        "focusShape": null,
+        "focusGeom": null,
+        "readout": null,
+        "meter": null,
+        "meterScale": null,
+        "optics": "window",
+        "frame": false
       }
     },
     {
@@ -171,6 +221,33 @@
       "hud": {
         "flash": "off",
         "shutter": "PRGM"
+      },
+      "viewfinder": {
+        "id": "l35af-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [
+          0.8,
+          1
+        ],
+        "lamps": [],
+        "focus": "afFrame",
+        "focusShape": null,
+        "focusGeom": {
+          "w": 0.26,
+          "h": 0.2
+        },
+        "readout": {
+          "kind": "needle",
+          "shows": [
+            "focus"
+          ]
+        },
+        "meter": null,
+        "meterScale": null,
+        "optics": "albada",
+        "frame": 0.03
       }
     },
     {
@@ -211,6 +288,29 @@
       "hud": {
         "flash": "none",
         "shutter": "1/250"
+      },
+      "viewfinder": {
+        "id": "t4-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [
+          0.7
+        ],
+        "lamps": [
+          "af"
+        ],
+        "focus": "patch",
+        "focusShape": "oval",
+        "focusGeom": {
+          "w": 0.16,
+          "h": 0.12
+        },
+        "readout": null,
+        "meter": null,
+        "meterScale": null,
+        "optics": "window",
+        "frame": false
       }
     },
     {
@@ -251,6 +351,37 @@
       "hud": {
         "flash": "none",
         "shutter": "1/250"
+      },
+      "viewfinder": {
+        "id": "contaxt2-vf",
+        "closeFrame": true,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [
+          "af"
+        ],
+        "focus": "afFrame",
+        "focusShape": null,
+        "focusGeom": {
+          "w": 0.22,
+          "h": 0.16
+        },
+        "readout": {
+          "kind": "lcd",
+          "shows": [
+            "shutter",
+            "comp",
+            "battery"
+          ],
+          "derive": {
+            "at_aperture": 2
+          }
+        },
+        "meter": null,
+        "meterScale": null,
+        "optics": "rf",
+        "frame": 0.02
       }
     },
     {
@@ -291,6 +422,24 @@
       "hud": {
         "flash": "none",
         "shutter": "1/200"
+      },
+      "viewfinder": {
+        "id": "mju2-vf",
+        "closeFrame": true,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [
+          "af"
+        ],
+        "focus": "none",
+        "focusShape": null,
+        "focusGeom": null,
+        "readout": null,
+        "meter": null,
+        "meterScale": null,
+        "optics": "field",
+        "frame": 0
       }
     },
     {
@@ -333,6 +482,37 @@
         "flash": "none",
         "shutter": "1/500",
         "focus_hint": "preset zone or AF · decide before the frame"
+      },
+      "viewfinder": {
+        "id": "gr1v-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [
+          0.7,
+          1.5
+        ],
+        "lamps": [],
+        "focus": "afMarks",
+        "focusShape": null,
+        "focusGeom": {
+          "w": 0.42,
+          "h": 0.22
+        },
+        "readout": {
+          "kind": "lcd",
+          "shows": [
+            "shutter",
+            "comp"
+          ],
+          "derive": {
+            "at_aperture": 2.8
+          }
+        },
+        "meter": null,
+        "meterScale": null,
+        "optics": "albada",
+        "frame": 0.03
       }
     },
     {
@@ -373,6 +553,39 @@
       "hud": {
         "flash": "none",
         "shutter": "PRGM"
+      },
+      "viewfinder": {
+        "id": "tc01-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [
+          "af"
+        ],
+        "focus": "none",
+        "focusShape": null,
+        "focusGeom": null,
+        "readout": {
+          "kind": "lcd",
+          "shows": [
+            "shutter"
+          ],
+          "onPress": true,
+          "shutterScale": [
+            8,
+            30,
+            125,
+            500
+          ],
+          "derive": {
+            "at_aperture": 3.5
+          }
+        },
+        "meter": null,
+        "meterScale": null,
+        "optics": "window",
+        "frame": false
       }
     },
     {
@@ -414,6 +627,22 @@
         "flash": "off",
         "shutter": "1/125",
         "focus_hint": "scale focus · estimated distance only"
+      },
+      "viewfinder": {
+        "id": "lca-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [],
+        "focus": "none",
+        "focusShape": null,
+        "focusGeom": null,
+        "readout": null,
+        "meter": null,
+        "meterScale": null,
+        "optics": "window",
+        "frame": false
       }
     },
     {
@@ -460,7 +689,35 @@
       "vibe": "the pocket rangefinder",
       "story": "Designed by Yoshihisa Maitani and sold from 1979 to 1985 — one of the smallest rangefinder cameras ever made. The lens team had to invent a reverse-retrofocus six-element design to fit 35mm into a 4cm body. You set the aperture with a lever on the right side, focus by a lever under the lens, and read the shutter speed at the side of the finder: nothing chooses for you except the shutter.",
       "tier": "pro",
-      "plate": "OLYMPUS XA"
+      "plate": "OLYMPUS XA",
+      "viewfinder": {
+        "id": "xa-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [
+          0.85,
+          1
+        ],
+        "lamps": [],
+        "focus": "patch",
+        "focusShape": "rect",
+        "focusGeom": {
+          "w": 0.2,
+          "h": 0.12
+        },
+        "readout": {
+          "kind": "needle",
+          "shows": [
+            "shutter"
+          ],
+          "striped": true
+        },
+        "meter": null,
+        "meterScale": null,
+        "optics": "window",
+        "frame": false
+      }
     },
     {
       "id": "rollei35",
@@ -505,7 +762,23 @@
       "vibe": "the mechanical classic",
       "story": "Shown at photokina in 1966, Heinz Waaske's camera was the smallest 135 camera then existing. A normal leaf shutter would not fit around the fully retracting lens, so the shutter was split: the clockwork stays in the body, the lamellas ride in the sliding tube, coupled by shafts. Roughly two million of the series were made over thirty years; production continued in small batches until 2015. There is no meter and no autofocus — you read the light yourself.",
       "tier": "pro",
-      "plate": "ROLLEI 35"
+      "plate": "ROLLEI 35",
+      "viewfinder": {
+        "id": "rollei35-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [],
+        "focus": "none",
+        "focusShape": null,
+        "focusGeom": null,
+        "readout": null,
+        "meter": null,
+        "meterScale": null,
+        "optics": "window",
+        "frame": false
+      }
     },
     {
       "id": "p67",
@@ -558,7 +831,23 @@
       "vibe": "the medium-format camera",
       "story": "The Asahi Pentax 6×7 launched in 1969: a 55×70mm frame on 120 rollfilm — eight exposures, not thirty-six — behind an interchangeable lens and viewfinder on a body so large that fans nicknamed it Baké-PEN, the monster Pentax. Mirror lock-up came in 1976. It is worked like a large SLR: metered through the lens, focused on a screen at waist level, and shot slowly because every frame costs.",
       "tier": "pro",
-      "plate": "PENTAX 6×7"
+      "plate": "PENTAX 6×7",
+      "viewfinder": {
+        "id": "p67-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [],
+        "focus": "screen",
+        "focusShape": null,
+        "focusGeom": null,
+        "readout": null,
+        "meter": null,
+        "meterScale": null,
+        "optics": "screen",
+        "frame": 0
+      }
     },
     {
       "id": "canonetql17",
@@ -602,7 +891,37 @@
       "price_usd": "60-160 used",
       "vibe": "the bright cheap rangefinder",
       "story": "Made from 1972 to 1982, the G-III QL17 is the last and best of Canon's Canonet line — nicknamed Kanonnet in Japan. A coupled rangefinder with a fully shutter-priority CdS EE meter and an f/1.7 lens: the aperture ring sits at A for automatic work, or you choose an f-stop yourself. QL means Quick Load: the cartridge drops straight into the back, no leader to thread. It earned its reputation as the rangefinder for people who could not buy a Leica.",
-      "tier": "pro"
+      "tier": "pro",
+      "viewfinder": {
+        "id": "canonetql17-vf",
+        "closeFrame": false,
+        "nearShift": true,
+        "ghosts": true,
+        "parallax": [],
+        "lamps": [],
+        "focus": "patch",
+        "focusShape": "rect",
+        "focusGeom": {
+          "w": 0.22,
+          "h": 0.16
+        },
+        "readout": null,
+        "meter": "aperture",
+        "meterScale": [
+          1.7,
+          2.8,
+          4,
+          5.6,
+          8,
+          11,
+          16
+        ],
+        "optics": "rf",
+        "frame": 0.03,
+        "derive": {
+          "at_shutter": 125
+        }
+      }
     },
     {
       "id": "bigmini",
@@ -648,7 +967,25 @@
       "price_usd": "40-120 used",
       "vibe": "the automatic pocket compact",
       "story": "Launched in 1990, the Big Mini is Konica's small fully automatic compact: a four-element 35mm f/3.5, infrared non-scan autofocus, a centre-weighted CdS program meter and DX coding from ISO 25 to 3200 — everything is decided for you except where you point it. It became a cult classic in Japan precisely because it is humble: 188 g, no pretence, and a lens that renders plainly rather than beautifully.",
-      "tier": "pro"
+      "tier": "pro",
+      "viewfinder": {
+        "id": "bigmini-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [
+          "af"
+        ],
+        "focus": "none",
+        "focusShape": null,
+        "focusGeom": null,
+        "readout": null,
+        "meter": null,
+        "meterScale": null,
+        "optics": "window",
+        "frame": false
+      }
     },
     {
       "id": "ga645",
@@ -699,7 +1036,38 @@
       "price_usd": "250-500 used",
       "vibe": "the autofocus medium format",
       "story": "The GA645 Professional, from around 1995, was sold as the world's first fully automatic 6×4.5 camera. Its manual states the gate plainly: picture size 6×4.5cm, actual picture size 56×41.5mm, sixteen exposures on a 120 roll and thirty-two on 220 — so this body prints a different shape of negative from every 35mm compact in the bag. It works like a compact though: hybrid autofocus, program exposure, motorized winding.",
-      "tier": "pro"
+      "tier": "pro",
+      "viewfinder": {
+        "id": "ga645-vf",
+        "closeFrame": false,
+        "nearShift": true,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [
+          "flash"
+        ],
+        "focus": "crosshair",
+        "focusShape": null,
+        "focusGeom": {
+          "w": 0.12,
+          "h": 0.12
+        },
+        "readout": {
+          "kind": "lcd",
+          "shows": [
+            "aperture",
+            "shutter"
+          ],
+          "derive": {
+            "at_aperture": 2.8,
+            "at_shutter": 125
+          }
+        },
+        "meter": null,
+        "meterScale": null,
+        "optics": "rf",
+        "frame": 0.03
+      }
     },
     {
       "id": "n35ti",
@@ -746,7 +1114,37 @@
       "vibe": "the instrument compact",
       "story": "The 35Ti came out in 1993 at about a thousand dollars: 35 for the lens, Ti for the titanium covers. Inside the barrel are analogue dials that show the chosen aperture and shutter speed while the camera meters the scene with Nikon's six-segment 3D matrix meter — the most instrument-like compact Nikon ever made. It stayed in production until 1999, and its double-Gauss f/2.8 is one of the best lenses ever fitted to a 35mm camera.",
       "tier": "pro",
-      "plate": "NIKON 35Ti"
+      "plate": "NIKON 35Ti",
+      "viewfinder": {
+        "id": "n35ti-vf",
+        "closeFrame": false,
+        "nearShift": false,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [
+          "flash"
+        ],
+        "focus": "none",
+        "focusShape": null,
+        "focusGeom": null,
+        "readout": {
+          "kind": "lcd",
+          "shows": [
+            "shutter",
+            "aperture",
+            "af",
+            "battery"
+          ],
+          "derive": {
+            "at_aperture": 3.5,
+            "at_shutter": 125
+          }
+        },
+        "meter": null,
+        "meterScale": null,
+        "optics": "rf",
+        "frame": 0.03
+      }
     },
     {
       "id": "hexaraf",
@@ -793,7 +1191,26 @@
       "vibe": "the silent street camera",
       "story": "Konica's flagship compact from 1993: a fixed seven-element 35mm f/2 reputed to be near a copy of the Leica Summicron, combined with autofocus — which made it faster to work than any manual-focus rangefinder, and quieter: in stealth mode the motorized advance is quieter than an M6. Its metering is deliberately primitive (non-TTL silicon, wide or spot), and there is no built-in flash: the guide-number system lets any flash meter correctly.",
       "tier": "pro",
-      "plate": "KONICA HEXAR AF"
+      "plate": "KONICA HEXAR AF",
+      "viewfinder": {
+        "id": "hexaraf-vf",
+        "closeFrame": false,
+        "nearShift": true,
+        "ghosts": false,
+        "parallax": [],
+        "lamps": [],
+        "focus": "crosshair",
+        "focusShape": null,
+        "focusGeom": {
+          "w": 0.14,
+          "h": 0.14
+        },
+        "readout": null,
+        "meter": null,
+        "meterScale": null,
+        "optics": "rf",
+        "frame": 0.03
+      }
     }
   ]
 }

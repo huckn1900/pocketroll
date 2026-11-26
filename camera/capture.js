@@ -49,12 +49,10 @@ function capture(opts){
      that never happened. */
   if (!feedLive()){ toast('no camera feed · allow camera access in SETTINGS → RETRY CAMERA'); return; }
   shutterSound();
-  // a body with a focusing aid snaps its indicator to locked; a scale-focus camera has
-  // nothing on its glass to confirm, so nothing flashes
-  const focus = $('hudFocus');
-  if (state.cam?.focus_mode !== 'scale'){
-    focus.classList.add('lock'); setTimeout(() => focus.classList.remove('lock'), 350);
-  }
+  // the half-press answers with whatever THIS body has: an AF frame snapping green, a
+  // rangefinder spot fusing, an AF lamp lighting, a parallax-corrected frame sliding.
+  // A scale-focus body has nothing on its glass to confirm, so nothing flashes.
+  vfConfirm(state.cam);
   const flashShot = state.opts.flash && state.cam?.hud?.flash === 'on';
   state.battery = Math.max(4, state.battery - (flashShot ? 2 : 1));
   renderHud();

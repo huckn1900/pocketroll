@@ -107,46 +107,117 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
 .vfmeta .filmname{font-family:'PC Cond',sans-serif;font-weight:700;font-size:11px;letter-spacing:.09em;color:#c9bda6}
 .vf-stage{position:relative;border-radius:8px;overflow:hidden;background:#0d0b09;aspect-ratio:4/3}
 .vf-stage canvas{display:block;width:100%;height:100%;object-fit:contain}
-/* glass: restrained vignette + faint reflection + scanlines */
+/* glass: a finder is optics, not a screen — restrained vignette and a faint reflection.
+   No scanlines: none of these bodies has a display panel to line-scan, and a ground screen
+   gets its grain from .vf-screen instead. */
+/* ── the viewfinder belongs to the body ─────────────────────
+   cameras.json declares what each finder really shows (`viewfinder`, kept by
+   scripts/patch-viewfinders.mjs from manuals); camera/viewfinder.js draws exactly those marks
+   and nothing else. A bare window draws nothing, an Albada finder draws its bright frame, a
+   compact Galilean whose window *is* the field draws the viewfield edge, a rangefinder draws
+   projected frame lines and a coincident patch, a waist-level body draws a ground screen. Geometry is a fraction of the picture the
+   body displays, so marks scale with the box, line up with the feed, and never move the layout.
+   Readouts stay behind the tap (a real camera saves power); lamps answer the camera itself. */
+.vf-overlay{position:absolute;pointer-events:none}
+.vf-overlay i,.vf-overlay b,.vf-overlay u{position:absolute;display:block}
+/* boundaries, per optical construction — a projected bright frame, thin projected framelines,
+   or the viewfield edge itself as the frame; a plain window draws nothing. No corner-bracket
+   variant: none of these bodies prints corner brackets, so drawing them would be decoration. */
+.vf-frame,.vf-lines{inset:var(--inset);border:1px solid rgba(233,223,205,var(--tone))}
+/* a parallax-corrected frame slides toward the near field while the focus is being set */
+.vf-frame.near,.vf-lines.near{transition:inset .14s}
+.vf-frame.near.show,.vf-lines.near.show{
+  inset:calc(var(--inset) + 4%) calc(var(--inset) + 2%) calc(var(--inset) - 2%) calc(var(--inset) + 4%)}
+/* parallax compensation marks: printed only when you focus close, so they answer the moment */
+.vf-parallax{inset:calc(var(--inset) + 3%);border:1px solid rgba(255,214,190,.55);opacity:0;transition:opacity .12s}
+.vf-parallax.show{opacity:.8}
+/* beam-splitter ghosts: a second, dimmer copy of the field edge, as the optics really throws */
+.vf-ghost{inset:var(--inset);border:1px solid rgba(255,220,190,.09)}
+.vf-ghost.g2{inset:calc(var(--inset) + 1.6%)}
+/* a permanent inner close-range frame, printed by the body that has one */
+.vf-close{inset:calc(var(--inset) + 7%);border:1px solid rgba(233,223,205,.26)}
+/* the ground screen a waist-level finder shows: grainy glass, fresnel rings, the screen edge IS the frame */
+.vf-screen{inset:0;background:radial-gradient(140% 120% at 50% 46%,rgba(255,246,230,.07) 0%,rgba(0,0,0,.14) 68%,rgba(0,0,0,.42) 100%)}
+.vf-fresnel{inset:0;background:repeating-radial-gradient(circle at 50% 50%,rgba(233,223,205,.12) 0 1px,transparent 1px 6px);
+  -webkit-mask-image:radial-gradient(circle at 50% 50%,#000 0 52%,transparent 78%);mask-image:radial-gradient(circle at 50% 50%,#000 0 52%,transparent 78%)}
+.vf-screenedge{inset:0;border:1px solid rgba(233,223,205,.28)}
+/* focusing aids: only what the body has, drawn at its own size */
+.vf-patch{left:50%;top:50%;width:var(--pw);height:var(--ph);transform:translate(-50%,-50%);border-radius:3px}
+.vf-patch i{left:0;width:50%;height:100%;border:1px solid rgba(255,235,205,.5);background:rgba(255,235,205,.05);
+  box-shadow:0 0 6px rgba(255,235,205,.12);transition:transform .12s}
+.vf-patch i:last-child{left:50%}
+/* a rangefinder spot is split until the images fuse — that is what focusing looks like */
+.vf-patch i:first-child{transform:translateX(-7%)}
+.vf-patch i:last-child{transform:translateX(7%)}
+.vf-patch.lock i{transform:none;border-color:#79d76a;background:rgba(121,215,106,.08)}
+/* the spot keeps the shape its own finder has: an oval reticle (Yashica) is not the rectangular
+   soft-edged spot (Canonet) and not the central rectangle (Olympus XA) */
+.vf-patch.oval,.vf-patch.oval i{border-radius:50%}
+.vf-af{left:50%;top:50%;width:var(--aw);height:var(--ah);transform:translate(-50%,-50%);
+  border:1px solid rgba(233,223,205,.42)}
+.vf-af.lock{border-color:#79d76a;box-shadow:0 0 8px rgba(121,215,106,.3)}
+.vf-afmarks{left:50%;top:50%;width:var(--mw);height:16%;transform:translate(-50%,-50%)}
+.vf-afmarks i{width:2px;height:100%;background:rgba(233,223,205,.4)}
+.vf-afmarks i:nth-child(1){left:0}
+.vf-afmarks i:nth-child(2){left:50%;transform:translateX(-1px)}
+.vf-afmarks i:nth-child(3){right:0}
+.vf-afmarks.lock i{background:#79d76a}
+.vf-cross{left:50%;top:50%;width:var(--cw2);height:var(--ch2);transform:translate(-50%,-50%)}
+.vf-cross i{background:rgba(233,223,205,.5)}
+.vf-cross i:first-child{left:0;right:0;top:50%;height:1px}
+.vf-cross i:last-child{top:0;bottom:0;left:50%;width:1px}
+.vf-cross.lock i{background:#79d76a}
+/* indicator lamps: a real warning light answers the camera, not a tap */
+.vf-lamp{right:6%;bottom:6%;width:8px;height:8px;border-radius:50%;opacity:.22;background:rgba(233,223,205,.3)}
+.vf-lamp.on{opacity:1}
+.lamp-af.on{background:#79d76a;box-shadow:0 0 8px rgba(121,215,106,.5)}
+.lamp-flash.on{background:none;border-radius:0;width:auto;height:auto;
+  font-family:'PC Mono',ui-monospace,monospace;font-size:10px;color:#ffd9c2;text-shadow:0 0 6px rgba(255,217,194,.6)}
+.lamp-flash::before{content:'\26A1'}
+/* analog instruments: a scale with a needle, read in the finder as the camera does */
+.vf-needle,.vf-meter{width:34%;height:26%;bottom:8%}
+.vf-needle{right:6%}
+/* a body that carries two instruments prints two needles, each on its own end of the window */
+.vf-needle.focus-only{left:6%;right:auto}
+.vf-meter{left:6%}
+.vf-needle i,.vf-meter i{left:0;right:0;bottom:0;height:1px;background:rgba(233,223,205,.45)}
+.vf-needlepole{left:calc(var(--pos) * 100%);bottom:-1px;width:2px;height:44%;background:#efe3c8}
+/* the striped over-exposure zone sits at the bright end of the scale */
+.vf-warnzone{right:0;bottom:-2px;width:12%;height:3px;opacity:.35;
+  background:repeating-linear-gradient(45deg,rgba(255,120,90,.85) 0 2px,transparent 2px 5px)}
+.vf-needle.warn .vf-warnzone{opacity:1}
+.vf-mtick{right:0;bottom:-15px;font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.08em;color:#cfc5b4}
+/* illuminated numerals, printed the way the body's own display lays them out */
+.vf-led{left:8%;bottom:7%;display:flex;gap:12px;font-family:'PC Mono',ui-monospace,monospace;
+  font-size:9px;letter-spacing:.08em;color:#cfc5b4}
+.vf-led b{position:static;display:inline;font-weight:400}
+.show-comp,.show-af{display:none}
+.show-af.lock{display:inline;color:#79d76a}
+.show-battery.low{color:var(--led)}
+/* a display that answers the half-press (Minolta TC-1) stays dark until the shutter is pressed,
+   whether or not the rest of the readouts have been revealed — the press is the ask */
+.vf-overlay .vf-led.onpress{opacity:0}
+.vf-stage.full .vf-overlay .vf-led.onpress{opacity:0}
+.vf-stage.full .vf-overlay .vf-led.onpress.lit,.vf-led.onpress.lit{opacity:1}
+/* a real camera keeps its display dark until asked; the tap reveals the readouts */
+.vf-overlay .full-only{opacity:0;transition:opacity .18s}
+.vf-stage.full .vf-overlay .full-only{opacity:1}
+.battbar{width:44px;height:5px;border:1px solid #8a8072;border-radius:2px;display:inline-block;vertical-align:middle}
+.battbar i{display:block;height:100%;background:#cfc5b4;border-radius:1px}
+/* glass: a finder is optics, not a screen — restrained vignette and a faint reflection,
+   no scanlines (none of these bodies has a display panel to line-scan), and the ground
+   screen gets its own grain from .vf-screen */
 .vf-glass{position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(120% 90% at 50% 45%,rgba(0,0,0,0) 55%,rgba(0,0,0,.32) 100%),
-             linear-gradient(170deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,0) 32%),
-             repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px)}
-/* focus box: thin, quiet; green snap when the shutter arms */
-.focusbox{position:absolute;left:50%;top:48%;width:22%;height:26%;transform:translate(-50%,-50%);
-  border:1.5px solid rgba(255,255,255,.28);border-radius:2px;pointer-events:none}
-.focusbox.lock{border-color:#79d76a;box-shadow:0 0 10px rgba(121,215,106,.35)}
-/* the glass shows what the body really has, from the body profile (focus_mode):
-   AF box for autofocus bodies · frame lines + centre patch for a rangefinder ·
-   focus screen for an SLR · nothing for a scale-focus camera, which has no aid to draw */
-.vf-stage[data-focus=scale] .focusbox{display:none}
-.vf-stage[data-focus=rangefinder] .focusbox{left:6%;top:6%;width:88%;height:88%;transform:none;
-  border-width:1px;opacity:.5}
-.vf-stage[data-focus=rangefinder] .focusbox::before{content:'';position:absolute;left:50%;top:50%;
-  width:14%;height:16%;transform:translate(-50%,-50%);border:1px solid rgba(255,255,255,.5)}
-.vf-stage[data-focus=rangefinder] .focusbox.lock{border-color:#79d76a;opacity:.85;box-shadow:0 0 10px rgba(121,215,106,.25)}
-.vf-stage[data-focus=slr] .focusbox{top:50%;width:16%;height:18%;border-radius:50%;border-width:1px;opacity:.55}
-.vf-stage[data-focus=slr] .focusbox::after{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.45)}
-.vf-stage[data-focus=slr] .focusbox.lock{border-color:#79d76a;box-shadow:0 0 10px rgba(121,215,106,.3)}
+             linear-gradient(170deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,0) 32%)}
+.vf-stage[data-optics=screen] .vf-glass{
+  background:radial-gradient(120% 90% at 50% 45%,rgba(0,0,0,0) 45%,rgba(0,0,0,.44) 100%),
+             linear-gradient(170deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,0) 34%)}
+/* the bezel carries the app's own diagnostics (the film's ISO, the flash option), printed on
+   the housing rather than in the field, so they are not mistaken for the camera's markings */
 .vf-corner{position:absolute;left:8px;bottom:6px;font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;color:rgba(233,223,205,.75);pointer-events:none}
 .vf-flash{position:absolute;right:8px;bottom:6px;font-size:12px;color:rgba(233,223,205,.35);pointer-events:none}
 .vf-flash.on{color:#ffd9c2;text-shadow:0 0 6px rgba(255,217,194,.6)}
-/* full readout only on tap (camera saves power otherwise) */
-.hud{position:absolute;left:10px;top:8px;display:none;font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.08em;color:#cfc5b4;pointer-events:none}
-.hud.full{display:block}
-.hud .batt{display:flex;align-items:center;gap:6px;margin-top:4px}
-.battbar{width:44px;height:5px;border:1px solid #8a8072;border-radius:2px}
-.battbar i{display:block;height:100%;background:#cfc5b4;border-radius:1px}
-.hud.low i{background:var(--led)}
-/* frame-corner marks on the glass: the four brackets a real camera prints inside its frame.
-   They sit on the screen, not on the picture — quiet cream, no weight, no interaction. */
-.vf-corners{position:absolute;inset:0;pointer-events:none}
-.vf-corners i{position:absolute;width:12px;height:12px;border:1px solid rgba(233,223,205,.3)}
-.vf-corners i.tl{left:6px;top:6px;border-right:none;border-bottom:none}
-.vf-corners i.tr{right:6px;top:6px;border-left:none;border-bottom:none}
-.vf-corners i.bl{left:6px;bottom:6px;border-right:none;border-top:none}
-.vf-corners i.br{right:6px;bottom:6px;border-left:none;border-top:none}
-/* the readouts step inward so they never sit under a corner bracket */
 .vf-corner{left:22px}
 .vf-flash{right:22px}
 /* the moment after the shutter: what the camera just exposed, held on the glass for a beat,
@@ -155,9 +226,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.05;m
   transition:opacity .3s;pointer-events:none}
 .shotpeek.on{opacity:1;filter:brightness(.72)}
 /* while the exposed frame is held on the glass, the live finder chrome steps out: a frame that
-   is already taken has no focus box, no meter, no readout — only its number */
-.vf-stage.peeking .focusbox,.vf-stage.peeking .hud,.vf-stage.peeking .vf-corner,
-.vf-stage.peeking .vf-flash,.vf-stage.peeking .vf-corners{opacity:0;transition:opacity .2s}
+   is already taken has no focus aid, no meter, no readout — only its number */
+.vf-stage.peeking .vf-overlay,.vf-stage.peeking .vf-corner,
+.vf-stage.peeking .vf-flash{opacity:0;transition:opacity .2s}
 .shotpeek b{position:absolute;left:22px;bottom:8px;font-family:'PC Mono',ui-monospace,monospace;
   font-size:9px;letter-spacing:.12em;color:var(--led)}
 /* shutter press: the dome travels and the iris flashes — feedback at the finger, not a dialog */
@@ -677,7 +748,8 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .leader .edgeprint{font-size:var(--fs-micro)}
 .vfmeta{font-size:var(--fs-meta)}
 .vfmeta .filmname{font-size:var(--fs-body)}
-.hud,.vf-corner,.shotpeek b{font-size:10px}
+.vf-corner,.shotpeek b,.vf-led,.vf-mtick{font-size:10px}
+.lamp-flash{font-size:var(--fs-micro)}
 .counter .lbl,.plate .lbl{font-size:10px}
 .plate .model{font-size:var(--fs-body)}
 /* the film identity gets one step larger and gains its own truncation: the name is the longest
@@ -880,21 +952,19 @@ footer{font-size:10px}
   <div class="right"><button class="headbtn" id="openSettings">SETTINGS</button></div>
 </div>
 
-<!-- viewfinder: the film it is shooting, live feed inside, ISO/flash minimal. The exposure
+<!-- viewfinder: the film it is shooting, live feed inside. What appears on the glass is this
+     body's own finder design (cameras.json `viewfinder`), not a shared interface. The exposure
      count is not repeated here — the FRAMES LEFT plate below is the only place it is stated. -->
 <div class="vfbox">
   <div class="vfmeta"><span class="filmname" id="vfFilm">GOLD 200</span></div>
   <div class="vf-stage" id="vfStage">
     <canvas id="viewfinder"></canvas>
     <div class="vf-glass"></div>
-    <div class="vf-corners"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i></div>
+    <!-- built per body by camera/viewfinder.js: boundary, focusing aid, lamps, instruments -->
+    <div class="vf-overlay" id="vfOverlay"></div>
     <!-- the just-exposed frame, held for a beat before the live finder comes back -->
     <div class="shotpeek" id="shotPeek"><b id="shotPeekCap"></b></div>
-    <div class="focusbox" id="hudFocus"></div>
-    <div class="hud" id="hud">
-      <span id="hudReadout">PRGM 1/60 · +0.0 EV</span>
-      <div class="batt" id="hudBatt">BAT <span class="battbar"><i id="hudBattFill"></i></span><span id="hudBattPct">92%</span></div>
-    </div>
+    <!-- the housing, not the field: the app's own diagnostics (film ISO, flash option) -->
     <div class="vf-corner" id="hudIso">ISO 200</div>
     <div class="vf-flash" id="hudFlash">⚡</div>
   </div>
@@ -1346,6 +1416,7 @@ footer{font-size:10px}
 <script src="storage/backup.js"></script>
 <script src="film/roll-manager.js"></script>
 <script src="film/development.js"></script>
+<script src="camera/viewfinder.js"></script>
 <script src="camera/camera-manager.js"></script>
 <script src="camera/capture.js"></script>
 <script src="app.js"></script>

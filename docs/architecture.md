@@ -37,6 +37,8 @@ pocketroll/
 │   ├── roll-manager.js applying stock, threading a new roll, the lifecycle gate
 │   └── development.js  back door, the one-tank develop run, bell, contact sheet
 ├── camera/
+│   ├── viewfinder.js   the body's own finder: boundary from its optics, its focusing aid,
+│   │                   its lamps, its instruments — read from cameras.json, nothing invented
 │   ├── camera-manager.js sensor lifecycle, demo fallback, body swap, background pause/resume
 │   └── capture.js      the moment of exposure: frame, leak, date stamp, thumbnail, roll record
 ├── assets/             cameras.json · films.json · samples · fonts
@@ -77,6 +79,11 @@ Every content item/pack carries:
   `tier: free|pro|expansion` — the free five are gold200, portra400, hp5plus, velvia50, colorplus
   (one per film family) and trip35, instamatic, af35m, lca, t4. Adding content = adding a profile
   file plus its entitlement; nothing else changes.
+- Every body carries its own **viewfinder design** (`viewfinder` in `assets/cameras.json`, one
+  design per body, kept by `scripts/patch-viewfinders.mjs` from manuals and authentic finder
+  descriptions, drawn by `camera/viewfinder.js`). Selecting a body in the bag selects its finder
+  with it; `test/viewfinder-check.mjs` compares what is drawn against what the profile declares
+  and refuses marks no source states (see *Camera-specific viewfinder system* below).
 - `buildLists()` shows locked Pro profiles with an amber `PRO` tag; tapping one hints the Pro APK instead of loading (`proHint()`). URL hooks (`?cam=`, `?film=`) bypass gating for testing/development only.
 - Settings carries a **PRO APK · US$6.99 · COMING SOON** block (`.getpro.soon`, the ink-panel/amber vocabulary of a LOCKED · PRO card, nothing presses) plus lines saying it is not on sale yet, Android first, iOS later. When the creator page exists this becomes a real Patreon link and the wording becomes the purchase.
 - License state on the web is fixed to `free` (`state.license` concept); PurchaseVerification for the APK will validate the Patreon purchase and store entitlements locally (offline-capable).
@@ -231,11 +238,11 @@ sharing the same operation signature).
 
 **Per-body parameters.** Each profile carries: `route`, `focus_mode` (`af` | `scale` |
 `rangefinder` | `slr`), `focus_system`, `exposure_system`, `shutter_character`, `frames`,
-optional `gate` `{film, short_mm, long_mm, aspect}`, `finder`, `hud` (flash availability, shutter
-readout, focus hint) and `camera_character` (`color_cast`, `vignette`, `sharpness`,
-`halation_bias`, optional `grain_bias`). The finder draws its focus aid from `focus_mode` — a
-split-image patch for rangefinders, a centre focus box for AF, a ground-glass-style screen for
-SLR, nothing for scale focus — and the HUD states the focus method in terse tokens.
+optional `gate` `{film, short_mm, long_mm, aspect}`, `viewfinder` (see the next section — what
+that body's finder really shows), `hud` (flash availability, shutter readout, focus hint) and
+`camera_character` (`color_cast`, `vignette`, `sharpness`, `halation_bias`, optional
+`grain_bias`). The glass is not derived from `focus_mode`: it is declared per body, because two
+bodies with the same focus system can show completely different things on it.
 
 **The nameplate is data, not a guess.** The status plate prints the body's own nameplate:
 `plate` when the model string is only a number or a print format (`PENTAX 6×7`, `OLYMPUS XA`,
@@ -260,6 +267,86 @@ Specs are quoted only where a source states them; an interchangeable system says
 inventing a focal length. Shutter *sound* is a separate track: per-body character (a near-silent
 Hexar, a mechanical Rollei, the mirror-slap of a 6×7) is prototyped in `sounds.html` first and
 merged into `app.js` only after the variants are chosen.
+
+## Camera-specific viewfinder system (Round㊷, user-defined)
+
+*"The viewfinder should not be a universal interface shared by every camera. It should be part of
+each camera's identity."* One camera · one identity · one dedicated viewfinder: selecting a body
+in the bag selects its finder with it, and that finder stays until another body is chosen.
+
+**The config, per body** (`viewfinder` in `assets/cameras.json`, kept by
+`scripts/patch-viewfinders.mjs`, which is idempotent and refuses any mark no source states):
+
+- `id` — the design id (`<body>-vf`). The built stage carries it as `data-vf`, so the design on
+  screen and the selected profile cannot drift apart.
+- `optics` — `window` | `albada` | `field` | `rf` | `screen`. The boundary style is the optical
+  construction, not a colour scheme: an Albada projects a bright frame, a rangefinder projects
+  thin framelines, a Galilean whose window *is* the field draws the viewfield edge, a
+  waist-level body draws a ground screen, a plain window draws nothing.
+- `frame` — the projected frame's inset as a fraction of the displayed picture; `false` = the
+  body projects no frame at all, `0` = the viewfield edge *is* the frame.
+- `parallax` / `nearShift` / `closeFrame` / `ghosts` — near-focus marks printed at the focusing
+  moment, a frame that slides for close focus, a permanent inner close-range frame, and the
+  duplicate images a beam-splitter viewfinder really throws.
+- `focus` + `focusShape` + `focusGeom` — the aid the body has: a coincident patch (soft-edged
+  spot, oval reticle, central rectangle), an AF frame, AF marks, a crosshair, or a ground screen.
+  Geometry is the aid's own size, as a fraction of the picture.
+- `lamps` — `af` | `flash`, lit by the camera's own state, never by a tap.
+- `readout` — `needle` (a scale with a pole, optional striped over-exposure zone) or `lcd`
+  (illuminated numerals), with `shows`, `onPress` (a display that answers the half-press),
+  `shutterScale` (a body's own LED steps) and `derive` (the aperture or shutter its meter works
+  at, quoted from that body's specification).
+- `meter` / `meterScale` / `derive` — an aperture scale lit inside the same window, reading
+  against the shutter the EE program holds; a scale with skips in it prints only its own steps.
+
+Numerals are measurements, not strings: the scene's luminance gives the exposure value, and the
+design's declared meter turns it into a shutter step or an f-stop on that body's own scale. A
+focus needle rests at the far end with nothing locked, and an exposure-compensation or AF mark
+stays unlit because the app is at compensation 0 and has no focus sensor — never faked on.
+
+**Authenticity over decoration is the rule.** No artificial focus points, exposure marks or grids
+added to make a finder look sophisticated; nothing invented. Consequences that are enforced, not
+styled: the Trip 35's exposure zone sits on the top plate, not in the glass; XA has no bright-line
+frame; a Hexar shows crosshairs but no shutter numerals in the finder; TC-1's display is dark
+until the shutter is half-pressed; μ II and T4 draw no projected picture frame; a body with no
+readout shows nothing. Complexity follows the machine — a rangefinder carries frame lines plus a
+patch, a waist-level body carries a screen, pocket cameras stay minimal — and no body gets corner
+brackets, because none of these bodies prints them.
+
+**Research sources**, each kept in the patch script beside the design it produced: Contax T2
+("Display in the Viewfinder" — Picture Frame, Focus Frame, Shutter Speed; easymanua.ls +
+manualslib), Yashica T5/T5D manual (cameramanuals.org) and the T4/T5 reticle and lock-lamp
+description, Nikon L35AF manual (reverse-Galilean Albada bright frame, 0.52×, ~85% coverage, AF
+frame marks, parallax marks, focus needle), Ricoh GR1v manual ("Viewfinder Indicators":
+field-of-view frame, parallax marks at 1.5 m / 0.7 m, auto-focus marks, shutter indication, AE
+warning, compensation indicator), Olympus XA manual and test report (parallax arrows, the
+double-image rectangle that fuses, a shutter needle with a striped over-exposure zone), Canonet
+QL17 GIII (camera-wiki.org: 0.6× rangefinder/viewfinder with parallax compensation, coincident
+patch, beam-splitter ghosts, aperture scale lit by the same window, the scale skips f/2), Konica
+Hexar AF (cameraquest.com + Wikipedia: centre crosshairs, speeds indicated in the top LCD,
+parallax-corrected framelines), Fujifilm GA645 (dantestella.com: ~0.5× projected framelines,
+central crosshair, LED readout at the bottom), Nikon 35Ti (kenrockwell.com: frame lines and
+digital display), Pentax 6×7 waist-level ground screen (100% coverage), Minolta TC-1
+(camera-wiki.org: half-pressing displays shutter speeds 8, 30, 125, 500 in the finder), Konica
+Big Mini BM-201 (michaelfil.com: half-press confirms focus), Olympus μ II ("the whole viewfinder
+is the field of view and picture frame", green dot indicates focus lock).
+
+**Where the marks sit.** The overlay is a separate DOM layer positioned to the contained, centred
+picture, so frame lines and focusing aids line up with what the body displays and never land on
+the black bars, and no finder graphic ever reaches the captured photograph. Geometry is a
+fraction of the picture, so a body switch scales marks without restyling the page: placement is
+keyed on the geometry and the design id, and the page never scrolls. Readouts stay behind the
+tap (a real camera keeps its display dark until asked); lamps and the half-press display answer
+the camera itself. The finder box stays the body's own frame shape — 135 bodies the compact-LCD
+box following the displayed feed, gated bodies their real print ratio — and the overlay never
+crops, stretches or distorts the captured image.
+
+**Module ownership.** `camera/viewfinder.js` builds and paints a design; `app.js` calls it from
+`renderHud()` (which runs on every body swap, so the two stay synchronised) and from the render
+loop for placement. There is no `CAMERA_HUD` map, no `.focusbox`, no corner-bracket variant, and
+no shared overlay component. `test/viewfinder-check.mjs` derives its assertions from each
+profile's own design — a finder drawn from a guessed universal template passes the eye and fails
+that gate.
 
 ## Future content updates
 

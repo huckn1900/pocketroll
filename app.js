@@ -427,28 +427,23 @@ let pendingFilm = null;
 
 function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800); }
 
-/* LCD finder HUD: minimal by default (focus box + ISO), tap the finder for the
-   full readout (flash / battery / shutter / EV) — like a real camera saving power. */
+/* The finder draws the design of the body in hand (cameras.json `viewfinder`), so switching a
+   body in the bag switches the viewfinder with it — the two are never out of step. Only what
+   that body's own finder shows is drawn; nothing is added for looks. Minimal by default, tap
+   the finder for its readouts (a real camera keeps its display dark until asked); lamps answer
+   the camera itself, not a tap. */
 function renderHud(){
   const cam = state.cam;
-  // every body reads out its own panel from cameras.json (`hud`): a camera with no flash
-  // cannot show a flash icon, a camera with no meter cannot promise an exposure program.
-  const h = (cam && cam.hud) || { flash: 'none', shutter: '' };
+  const spec = buildViewfinder(cam, $('vfStage'));   // same design id → no rebuild, no layout churn
+  paintViewfinder(cam, state, spec);
+  /* the housing carries the app's own diagnostics, not the camera's markings: the ISO of the
+     film in the chamber, and the flash option — a body with no flash cannot offer one */
+  const capable = cam?.hud?.flash === 'on';
   const fl = $('hudFlash');
-  const capable = h.flash === 'on'; // only bodies with a built-in flash can fire one
   fl.style.display = capable ? '' : 'none';
   fl.className = 'vf-flash' + (capable && state.opts.flash ? ' on' : '');
   fl.textContent = '⚡';
   $('hudIso').textContent = state.film ? 'ISO ' + state.film.iso : 'no film';
-  $('hudReadout').textContent = (h.shutter ? h.shutter : '—')
-    + (h.focus_hint ? ` · ${h.focus_hint}` : '') + ' · +0.0 EV';
-  // the finder shows how the body focuses: an AF box for autofocus bodies, frame lines and
-  // a patch for a rangefinder, a focus screen for an SLR, nothing for a scale-focus camera
-  // — a camera with no focusing aid does not get one drawn onto its glass.
-  $('vfStage').dataset.focus = cam?.focus_mode || 'af';
-  $('hudBattFill').style.width = state.battery + '%';
-  $('hudBattPct').textContent = state.battery + '%';
-  $('hudBatt').classList.toggle('low', state.battery < 20);
 }
 function renderOpts(){
   $('optDate').classList.toggle('on', state.opts.date);
@@ -627,6 +622,10 @@ function renderViewfinder(){
   }
   const cw = previewW, ch = Math.max(2, Math.round(previewW / box));
   if (vf.width !== cw || vf.height !== ch){ vf.width = cw; vf.height = ch; }
+  /* the finder marks sit on the picture, not on the housing: the overlay covers exactly the
+     contained feed, so frame lines and focusing aids line up with what is displayed and never
+     land on the black bars. Same geometry → no restyle, so a body switch cannot jitter. */
+  placeViewfinder(stage, sw / sh);
   engine.process(src, sw, sh);
 }
 let frameMs = 16, previewW = 640;
@@ -1432,7 +1431,7 @@ const MANUAL_EDITION = '01';
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v38';
+const BUILD = 'pocketroll-v39';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
@@ -1497,8 +1496,10 @@ async function boot(){
   const fil = state.films.find(f => f.id === q.get('film')) || state.films.find(f => f.id === 'gold200');
   if (q.get('date') === '1') state.opts.date = true; // test hook: force date stamp for this run
   loadCamera(cam, { quiet: true });
-  if (q.get('hud') === 'full') $('hud').classList.add('full');
-  $('vfStage').addEventListener('click', () => $('hud').classList.toggle('full'));
+  if (q.get('hud') === 'full') $('vfStage').classList.add('full');
+  // tapping the finder asks the camera to show its readouts; a body whose finder has none
+  // reveals nothing, because that is what its finder has
+  $('vfStage').addEventListener('click', () => $('vfStage').classList.toggle('full'));
   renderCamState();
   await loadArchives();
   /* A half-shot roll belongs in the camera, not in the archive: reopening the app puts the
@@ -1553,7 +1554,7 @@ async function boot(){
   $('sheetBtn').onclick = () => { if (state.sheet) download(state.sheet, 'sheet'); else toast('develop a roll first'); };
   $('optDate').onclick = () => { state.opts.date = !state.opts.date; saveOpts(); renderOpts(); toast(state.opts.date ? "date stamp on · prints stamped at exposure" : 'date stamp off'); };
   $('optFlash').onclick = () => {
-    if (!state.cam || CAMERA_HUD[state.cam.id]?.flash !== 'on'){ toast('this body has no built-in flash'); return; }
+    if (!state.cam || state.cam.hud?.flash !== 'on'){ toast('this body has no built-in flash'); return; }
     state.opts.flash = !state.opts.flash; saveOpts(); renderHud(); renderOpts();
     toast(state.opts.flash ? 'flash on · fires at the shutter' : 'flash off');
   };
