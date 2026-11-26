@@ -945,7 +945,7 @@ const WEB_LICENSE = 'free'; // 'free' = production gate · 'all' = every finishe
 function entitled(item){ return WEB_LICENSE === 'all' || item.tier === 'free'; }
 function cameraState(c){ return entitled(c) ? 'avail' : 'lock'; }
 function proHint(){
-  toast('PRO content · the full library is in the Pro APK — GET PRO in ⚙ Settings');
+  toast('PRO content · the Pro APK is not on sale yet — ⚙ Settings says where it will land');
 }
 
 /* ---------- shelf availability semantics ----------
@@ -1362,7 +1362,7 @@ async function openFilmPreview(f){
   let statusLine;
   if (st === 'sel') statusLine = 'IN THE CAMERA NOW';
   else if (st === 'soon') statusLine = 'IN DEVELOPMENT';
-  else if (st === 'lock') statusLine = 'PRO STOCK · UNLOCKS IN THE PRO APK';
+  else if (st === 'lock') statusLine = 'PRO STOCK · UNLOCKS WHEN THE PRO APK SHIPS';
   else if (st === 'unlock') statusLine = f.status.startsWith('disc') ? 'DISCONTINUED PRO STOCK · OPEN FOR TESTING HERE' : 'PRO STOCK · OPEN FOR TESTING HERE';
   else statusLine = 'AVAILABLE NOW';
   // the lab process belongs with the stock's identity, not buried in a footnote
@@ -1391,7 +1391,7 @@ async function openFilmPreview(f){
   } else if (st === 'lock'){
     btn.textContent = 'UNLOCK WITH PRO'; btn.disabled = false;
     btn.onclick = proHint;
-    $('pvHint').textContent = 'finished stock · available in the Pro APK (GET PRO in ⚙ Settings)';
+    $('pvHint').textContent = 'finished stock · unlocks when the Pro APK ships · ⚙ Settings says when it is on sale';
   } else {
     btn.textContent = 'COMING SOON'; btn.disabled = true; btn.onclick = null;
     $('pvHint').textContent = 'preview of the current tuned version · not loadable yet';
@@ -1411,7 +1411,7 @@ const MANUAL_EDITION = '01';
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v35';
+const BUILD = 'pocketroll-v36';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW

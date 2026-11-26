@@ -338,7 +338,10 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .getpro{display:block;width:100%;margin-top:12px;background:var(--red);color:#fff;border-radius:10px;padding:12px;
   text-align:center;text-decoration:none;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.14em;
   box-shadow:0 2px 0 #8f3524}
-.getpro:active{transform:translateY(2px);box-shadow:0 0 0 #8f3524}
+/* The Pro APK is not on sale yet, so this block is a state, not a purchase link: it uses the
+   same locked vocabulary as a LOCKED · PRO card (ink panel, amber text), and it presses
+   nothing. */
+.getpro.soon{background:#3a3126;color:#c9a45a;border:1px solid #7a5a3a;box-shadow:0 2px 0 #2a2118;cursor:default}
 .prohint{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:var(--sub);text-align:center;margin-top:5px}
 .darkbtn[disabled]{opacity:.55;cursor:default}
 .darkbtn.locked{background:#3a3126;border-color:#7a5a3a;color:#c9a45a;box-shadow:0 2px 0 #2a2118}
@@ -1081,9 +1084,11 @@ footer{font-size:10px}
         the roll, the body, or any setting -->
     <button class="darkbtn small" id="openManual">USER MANUAL — the full booklet: load, shoot, develop, keep</button>
     <div class="divide"></div>
-    <!-- business: free web demo → Pro APK (one-time, Patreon) → expansion packs later -->
-    <a class="getpro" href="https://www.patreon.com/" target="_blank" rel="noopener">GET PRO APK · US$6.99 · PATREON</a>
-    <div class="prohint">one-time purchase · unlocks all 15 finished stocks + 10 camera bodies · Android APK · iOS coming later</div>
+    <!-- business: free web demo → Pro APK (one-time, Patreon) → expansion packs later.
+         The APK is not finished, so nothing here is purchasable today: it says when, not a link. -->
+    <div class="getpro soon">PRO APK · US$6.99 · COMING SOON</div>
+    <div class="prohint">not on sale yet · the Pro APK is still being built · Android first, iOS later · nothing is charged in this web demo</div>
+    <div class="prohint">when it ships it unlocks every finished film stock and camera body, one-time and permanent</div>
     <div class="prohint" style="margin-top:14px">A SIMPLE CAMERA FOR STORING MEMORIES</div>
   </div>
 </div>
