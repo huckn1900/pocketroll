@@ -937,11 +937,11 @@ function openFrame(r, i){
 /* ---------- web entitlement ----------
    The released free web demo keeps the classic five stocks and five bodies; Pro content is
    shown but locked, and the full library lives in the paid Pro APK (one-time, via Patreon).
-   THIS BUILD IS A TEST BUILD: WEB_LICENSE='all' opens every finished stock and body so each
-   one's colour science and operation can be tried in the browser. Profiles keep their tier, so
-   the business model is untouched — set it back to 'free' to re-lock the web demo to the free
-   tier before this goes out to users. One gate for both shelves: a profile is a profile. */
-const WEB_LICENSE = 'all'; // 'free' = production gate · 'all' = every finished profile loadable
+   Profiles keep their tier, so the business model is untouched. 'all' opens every finished
+   stock and body in the browser so each one's colour science and operation can be tried and
+   calibrated — set it back when that calibration work is done. One gate for both shelves:
+   a profile is a profile. */
+const WEB_LICENSE = 'free'; // 'free' = production gate · 'all' = every finished profile loadable
 function entitled(item){ return WEB_LICENSE === 'all' || item.tier === 'free'; }
 function cameraState(c){ return entitled(c) ? 'avail' : 'lock'; }
 function proHint(){
@@ -1411,7 +1411,7 @@ const MANUAL_EDITION = '01';
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v34';
+const BUILD = 'pocketroll-v35';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW

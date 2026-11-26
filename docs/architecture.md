@@ -77,13 +77,18 @@ Every content item/pack carries:
 
 ## Film library roadmap (Round⑰, user-defined)
 
-**Temporary test unlock (web only).** `app.js` carries `const WEB_LICENSE = 'all'`, which opens
-every finished stock in the browser so each one's colour science can be tried and calibrated.
-Profiles keep their `tier`, and the shelf still prints the `PRO` tag next to a Pro stock's
-name plus a one-line note saying this is a test build — opening everything here must not read
-as "the free web owns the full library". Re-locking = set `WEB_LICENSE = 'free'`; pricing and
-entitlements are untouched. Cameras keep the production gate (films were what was asked for).
-
+**Web licensing gate (web only).** `app.js` carries `const WEB_LICENSE` and `entitled()` is the
+only place entitlement is decided. `'free'` is the released gate: the classic five stocks and
+five bodies load, every PRO stock and body stays visible on the shelf reading `LOCKED · PRO`,
+and its preview offers `UNLOCK WITH PRO` instead of loading. `'all'` opens every finished
+profile in the browser so each one's colour science and operation can be tried and calibrated;
+profiles keep their `tier`, and that mode prints the one-line note saying it is a test build so
+opening everything never reads as "the free web owns the full library". Shipping either way
+changes that single constant only — pricing and entitlements are untouched. Both shelves use the
+same gate: a profile is a profile. `test/roll-check.mjs` asserts it: every PRO card reads
+LOCKED · PRO, the free tier stays AVAILABLE / SELECTED, the unfinished stock stays COMING SOON,
+the release build prints no test-build note, and trying a PRO stock or body never touches the
+roll or the camera.
 **Every stock owns its own parameters.** No shared colour preset: white balance, exposure bias,
 toe/shoulder curve, `rgb_matrix`, split-tone tint, grain size + ISO response, highlight and
 shadow behaviour, leak probability are per-profile numbers (`scripts/patch-films.mjs` keeps

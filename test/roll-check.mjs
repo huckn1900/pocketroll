@@ -145,10 +145,53 @@ check(gate.afterCancel?.frames === 2 && gate.afterCancel?.rollId === gate.before
 check(gate.afterFog?.shotsLeft === 36 && gate.afterFog?.film === 'gold200' && gate.afterFog?.frames === 0 && gate.afterFog?.rolls === 1, 'back door → frames fogged, new roll loaded, nothing archived', `fog path wrong (${JSON.stringify(gate.afterFog)})`);
 check(!(gate.storedIds || []).includes(gate.beforeSwitch?.rollId), 'the fogged roll left storage as well', `storage kept a fogged roll (${JSON.stringify(gate.storedIds)})`);
 
+/* ── 4b. the web gate: PRO content is shown, and never loads in this build ── */
+const lic = JSON.parse(await evalIn(`(async () => { try {
+  document.getElementById('openDeck').click();
+  const proFilms = state.films.filter(f => f.tier !== 'free' && f.status !== 'coming');
+  const soonFilms = state.films.filter(f => f.status === 'coming');
+  const freeFilms = state.films.filter(f => f.tier === 'free');
+  const proCams = state.cameras.filter(c => c.tier !== 'free');
+  const lockChips = [...document.querySelectorAll('.filmitem .stchip.lock')].map(el => el.textContent.trim());
+  const soonChips = [...document.querySelectorAll('.filmitem .stchip.soon')].length;
+  const availChips = [...document.querySelectorAll('.filmitem .stchip.avail')].length;
+  const selChips = [...document.querySelectorAll('.filmitem .stchip.sel')].length;
+  const camLockChips = [...document.querySelectorAll('.camitem.locked .stchip.lock')].map(el => el.textContent.trim());
+  const gateNote = document.getElementById('filmGate').textContent;
+  const bagNote = document.getElementById('bagGate').textContent;
+  const before = { film: state.film?.id, cam: state.cam?.id, frames: state.frames.length, rollId: state.rollId };
+  const lf = state.films.find(f => f.tier !== 'free' && f.status !== 'coming');
+  await openFilmPreview(lf);
+  const pvBtn = document.getElementById('pvLoad').textContent;
+  const pvHint = document.getElementById('pvHint').textContent;
+  document.getElementById('pvLoad').click();
+  const afterUnlock = { film: state.film?.id, frames: state.frames.length, rollId: state.rollId };
+  document.querySelector('#filmPreview [data-close]').click();
+  const lockedCam = state.cameras.find(c => c.tier !== 'free');
+  const camCard = [...document.querySelectorAll('.camitem.locked')][0];
+  if (camCard) camCard.click();
+  const afterCamTry = { cam: state.cam?.id };
+  document.querySelector('#deckModal [data-close]').click();
+  return JSON.stringify({ proFilms: proFilms.length, soonFilms: soonFilms.length, freeFilms: freeFilms.length,
+    proCams: proCams.length, lockChips, soonChips, availChips, selChips, camLockChips, gateNote, bagNote,
+    before, pvBtn, pvHint, afterUnlock, afterCamTry });
+} catch (e) { return JSON.stringify({ error: String(e) }); } })()`));
+phase('gate', lic);
+check((lic.lockChips || []).length === lic.proFilms && (lic.lockChips || []).every(t => /LOCKED/.test(t) && /PRO/.test(t)),
+  `every PRO stock reads LOCKED · PRO (${(lic.lockChips || []).length} of ${lic.proFilms})`, `PRO chips missing or mislabelled (${JSON.stringify(lic.lockChips)})`);
+check((lic.camLockChips || []).length === lic.proCams, `every PRO body reads LOCKED · PRO (${(lic.camLockChips || []).length} of ${lic.proCams})`, `PRO body chips missing (${JSON.stringify(lic.camLockChips)})`);
+check(lic.availChips + lic.selChips === lic.freeFilms && lic.soonChips === lic.soonFilms,
+  `free stocks stay usable (${lic.availChips} available + ${lic.selChips} selected) and the unfinished one stays COMING SOON`,
+  `shelf states do not match the tiers (${JSON.stringify(lic)})`);
+check(!lic.gateNote && !lic.bagNote, 'no test-build note in a release build', `gate notes still printing (${JSON.stringify([lic.gateNote, lic.bagNote])})`);
+check(lic.pvBtn === 'UNLOCK WITH PRO' && /Pro APK/.test(lic.pvHint || ''), `a PRO stock offers purchase, not loading: "${lic.pvBtn}"`, `preview button wrong (${lic.pvBtn})`);
+check(lic.afterUnlock?.film === lic.before?.film && lic.afterUnlock?.rollId === lic.before?.rollId, 'trying a PRO stock leaves the roll in the camera alone', `the roll changed (${JSON.stringify(lic)})`);
+check(lic.afterCamTry?.cam === lic.before?.cam, 'trying a PRO body leaves the camera alone', `the body changed (${JSON.stringify(lic.afterCamTry)})`);
+
 /* ── 5. develop-first path + backup integrity ───────────────────────────── */
 const bk = JSON.parse(await evalIn(`(async () => { try {
   capture(); capture(); // an exposed roll must be resolved before switching stock
-  tryLoadFilm(state.films.find(x => x.id === 'portra160'));
+  tryLoadFilm(state.films.find(x => x.id === 'velvia50'));
   document.getElementById('swapDevelop').click();
   await new Promise(r => setTimeout(r, 9000));
   const afterDevSwap = { rolls: state.rolls.length, film: state.film.id, frames: state.frames.length, rollId: state.rollId, shotsLeft: state.shotsLeft };
@@ -177,7 +220,7 @@ const bk = JSON.parse(await evalIn(`(async () => { try {
   return JSON.stringify({ afterDevSwap, planShown, planText, beforeApply, afterApply, afterBad, afterDupe, afterForeign });
 } catch (e) { return JSON.stringify({ error: String(e) }); } })()`));
 phase('backup', bk);
-check(bk.afterDevSwap?.rolls === 2 && bk.afterDevSwap?.film === 'portra160' && bk.afterDevSwap?.frames === 0 && bk.afterDevSwap?.shotsLeft === 36, `develop-first: roll archived, then the new stock loads (${JSON.stringify(bk.afterDevSwap)})`, `develop-first wrong (${JSON.stringify(bk.afterDevSwap)})`);
+check(bk.afterDevSwap?.rolls === 2 && bk.afterDevSwap?.film === 'velvia50' && bk.afterDevSwap?.frames === 0 && bk.afterDevSwap?.shotsLeft === 36, `develop-first: roll archived, then the new stock loads (${JSON.stringify(bk.afterDevSwap)})`, `develop-first wrong (${JSON.stringify(bk.afterDevSwap)})`);
 check(bk.planShown && /will restore 1 roll/.test(bk.planText || '') && /1 frame/.test(bk.planText || '') && /latent frames go back into the camera/.test(bk.planText || ''), `restore preview: "${bk.planText}"`, 'no restore preview shown');
 check(bk.beforeApply === 2 && bk.afterApply?.rolls === 3 && bk.afterApply?.scans >= 3, `confirmed restore merged 1 roll + 1 scan (${bk.afterApply?.rolls} rolls, ${bk.afterApply?.scans} scans)`, `merge wrong (${JSON.stringify(bk.afterApply)})`);
 check(bk.afterApply?.rollId === 'roll-imported-cam' && bk.afterApply?.frames === 1 && bk.afterApply?.shotsLeft === 34, `undeveloped roll from a backup goes back into the camera (${bk.afterApply?.shotsLeft} left)`, `in-camera restore wrong (${JSON.stringify(bk.afterApply)})`);

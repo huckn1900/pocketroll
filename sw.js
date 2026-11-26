@@ -4,7 +4,7 @@
    Test pages and query-param URLs bypass the SW entirely.
    CACHE is bumped on every deploy; app.js compares it with its own BUILD and shows a
    RELOAD notice when the shipped build is older than this cache name. */
-const CACHE = 'pocketroll-v34'; // app.js compares BUILD with this; bump the two together when shipping a release users should reload for
+const CACHE = 'pocketroll-v35'; // app.js compares BUILD with this; bump the two together when shipping a release users should reload for
 const SHELL = ['./', 'index.html', 'app.js',
   'storage/database.js', 'storage/current-roll.js', 'storage/archive.js', 'storage/backup.js',
   'film/roll-manager.js', 'film/development.js',
