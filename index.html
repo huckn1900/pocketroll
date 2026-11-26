@@ -27,6 +27,15 @@
      their air; the room a screen leaves unused belongs to the viewfinder (see renderViewfinder). */
   --cw:clamp(112px, 34vw, 150px);
   --gap:clamp(7px, 1.6vh, 12px);
+  /* Round 36: prose gets its own face and its own leading. Instructions, descriptions and
+     paragraphs are set in the device's readable sans at 400 — Roboto Condensed stays reserved
+     for display headings, buttons and shelf labels, IBM Plex Mono for instrument print and
+     technical metadata; paragraphs read at 1.5, not the wide 1.75 an earlier draft used. */
+  --prose:-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --lh-prose:1.5;
+  /* one page rhythm for every sheet: block gaps come from this scale, not from margins
+     invented block by block */
+  --dgap:12px;
 }
 /* bundled OFL latin subsets (offline-safe): brand/print = Roboto Condensed, parameters = IBM Plex Mono */
 @font-face{font-family:'PC Cond';src:url('assets/fonts/roboto-condensed-700.woff2') format('woff2');font-weight:700;font-display:swap}
@@ -321,10 +330,11 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .item .d.op{color:var(--dimmer);margin-top:3px}
 .badge{font-size:8px;letter-spacing:.1em;color:var(--dim);border:1px solid #4a4238;border-radius:4px;padding:3px 6px;align-self:center;white-space:nowrap}
 .badge.heritage{color:#ff8a3d;border-color:#7a5a3a}
-/* license tiers: free demo shows 5+5; locked profiles preview but need the Pro APK */
-.item.locked{opacity:.7}
-.protag{font-family:'PC Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.12em;color:#241f16;background:#c9a45a;
-  padding:2px 5px;border-radius:4px;margin-left:6px}
+/* license tiers: free demo shows 5+5; locked profiles preview but need the Pro APK.
+   Round 36 dropped the standalone PRO tag — a card states its tier inside its single status
+   badge (UNLOCKED · PRO / LOCKED · PRO), so the film's name keeps the widest line. A locked
+   card is only lightly quieted: its text still has to be readable, not ghosted. */
+.item.locked{opacity:.85}
 .getpro{display:block;width:100%;margin-top:12px;background:var(--red);color:#fff;border-radius:10px;padding:12px;
   text-align:center;text-decoration:none;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.14em;
   box-shadow:0 2px 0 #8f3524}
@@ -381,86 +391,84 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 /* One badge component for cameras and films alike — a card states its relation to the camera
    in exactly one place, and the words never contradict each other:
    SELECTED (in the camera now · red) · AVAILABLE (selectable now · green) ·
-   UNLOCKED (a Pro stock this build opened · green, still says where it came from) ·
+   UNLOCKED · PRO (a Pro stock this build opened · green, still says where it came from) ·
    LOCKED · PRO (finished, needs Pro · amber, carries the lock glyph) ·
-   COMING SOON (still being made · dim, grey background — a grey shelf, not a warning). */
-.stchip{font-family:'PC Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.12em;
-  height:26px;min-width:96px;padding:0 10px;border-radius:6px;align-self:center;
-  display:flex;align-items:center;justify-content:center;white-space:nowrap;
-  border:1px solid #4a4238;color:var(--dim)}
+   COMING SOON (still being made · dim, grey background — a grey shelf, not a warning).
+   Round 36: the badge is compact metadata, not a column. It sizes to its own words, sits on
+   the card's last line flush right, and gives the film's own information the width instead. */
+.stchip{font-family:'PC Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.08em;
+  padding:4px 7px;border-radius:5px;border:1px solid #4a4238;color:var(--dim);
+  white-space:nowrap;flex:none;margin-left:auto}
 .stchip.avail{color:#93b87c;border-color:#4d6b3f}
 .stchip.unlock{color:#93b87c;border-color:#4d6b3f;background:#232b20}
 .stchip.sel{color:#ffd9c2;border-color:var(--red);background:#3d2820}
-.stchip.lock{color:#c9a45a;border-color:#7a5a3a}
+.stchip.lock{color:#c9a45a;border-color:#7a5a3a;background:#33291d}
 .stchip.soon{color:var(--dim);border-color:#4a4238;background:#2e2822}
+/* the last line of a card: the stock's colour identity on the left, its relation to the camera
+   on the right. One line, both shelves, the same right edge — the identity line above it is
+   never squeezed by it. */
+.stline{display:flex;align-items:center;gap:10px;margin-top:9px}
+/* three colours the engine rendered from this stock's own parameters — a colour identity
+   readable before the name — sitting beside the status mark on the same quiet line */
+.stline i{width:12px;height:9px;border-radius:2px;background:#3a332b;display:block}
 .item .ic{align-self:center;flex:0 0 auto}
 .item .txt{flex:1 1 auto;min-width:0}
-/* Film card: three rails — a fixed 48×72 canister box, a flexible information column, a fixed
-   availability badge. Every rail is centred on the same line, the card is the same height
-   whether the name is short or long, and a long name truncates instead of pushing the badge
-   out of the card. This aligns the existing shelf; it does not redesign it. */
-.item.filmitem{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;
-  gap:14px;padding:14px 16px;min-height:104px}
+/* Film card, round 36: two rails — a fixed canister box and an information column that now
+   owns the rest of the card. The film's name is the loudest thing on the card, ISO and type
+   second, a short description third, and availability is small metadata on the last line.
+   Nothing is cut off mid-word: a description wraps to two lines instead of being clipped. */
+.item.filmitem{display:grid;grid-template-columns:48px minmax(0,1fr);align-items:center;
+  gap:14px;padding:14px 16px}
 .item.filmitem .ic{width:48px;height:72px;flex:none;display:flex;align-items:center;justify-content:center}
 .item.filmitem .ic svg{width:48px;height:72px;display:block}
 .item.filmitem .t{display:flex;align-items:baseline;gap:8px;font-size:17px;letter-spacing:.04em;line-height:1.25}
 .item.filmitem .t .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* the PRO tag is catalog tier, so it must never be the thing that gets squeezed out */
-.item.filmitem .protag{margin-left:0;flex:none;font-size:9px;padding:3px 6px}
+/* identity line: instrument print, so mono — it only gets truncated if it truly overflows */
 .item.filmitem .d{font-size:12px;letter-spacing:.08em;margin-top:5px;color:var(--dim);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item.filmitem .d.op{font-size:11px;color:var(--dimmer);margin-top:3px}
-/* what the stock is like to shoot, in one line — and the swatches beside the ISO are three
-   colours the engine itself rendered from this stock's parameters, so the shelf reads as a
-   colour identity before it reads as a spec. Both stay inside the card's fixed rails: a
-   long description truncates, the card never grows. */
-/* The swatches sit on their own line inside the card's rails — never inline after the identity
-   line, because a long identity would clip them and the card would grow. Three colours the
-   engine rendered from this stock's parameters: a colour identity readable before the name. */
-.look{display:flex;gap:2px;margin-top:6px}
-.look i{width:12px;height:9px;border-radius:2px;background:#3a332b}
-.item.filmitem .d.vibe{font-size:11px;letter-spacing:.03em;margin-top:4px;color:var(--dimmer);
-  font-family:'PC Cond',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* narrow phones: the rails shrink together, so the badge keeps its own column and the name
-   gives up width first — nothing scrolls horizontally and no badge is ever cut off */
+/* the description is prose, so it wraps to two lines rather than cutting words mid-sentence;
+   #cfc5b4 is the body tone on a dark panel — same tone as a small button's own label */
+.item.filmitem .d.vibe,.item.camitem .d.vibe{font-size:12px;letter-spacing:0;line-height:1.5;
+  margin-top:6px;color:#cfc5b4;font-family:var(--prose);font-weight:400;white-space:normal;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* narrow phones: the rails shrink together and the description still wraps — nothing scrolls
+   horizontally, no status is ever cut off, and the name keeps the widest track */
 @media (max-width:430px){
-  .item.filmitem{grid-template-columns:44px minmax(0,1fr) auto;gap:10px;padding:12px 12px}
+  .item.filmitem{grid-template-columns:44px minmax(0,1fr);gap:10px;padding:12px}
   .item.filmitem .ic,.item.filmitem .ic svg{width:44px;height:66px}
   .item.filmitem .t{font-size:15px}
-  .stchip{min-width:78px;padding:0 8px;font-size:9px;height:24px}
-  .look i{width:9px;height:7px}
+  .stline i{width:9px;height:7px}
 }
-/* Camera bag card: the same three rails as the film shelf — a fixed body glyph, a flexible
-   information column, a fixed status badge. The card states only what a collector scans:
-   name, year, lens, character. Focus / exposure / gate / capacity sit behind a disclosure
-   row, so every card in the bag is the same height and the list stays scannable. */
-.item.camitem{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;
-  gap:14px;padding:14px 16px;min-height:104px}
+/* Camera bag card: the same two rails as the film shelf — a fixed body glyph and an information
+   column that owns the rest of the card. The card states what a collector scans: name, year,
+   lens, character; the technical sheet stays behind a disclosure row, so the bag reads as
+   equipment rather than a database. */
+.item.camitem{display:grid;grid-template-columns:48px minmax(0,1fr);align-items:center;
+  gap:14px;padding:14px 16px}
 .item.camitem .ic{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;
   border:1px solid #453d34;border-radius:8px;background:#2f2822}
 .item.camitem .ic svg{width:44px;height:44px;display:block}
 .item.camitem .t{display:flex;align-items:baseline;gap:8px;font-size:17px;letter-spacing:.04em;line-height:1.25}
 .item.camitem .t .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.item.camitem .protag{margin-left:0;flex:none;font-size:9px;padding:3px 6px}
 .item.camitem .d{font-size:12px;letter-spacing:.08em;margin-top:5px;color:var(--dim);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.item.camitem .d.vibe{font-size:12px;letter-spacing:.03em;margin-top:4px;color:var(--dimmer);
-  font-family:'PC Cond',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* one line, one action: the disclosure row never wraps, so a card cannot grow taller than its
-   siblings because of a long label */
-.specrow{grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;
+/* one line, one action: the disclosure row never wraps, so opening a sheet cannot push the
+   card's own text around */
+.specrow{grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;
   border-top:1px solid rgba(233,223,205,.12);font-family:'PC Mono',ui-monospace,monospace;
-  font-size:9px;letter-spacing:.14em;color:var(--dimmer);cursor:pointer;white-space:nowrap}
+  font-size:9px;letter-spacing:.12em;color:var(--dim);cursor:pointer;white-space:nowrap}
 .specrow b{font-weight:400;color:var(--dim)}
 .spec{grid-column:1/-1;display:none;margin-top:6px;font-family:'PC Mono',ui-monospace,monospace;
   font-size:10px;line-height:1.7;color:var(--dim)}
 .spec.on{display:block}
-.spec span{display:block;color:var(--dimmer);letter-spacing:.08em}
+.spec span{display:block;color:var(--dim);letter-spacing:.06em}
 @media (max-width:430px){
-  .item.camitem{grid-template-columns:44px minmax(0,1fr) auto;gap:10px;padding:12px 12px}
+  .item.camitem{grid-template-columns:44px minmax(0,1fr);gap:10px;padding:12px}
   .item.camitem .ic,.item.camitem .ic svg{width:40px;height:40px}
   .item.camitem .t{font-size:15px}
-  .item.camitem .d,.item.camitem .d.vibe{font-size:11px}
+  .item.camitem .d{font-size:11px}
+  .item.camitem .d.vibe{font-size:12px}
 }
 /* brand caption: groups the shelf so dozens of expansion packs stay readable */
 .brandline{font-family:'PC Cond',sans-serif;font-size:9px;letter-spacing:.16em;color:var(--sub);margin:2px 0 8px}
@@ -666,80 +674,106 @@ footer{font-size:10px}
 .devmask .step{font-size:var(--fs-head)}
 .updatebar{font-size:var(--fs-label);padding:10px}
 
-/* ── every page ── a sheet is a printed page now: wider margins, a real title, notes that
-   read, buttons you can press without squinting. */
+/* ── every page ── a sheet is a printed page: a real title, notes that read as prose, buttons
+   you can press without squinting, and one rhythm (--dgap) between blocks instead of a margin
+   invented per block. Round 36 sets instructions and descriptions in the device's readable sans
+   at 0 tracking; condensed stays for titles and buttons, mono for instrument print and labels.
+   Text tones on cream: --ink for content, --sub for instructions and captions — nothing lighter
+   carries information. */
 .sheet{padding:22px 18px calc(26px + env(safe-area-inset-bottom))}
-.sheet h2{font-size:var(--fs-page);letter-spacing:.14em;margin-bottom:6px}
-.sheet .note{font-size:var(--fs-label);line-height:1.6;letter-spacing:.06em;margin-bottom:14px}
+.sheet h2{font-size:var(--fs-page);letter-spacing:.1em;margin:0 0 8px;text-wrap:balance}
+.sheet .note{font-family:var(--prose);font-size:var(--fs-meta);font-weight:400;
+  line-height:var(--lh-prose);letter-spacing:0;color:var(--sub);margin-bottom:var(--dgap)}
+/* an instruction line only occupies room when it says something — an empty note or an empty
+   brand caption must not leave a gap on the page */
+.note:empty,.brandline:empty,.brandcap:empty{display:none}
 .closebtn{font-size:22px;padding:2px 4px}
-.divide{margin:22px 0}
-.darkbtn{font-size:var(--fs-head);padding:14px;letter-spacing:.14em;margin-top:8px}
-.darkbtn.small{font-size:var(--fs-meta);padding:11px;letter-spacing:.1em}
+.divide{margin:18px 0}
+.darkbtn{font-size:var(--fs-head);padding:14px;letter-spacing:.12em;margin-top:var(--dgap)}
+.darkbtn.small{font-size:var(--fs-meta);padding:11px;letter-spacing:.08em;color:#cfc5b4}
 .rowbtns{gap:10px}
-.item{padding:12px;margin-top:9px}
+.item{padding:12px;margin-top:10px}
 .item .t{font-size:var(--fs-body)}
-.item .d{font-size:var(--fs-meta);line-height:1.5;margin-top:4px}
-.item .d.op{font-size:var(--fs-label);color:var(--dim)}
+/* identity lines are instrument metadata (mono, --dim); descriptions are body text (#cfc5b4 on
+   a dark panel reads as content, not as a ghost); only a line that adds nothing is dimmer. */
+.item .d{font-size:var(--fs-meta);line-height:1.45;margin-top:5px;color:var(--dim)}
+.item .d.op{font-size:var(--fs-label);color:var(--dimmer)}
 .badge{font-size:var(--fs-micro)}
-.stchip{font-size:var(--fs-label);height:30px;min-width:106px;border-radius:7px}
-.protag{font-size:var(--fs-micro);padding:3px 7px;letter-spacing:.1em}
+.stchip{font-size:var(--fs-micro);padding:4px 8px;border-radius:5px;letter-spacing:.08em}
 .getpro{font-size:var(--fs-head);padding:14px}
-.prohint{font-size:var(--fs-label);line-height:1.6;margin-top:8px;text-align:center}
+.prohint{font-family:var(--prose);font-size:var(--fs-meta);font-weight:400;line-height:var(--lh-prose);
+  letter-spacing:0;margin-top:8px;text-align:center;color:var(--sub)}
 .swapgate,.restoreplan{padding:12px;margin-top:10px}
+/* a physical choice shown on a dark panel: the line is body text in the light tone, never the
+   caption tone — it has to be read before a button that cannot be undone */
+.swapgate .note,.restoreplan .note{font-family:var(--prose);font-size:var(--fs-meta);font-weight:400;
+  line-height:var(--lh-prose);letter-spacing:0;color:#cfc5b4;margin:0 0 8px}
 
-/* ── the camera deck ── tabs are buttons you tap with a thumb, so they grew; they wrap rather
-   than push the page sideways, and the roll's own numbers stay the loudest thing on its page. */
+/* ── the camera deck ── tabs are thumb-sized buttons; the roll's numbers stay the loudest
+   thing on its page; instructions are prose. Blocks sit on one scale, so the page reads as
+   a designed page rather than a desktop page squeezed down. */
 .deckhead{padding:22px 18px 12px}
 .deckpage{padding:6px 18px calc(28px + env(safe-area-inset-bottom))}
-.deckhint{font-size:var(--fs-label);margin-top:9px}
-.tabs{flex-wrap:wrap;gap:8px;margin:14px 0 6px}
+.deckhint{font-family:var(--prose);font-size:var(--fs-meta);font-weight:400;
+  letter-spacing:0;line-height:var(--lh-prose);margin-top:8px}
+.tabs{flex-wrap:wrap;gap:8px;margin:var(--dgap) 0 8px}
 .tab{font-size:var(--fs-meta);padding:11px 14px;letter-spacing:.12em;border-radius:9px}
 .chip{font-size:var(--fs-label);padding:10px 12px}
-.rollcount{font-size:var(--fs-label);gap:12px;margin:10px 0 14px}
+.rollcount{font-size:var(--fs-label);gap:12px;margin:12px 0 10px}
 .rollcount b{font-size:34px}
-.devnote{font-size:var(--fs-body);line-height:var(--lh);color:var(--sub);margin:6px 0 14px}
+/* what development does is an instruction the user has to understand before pressing a button
+   that cannot be undone: prose at body size, not mono at wide tracking */
+.devnote{font-family:var(--prose);font-size:var(--fs-body);font-weight:400;
+  line-height:var(--lh-prose);letter-spacing:0;color:var(--sub);margin:8px 0 var(--dgap)}
 /* four states on a phone are two columns, not four: a label of four words cannot fit in a
    76px square, and a legend nobody can read states nothing */
 @media (max-width:430px){
   .legend{grid-template-columns:repeat(2,1fr);gap:10px}
 }
+.legend{margin:12px 0 4px}
 .legend i{height:26px}
-.legend div{font-size:var(--fs-label);letter-spacing:.08em;color:var(--sub)}
-.brandline{font-size:var(--fs-label);letter-spacing:.14em;margin:4px 0 10px}
-.brandcap{font-size:var(--fs-label);letter-spacing:.16em;margin:18px 0 2px;padding-top:10px}
-/* the film and body cards keep their three rails and their equal height; they just got taller
-   so the larger identity line, the second line and the badge all sit inside them */
-.item.filmitem,.item.camitem{min-height:116px;padding:16px}
-.item.filmitem .d,.item.camitem .d,.item.camitem .d.vibe{font-size:var(--fs-meta);margin-top:6px}
-.item.filmitem .d.op{font-size:var(--fs-label);color:var(--dim)}
-.item.filmitem .d.vibe{font-size:var(--fs-meta);color:var(--dim)}
-.look{margin-top:8px;gap:3px}
-.look i{width:14px;height:10px;border-radius:2px}
-.specrow{font-size:var(--fs-label);margin-top:12px;padding-top:12px;letter-spacing:.12em;color:var(--dim)}
-.spec{font-size:var(--fs-meta);line-height:1.7;color:var(--dim)}
+.legend div{font-size:var(--fs-label);letter-spacing:.06em;color:var(--sub)}
+.brandline{font-size:var(--fs-label);letter-spacing:.1em;margin:4px 0 10px}
+.brandcap{font-size:var(--fs-label);letter-spacing:.12em;margin:16px 0 4px;padding-top:10px}
+/* the film and body cards: two rails, content-sized height, one internal rhythm — the name
+   leads, the identity prints under it, the description wraps to two lines, the status is a
+   compact mark on the last line flush right with the colour swatches */
+.item.filmitem,.item.camitem{padding:14px}
+.item.filmitem .d,.item.camitem .d{font-size:var(--fs-meta);margin-top:5px}
+.item.filmitem .d.op,.item.camitem .d.op{font-size:var(--fs-label);color:var(--dimmer)}
+.item.filmitem .d.vibe,.item.camitem .d.vibe{font-family:var(--prose);font-size:var(--fs-label);
+  font-weight:400;line-height:var(--lh-prose);letter-spacing:0;margin-top:6px;color:#cfc5b4}
+.stline{margin-top:10px}
+.stline i{width:14px;height:10px;border-radius:2px}
+.specrow{font-size:var(--fs-label);margin-top:10px;padding-top:10px;letter-spacing:.1em;color:var(--dim)}
+.spec{font-size:var(--fs-meta);line-height:1.5;color:var(--dim)}
 .spec span{color:var(--dim)}
 @media (max-width:430px){
-  .item.filmitem,.item.camitem{min-height:104px;padding:13px 12px}
+  .item.filmitem,.item.camitem{padding:12px}
   .item.filmitem .t,.item.camitem .t{font-size:var(--fs-body)}
-  .item.filmitem .d,.item.camitem .d,.item.camitem .d.vibe{font-size:var(--fs-meta)}
-  .stchip{min-width:88px;height:26px;font-size:var(--fs-micro);padding:0 8px}
-  .look i{width:11px;height:8px}
+  .item.filmitem .d,.item.camitem .d{font-size:var(--fs-meta)}
+  .item.filmitem .d.vibe,.item.camitem .d.vibe{font-size:var(--fs-label)}
+  .stline i{width:11px;height:8px}
 }
-/* ── settings ── a switch is a control, so its label is body text and its track is thumb-sized */
-.optsw{font-size:var(--fs-body);letter-spacing:.1em;padding:13px 14px;margin-top:9px}
+/* ── settings ── a switch is a control, so its label is readable body text on a panel that
+   stays legible in both states; its track is thumb-sized */
+.optsw{font-family:var(--prose);font-size:var(--fs-body);font-weight:400;letter-spacing:.02em;
+  padding:13px 14px;margin-top:10px;color:#cfc5b4}
 .sw{width:40px;height:18px;border-radius:9px}
 .sw::after{width:14px;height:14px;top:2px;left:2px}
 .optsw.on .sw::after{left:24px}
-.storage{font-size:var(--fs-label);line-height:1.6;margin-top:12px}
+.storage{font-family:var(--prose);font-size:var(--fs-meta);font-weight:400;
+  line-height:var(--lh-prose);letter-spacing:0;margin-top:12px;color:var(--sub)}
 
 /* ── the film preview ── the samples are the whole point of this page, so they take the width
    the page actually has instead of sitting in 150px boxes: on a phone each crop is the full
    page width, and on a wider sheet the first one leads and the other two sit beside it. The
-   meters read as a panel of parameters rather than a column of tiny captions. */
-.pvsamples{grid-template-columns:1fr;gap:10px;margin:14px 0}
+   story is prose; the meters are technical labels, so they stay mono. */
+.pvsamples{grid-template-columns:1fr;gap:10px;margin:var(--dgap) 0}
 .pvcell{border-radius:9px}
-.pvcap{font-size:var(--fs-label);letter-spacing:.12em;padding:8px 10px;color:var(--dim)}
-.pvstory{font-size:var(--fs-body);line-height:var(--lh);color:var(--sub);margin:16px 0}
+.pvcap{font-size:var(--fs-label);letter-spacing:.1em;padding:8px 10px;color:var(--dim)}
+.pvstory{font-family:var(--prose);font-size:var(--fs-body);font-weight:400;
+  line-height:var(--lh-prose);letter-spacing:0;color:var(--sub);margin:var(--dgap) 0}
 .pvbar{grid-template-columns:104px 1fr 44px;gap:10px;font-size:var(--fs-label);margin-top:9px;color:var(--sub)}
 .pvbar .track{height:8px}
 .pvbar .val{font-size:var(--fs-meta)}
@@ -748,28 +782,38 @@ footer{font-size:10px}
   .pvcell:first-child{grid-column:1/-1}
 }
 
-/* ── the user manual ── the booklet is read for two minutes, so its body is body text: the
-   cover carries a larger wordmark, each step is numbered and set like a paragraph, and the
-   spec rows are divided by hairlines with room to breathe between them. */
+/* ── the user manual ── a printed booklet, read once. One text colour carries content (--ink),
+   one carries captions and labels (--sub), the red only marks a step number and the cover's
+   accent. Headings are Roboto Condensed bold; paragraphs are the readable sans at body size
+   with 1.5 leading — never mono, never wide tracking; technical labels and numbers stay mono. */
 .manualsheet{padding:24px 20px calc(28px + env(safe-area-inset-bottom))}
-.manualsheet h2{font-size:var(--fs-head);letter-spacing:.16em;margin-bottom:6px}
-.manualcover{padding:28px 22px 24px;margin:16px 0 28px;border-radius:14px}
-.manualcover .kick{font-size:var(--fs-label);letter-spacing:.22em}
+.manualsheet h2{font-size:var(--fs-head);letter-spacing:.12em;margin:20px 0 8px;text-wrap:balance}
+.manualsheet .note{font-family:var(--prose);font-size:var(--fs-meta);font-weight:400;
+  line-height:var(--lh-prose);letter-spacing:0;color:var(--sub);margin-bottom:10px}
+.manualcover{padding:26px 20px 22px;margin:14px 0 22px;border-radius:14px}
+.manualcover .kick{font-size:var(--fs-label);letter-spacing:.2em;color:var(--dim)}
 .manualcover .mk{font-size:24px;margin-top:12px}
-.manualcover svg{width:190px;height:38px;margin:18px auto 10px}
-.manualcover .sub{font-size:var(--fs-meta);line-height:1.8;margin-top:12px}
-.mkbody{margin:8px 0 12px}
-.mkbody p{font-size:var(--fs-body);line-height:var(--lh);margin:0 0 12px}
-.mkrow{grid-template-columns:38px 1fr;gap:12px;margin:22px 0}
-.mkrow .n{font-size:var(--fs-label);padding-top:4px}
-.mkrow .t{font-size:var(--fs-head);letter-spacing:.14em;margin-bottom:8px}
-.mkrow .b{font-size:var(--fs-body);line-height:var(--lh)}
-.mkdef{padding:14px 0 12px}
-.mkdef .k{font-size:var(--fs-label);letter-spacing:.16em}
-.mkdef .v{font-size:var(--fs-body);line-height:var(--lh);margin-top:6px;color:var(--sub)}
-.mkclosing{font-size:var(--fs-body);line-height:var(--lh);margin:0 0 12px}
-.mksign{font-size:var(--fs-meta);line-height:1.8;margin-top:18px}
-.edition{font-size:var(--fs-micro);letter-spacing:.18em;margin-top:24px}
+.manualcover svg{width:210px;height:56px;margin:16px auto 8px}
+.manualcover .sub{font-family:var(--prose);font-size:var(--fs-meta);font-weight:400;
+  line-height:var(--lh-prose);letter-spacing:0;color:#cfc5b4;margin-top:10px}
+.mkbody{margin:6px 0}
+.mkbody p{font-family:var(--prose);font-size:var(--fs-body);font-weight:400;
+  line-height:var(--lh-prose);letter-spacing:0;margin:0 0 10px;color:var(--ink)}
+.mkbody p b{font-family:'PC Cond',sans-serif;font-weight:700;letter-spacing:.05em}
+.mkrow{grid-template-columns:38px 1fr;gap:12px;margin:14px 0}
+.mkrow .n{font-size:var(--fs-label);padding-top:3px}
+.mkrow .t{font-size:var(--fs-head);letter-spacing:.1em;margin-bottom:6px;text-wrap:balance}
+.mkrow .b{font-family:var(--prose);font-size:var(--fs-body);font-weight:400;
+  line-height:var(--lh-prose);letter-spacing:0;color:var(--ink)}
+/* the spec sheet: the term is a mono label in the caption tone, its line is body text under it */
+.mkdef{padding:10px 0 8px}
+.mkdef .k{font-size:var(--fs-label);letter-spacing:.12em;color:var(--sub)}
+.mkdef .v{font-family:var(--prose);font-size:var(--fs-body);font-weight:400;
+  line-height:var(--lh-prose);letter-spacing:0;margin-top:5px;color:var(--ink)}
+.mkclosing{font-family:var(--prose);font-size:var(--fs-body);font-weight:400;
+  line-height:var(--lh-prose);letter-spacing:0;margin:0 0 10px;color:var(--ink)}
+.mksign{font-size:var(--fs-meta);line-height:1.6;margin-top:14px}
+.edition{font-size:var(--fs-micro);letter-spacing:.18em;margin-top:20px}
 
 /* ── the archive ── a darkroom record is read, not scanned: the roll line is body text, its
    dates and counts are mono at a readable size, and its thumbnails are big enough to judge. */
@@ -1065,24 +1109,25 @@ footer{font-size:10px}
     <div class="manualcover">
       <div class="kick">USER MANUAL · 35 mm</div>
       <div class="mk">POCKETROLL <span class="num">35</span></div>
-      <svg viewBox="0 0 150 30" aria-hidden="true">
-        <rect x="1" y="1" width="148" height="28" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <!-- Round 36 replaced the ambiguous outlined rectangle: this is a 35mm canister — a lid
+         wider than the body so the silhouette reads as a canister, a taller-than-wide body,
+         and its leader running out to the right as a film strip with sprocket holes punched
+         out of both edges. Flat, geometric, one accent colour: no gradient, no shadow, no
+         third colour, no interior stripes that read as unrelated bars. -->
+      <svg viewBox="0 0 120 56" role="img" aria-label="A 35mm film canister with its leader running out as a film strip">
+        <rect x="14" y="6" width="34" height="9" rx="3" fill="currentColor"/>
+        <rect x="18" y="15" width="26" height="35" rx="5" fill="currentColor"/>
+        <rect x="44" y="16" width="12" height="7" fill="currentColor"/>
+        <rect x="56" y="10" width="48" height="20" rx="2" fill="currentColor"/>
         <g style="fill:var(--dark)">
-          <rect x="8" y="4" width="5" height="4" rx="1"/><rect x="22" y="4" width="5" height="4" rx="1"/>
-          <rect x="36" y="4" width="5" height="4" rx="1"/><rect x="50" y="4" width="5" height="4" rx="1"/>
-          <rect x="64" y="4" width="5" height="4" rx="1"/><rect x="78" y="4" width="5" height="4" rx="1"/>
-          <rect x="92" y="4" width="5" height="4" rx="1"/><rect x="106" y="4" width="5" height="4" rx="1"/>
-          <rect x="120" y="4" width="5" height="4" rx="1"/><rect x="134" y="4" width="5" height="4" rx="1"/>
-          <rect x="8" y="22" width="5" height="4" rx="1"/><rect x="22" y="22" width="5" height="4" rx="1"/>
-          <rect x="36" y="22" width="5" height="4" rx="1"/><rect x="50" y="22" width="5" height="4" rx="1"/>
-          <rect x="64" y="22" width="5" height="4" rx="1"/><rect x="78" y="22" width="5" height="4" rx="1"/>
-          <rect x="92" y="22" width="5" height="4" rx="1"/><rect x="106" y="22" width="5" height="4" rx="1"/>
-          <rect x="120" y="22" width="5" height="4" rx="1"/><rect x="134" y="22" width="5" height="4" rx="1"/>
-        </g>
-        <g fill="none" stroke="currentColor" stroke-width="1.3">
-          <rect x="14" y="11" width="38" height="8" rx="1.5"/>
-          <rect x="56" y="11" width="38" height="8" rx="1.5"/>
-          <rect x="98" y="11" width="38" height="8" rx="1.5"/>
+          <rect x="62" y="11" width="5" height="5" rx="1"/>
+          <rect x="73" y="11" width="5" height="5" rx="1"/>
+          <rect x="84" y="11" width="5" height="5" rx="1"/>
+          <rect x="95" y="11" width="5" height="5" rx="1"/>
+          <rect x="62" y="24" width="5" height="5" rx="1"/>
+          <rect x="73" y="24" width="5" height="5" rx="1"/>
+          <rect x="84" y="24" width="5" height="5" rx="1"/>
+          <rect x="95" y="24" width="5" height="5" rx="1"/>
         </g>
       </svg>
       <div class="sub">A 35mm film camera. In your browser.<br>Turn your phone into a 35mm film camera.</div>

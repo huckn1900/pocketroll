@@ -1097,14 +1097,33 @@ function lookSwatches(f){
   } catch { LOOK_CACHE[f.id] = null; }
   return LOOK_CACHE[f.id];
 }
-/* One short line about how the stock behaves in use — taken from the profile's own text and
-   cut to a single line. The card never grows because of it: it truncates, and the full story
-   belongs to the preview page. */
+/* The card title. Some stocks carry the brand inside their own name (LomoChrome Metropolis,
+   CineStill 400D), so printing brand + name says it twice and pushes the real name into an
+   ellipsis — the title states the brand once, however the profile happens to be written. */
+function filmTitle(f){
+  const b = String(f.brand || ''), n = String(f.name || '');
+  return n.toLowerCase().startsWith(b.toLowerCase()) ? n : `${b} ${n}`.trim();
+}
+
+/* One short line about how the stock behaves in use — taken from the profile's own text. The
+   card gives it two wrapped lines of its own space, so the cut is sized to what those two
+   lines hold at the narrowest shelf (~74 characters) and never lands mid-word: a description
+   ends at a word boundary or not at all, and the browser never clips one itself. The full
+   story belongs to the preview page. */
 function vibeFor(f){
   const s = String(f.story || '').trim();
   if (!s) return '';
   const first = s.split(/(?<=[.!?])\s/)[0] || s;
-  return first.length > 78 ? first.slice(0, 78).trimEnd() + '…' : first;
+  if (first.length <= 74) return first;
+  const cut = first.slice(0, 74);
+  return cut.slice(0, cut.lastIndexOf(' ')).trimEnd() + '…';
+}
+/* The card's last line: what the stock looks like (three colours the engine rendered from its
+   own parameters) on the left, its relation to the camera on the right. Round 36 made the
+   badge compact metadata instead of a column of its own — the film's identity now owns the
+   width of the card, and the status still has one fixed right edge in both shelves. */
+function statusLine(st, look){
+  return `<div class="stline">${look || ''}${stateChip(st)}</div>`;
 }
 /* Every category already NAMES its lab — a colour negative is C-41, a slide is E-6, a cinema
    negative is ECN-2 — so the card states the category once and never prints its lab twice.
@@ -1168,19 +1187,19 @@ function buildLists(){
       const st = shelfState('cam', c);
       const el = document.createElement('div');
       el.className = 'item camitem' + (st === 'sel' ? ' active' : '') + (st === 'lock' ? ' locked' : '');
-      /* The PRO tag marks catalog tier, not availability — the same discipline as the film
-         shelf. A card already saying LOCKED · PRO does not also carry the tag: two marks
-         saying one thing is the confusion the user ruled out. */
-      const proTag = c.tier !== 'free' && st !== 'lock' ? '<span class="protag">PRO</span>' : '';
-      /* What a collector scans: the name, the year, the lens, and how the body behaves in
-         hand. The technical sheet sits behind a disclosure row, so the bag reads as equipment,
-         not as a database, and every card in the bag is the same height. */
+      /* A Pro body's tier is stated inside its one badge (LOCKED · PRO / UNLOCKED), so the
+         card carries no second tier mark — two marks saying one thing is the confusion the
+         user ruled out. */
+      /* What a collector scans, in the same order as a film card: the name, the year and the
+         lens, how the body behaves in hand — and its relation to the camera as a compact mark
+         on the last line. The technical sheet stays behind a disclosure row, so the bag reads
+         as equipment, not as a database. */
       el.innerHTML = `<div class="ic">${camSvg(c)}</div>`
-        + `<div class="txt"><div class="t"><span class="nm">${esc(c.brand)} ${esc(c.model)}</span>${proTag}</div>`
+        + `<div class="txt"><div class="t"><span class="nm">${esc(c.brand)} ${esc(c.model)}</span></div>`
         + `<div class="d">${c.year} · ${lensLine(c)}</div>`
-        + `<div class="d vibe">${esc(c.vibe)}</div>`
+        + `<div class="d vibe">${esc(c.vibe)}</div>` + statusLine(st)
         + `<div class="specrow" role="button" tabindex="0">SPECIFICATION<span>show</span></div>`
-        + `<div class="spec">${specLines(c)}</div></div>` + stateChip(st);
+        + `<div class="spec">${specLines(c)}</div></div>`;
       const row = el.querySelector('.specrow'), spec = el.querySelector('.spec');
       const toggle = () => {
         spec.classList.toggle('on');
@@ -1226,27 +1245,22 @@ function buildFilmList(){
     cap.className = 'brandcap'; cap.textContent = brand.toUpperCase();
     fl.appendChild(cap);
     byBrand[brand].forEach(f => {
-      // one badge from the live camera state; the card never says two things about availability
+      /* The card leads with the film, not with its purchase status: the name is the loudest
+         thing on the card, the identity line under it states ISO, the ISO label and the
+         category once (see labLine, which never repeats a category), a short line describes
+         how the stock behaves, and availability — including the catalog tier a stock belongs
+         to, spelled inside the badge itself — is a compact mark on the last line beside the
+         colour swatches, not a column of its own. */
       const st = shelfState('film', f);
       const el = document.createElement('div');
       el.className = 'item filmitem' + (st === 'sel' ? ' active' : '') + (st === 'lock' ? ' locked' : '');
-      /* The PRO tag marks catalog tier, not availability — it stays beside the name in both
-         licence modes and truncates the name instead of colliding with it. A card already
-         saying LOCKED · PRO carries no second tier mark. */
-      const proTag = f.tier !== 'free' && st !== 'lock' ? '<span class="protag">PRO</span>' : '';
-      /* The second line states the stock ONCE: ISO value, the ISO label, then the category —
-         see labLine, which is what keeps a lab process from ever repeating that category.
-         The swatches get their own line below it: inline they would be clipped by a long
-         identity and would grow the card. */
-      const look = lookSwatches(f);
-      const meta = `<div class="d">${f.iso} ISO · ${categoryCap(f)}</div>${labLine(f)}`
-        + (look ? `<div class="look">${look.map(h => `<i style="background:${h}"></i>`).join('')}</div>` : '');
-      /* A short line about how the stock behaves in use, taken from the profile and cut to one
-         line — the story itself belongs to the preview page, never to the list. */
+      const meta = `<div class="d">${f.iso} ISO · ${categoryCap(f)}</div>${labLine(f)}`;
       const vibe = vibeFor(f);
+      const look = lookSwatches(f);
       el.innerHTML = `<div class="ic">${canSvg(f)}</div>`
-        + `<div class="txt"><div class="t"><span class="nm">${esc(f.brand)} ${esc(f.name)}</span>${proTag}</div>${meta}`
-        + (vibe ? `<div class="d vibe">${esc(vibe)}</div>` : '') + `</div>` + stateChip(st);
+        + `<div class="txt"><div class="t"><span class="nm">${esc(filmTitle(f))}</span></div>${meta}`
+        + (vibe ? `<div class="d vibe">${esc(vibe)}</div>` : '')
+        + statusLine(st, look ? look.map(h => `<i style="background:${h}"></i>`).join('') : '') + '</div>';
       // tapping a stock opens its preview first — never loads silently
       el.onclick = () => openFilmPreview(f);
       fl.appendChild(el);
@@ -1339,7 +1353,7 @@ async function openFilmPreview(f){
   // the preview answers the same vocabulary the shelf uses, including the stock in the camera
   const st = shelfState('film', f);
   hideSwapGate();
-  $('pvTitle').textContent = `${f.brand} ${f.name}`;
+  $('pvTitle').textContent = filmTitle(f);
   /* The preview must say exactly what the shelf chip says. A finished Pro stock is not
      "in production" — that phrasing reads as unfinished, which is the confusion the user
      ruled out: LOCKED means finished and unlocked by buying Pro, COMING SOON means still
@@ -1397,7 +1411,7 @@ const MANUAL_EDITION = '01';
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v32';
+const BUILD = 'pocketroll-v33';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
