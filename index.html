@@ -532,32 +532,52 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
   footer{display:none}
 }
 .roll-card{background:var(--dark);border-radius:10px;padding:10px 12px;margin-top:8px;cursor:pointer}
-.roll-card .meta{display:flex;align-items:center;gap:8px;font-size:11px;color:#cfc5b4}
-.roll-card .meta>span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.roll-card .sub{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);flex:none}
+/* A record card reads as a small printed sheet: the record text takes the left column and the
+   delete box takes the right column. The body/date line gets its own row, so a long body name
+   never pushes the delete off the card, and every delete ends at the same right edge as the
+   text blocks below it. */
+.roll-card .meta{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;
+  font-size:11px;color:#cfc5b4}
+.roll-card .meta>span:first-child{grid-column:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roll-card .sub{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);
+  grid-column:1;justify-self:start;white-space:normal}
+/* a roll still in the camera carries no delete, so its body name stays on the right, like a plate */
+.roll-card.incamera .sub{grid-column:2;grid-row:1;justify-self:end;white-space:nowrap}
 /* taking a roll off the shelf. A quiet mono button that arms only under the press that means
    it: the armed state inverts to cream-on-ink rather than borrowing red or amber, because those
    hues already mean shutter, frames left, selection and locked — a deletion borrows none of them. */
-.delbtn{flex:none;font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;
+/* One fixed instrument: DELETE and CONFIRM share a box, so arming never moves anything, and the
+   box sits at the card's right content edge like every other block in this record. */
+.delbtn{grid-column:2;grid-row:1;justify-self:end;min-width:62px;text-align:center;
+  font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;
   background:none;border:1px solid #4a4238;color:var(--dim);padding:4px 7px;border-radius:6px;cursor:pointer}
 .delbtn.armed{background:#cfc5b4;color:var(--dark);border-color:#cfc5b4}
 .roll-card .mini{display:flex;gap:4px;margin-top:7px;overflow:hidden}
 .roll-card .mini img{width:52px;height:34px;object-fit:cover;border-radius:2px}
 .roll-card .rollmeta{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);margin-top:6px;letter-spacing:.03em}
-/* archive browsing tabs */
+/* Browsing tabs are thumb-sized buttons; text is centred in each of them. The camera deck keeps
+   its own two-tab row — the equal-column grid below belongs to the archive sheet only. */
 .tabs{display:flex;gap:6px;margin:10px 0 4px}
 .tab{font-family:'PC Cond',sans-serif;font-size:10px;letter-spacing:.12em;padding:8px 12px;border-radius:8px;
-  background:#2e2822;border:1px solid #4a4238;color:var(--dim);cursor:pointer}
+  background:#2e2822;border:1px solid #4a4238;color:var(--dim);cursor:pointer;text-align:center}
 .tab.on{background:var(--dark);border-color:#cfc5b4;color:#e8dcc9}
-.chip{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;padding:8px 10px;border-radius:8px;
-  background:#2e2822;border:1px solid #4a4238;color:var(--dim);cursor:pointer;margin-left:auto}
+/* The archive tab row is three equal columns flush with the record cards below it. The
+   favourites filter is a filter, not a fourth page, so it rides the row under BY ROLLS — same
+   width, same left edge as the tab above it — instead of floating to the sheet's right edge
+   where it reads like a stray control. */
+#galleryModal .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#galleryModal .tab{width:100%}
+.chip{grid-column:1;font-family:'PC Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;
+  padding:8px 10px;border-radius:8px;background:#2e2822;border:1px solid #4a4238;color:var(--dim);
+  cursor:pointer;text-align:center}
 .chip.on{border-color:var(--red);color:#ffd9c2}
 /* flattened frame grid (ALL FRAMES) */
 .framecell{position:relative;background:var(--dark);border-radius:8px;margin-top:8px;overflow:hidden}
 .framecell img{width:100%;display:block;cursor:zoom-in}
-.favbtn,.dlbtn{position:absolute;top:8px;font-size:13px;width:30px;height:30px;border-radius:8px;
+.favbtn,.dlbtn{position:absolute;top:10px;font-size:13px;width:30px;height:30px;border-radius:8px;
   background:rgba(36,33,29,.82);border:1px solid #4a4238;color:var(--dim);cursor:pointer;font-family:'PC Mono',monospace}
-.favbtn{right:8px}.dlbtn{right:42px}
+/* both controls sit on the same inset as the caption text below, so a frame's boxes line up */
+.favbtn{right:10px}.dlbtn{right:44px}
 .favbtn.on{border-color:var(--red);color:#ffd9c2}
 .fmeta{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);padding:6px 10px;letter-spacing:.03em}
 /* roll record fields */
@@ -716,7 +736,9 @@ footer{font-size:10px}
 .deckpage{padding:6px 18px calc(28px + env(safe-area-inset-bottom))}
 .deckhint{font-family:var(--prose);font-size:var(--fs-meta);font-weight:400;
   letter-spacing:0;line-height:var(--lh-prose);margin-top:8px}
-.tabs{flex-wrap:wrap;gap:8px;margin:var(--dgap) 0 8px}
+/* the archive tab row stays a grid at this size; its columns are capped so the boxes read as
+   controls, not banners, and the favourites filter keeps the column above it. */
+#galleryModal .tabs{grid-template-columns:repeat(3,minmax(0,220px));gap:8px;margin:var(--dgap) 0 8px}
 .tab{font-size:var(--fs-meta);padding:11px 14px;letter-spacing:.12em;border-radius:9px}
 .chip{font-size:var(--fs-label);padding:10px 12px}
 .rollcount{font-size:var(--fs-label);gap:12px;margin:12px 0 10px}
@@ -824,10 +846,12 @@ footer{font-size:10px}
 .roll-card .mini{gap:6px;margin-top:9px}
 .roll-card .mini img{flex:1 1 0;min-width:0;width:auto;height:auto;aspect-ratio:3/2;border-radius:3px}
 .roll-card .rollmeta{font-size:var(--fs-label);margin-top:8px}
-.delbtn{font-size:var(--fs-label);padding:6px 10px}
+/* one box for DELETE and CONFIRM at this size too, so arming never shifts the row */
+.delbtn{font-size:var(--fs-label);padding:6px 10px;min-width:86px}
 .framecell{margin-top:10px;border-radius:9px}
 .fmeta{font-size:var(--fs-label);padding:8px 12px}
-.favbtn,.dlbtn{width:34px;height:34px;font-size:15px;border-radius:9px}
+.favbtn,.dlbtn{width:34px;height:34px;font-size:15px;border-radius:9px;top:12px}
+.favbtn{right:12px}.dlbtn{right:48px}
 .rollmeta{padding:8px 12px;margin:10px 0 14px}
 .rollmeta .mrow{font-size:var(--fs-meta);padding:5px 0}
 .rollmeta .mrow span:first-child{color:var(--dim)}
