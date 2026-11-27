@@ -24,17 +24,17 @@ See `docs/store-copy.md` (listing copy) and `docs/research.md` (research + trade
 
 ## Packaging status
 - PWA here is directly deployable (any static host).
-- ## Business model (Round⑦, user-defined)
-- **Free Web Demo** — classic 5 films + 5 classic bodies (profiles tagged `tier:"free"` in `assets/`), full core ritual; this repo's site IS the demo. Locked Pro profiles show an amber `PRO` tag; tapping one hints the Pro APK.
-- **POCKETROLL 35 PRO — US$6.99 one-time via Patreon** — downloadable Android APK unlocking the full built-in library (every finished film stock and camera body), permanent, no subscription. iOS needs its own Apple-compliant distribution later. Stocks still in development show as COMING SOON and are not included.
-- **Expansion Packs** (optional) — future Film Packs / Camera Packs, purchased individually, each permanently unlocked. New content = new profile files + entitlement only; engines keep reading configs (see `docs/architecture.md`).
+- ## Business model (revised 2026-11-27: one-time license code, no APK, no store listings)
+- **Free Web Demo** — classic 5 films + 5 classic bodies (profiles tagged `tier:"free"` in `assets/`), full core ritual; this repo's site IS the demo. Locked Pro profiles show an amber `PRO` tag; tapping one points to the Pro code purchase.
+- **POCKETROLL 35 PRO — US$4.99 one-time on Payhip** — the product auto-delivers a license key with the receipt; entering it in ⚙ Settings unlocks the full finished library (every finished film stock and camera body) in this web app, permanently, no subscription. Verified against Payhip's license API; cached so it keeps working offline; a refunded code locks again. Stocks still in development show as COMING SOON and are not included.
+- **Expansion Packs** (optional) — future Film Packs / Camera Packs on the same Payhip template ($2.49 class), purchased individually, each permanently unlocked. New content = new profile files + entitlement only; engines keep reading configs (see `docs/architecture.md`).
 
 ## Archive & persistence (Round⑨)
 - The Film Archive is a **darkroom record**, not a photo dump: every developed roll keeps camera/film/ISO/date-loaded/date-developed/status + **Roll Notes** ("Weekend in Toronto — Autumn 2026").
 - Frames persist in **IndexedDB** across refresh, close, and offline; the archive exports/restores as a JSON backup file, and each roll exports as a `.zip` (full-res frames + roll.json). Export quality is q0.95 at native stream resolution — never silently downscaled. A backup carries the roll **currently in the camera** too, so someone who has only an undeveloped roll can still export it; a restore validates every record (including that one) before anything is written, commits the whole restore in **one** IndexedDB transaction across both stores, applies it to the UI only after the store agrees, and leaves the database and the camera untouched if the write fails — a partial restore is not possible. Image URLs coming from a backup file are validated against the formats this app writes and placed through real elements, never interpolated into HTML.
 - Archive browsing is split: **BY ROLLS** (records, notes, contact sheet, batch download) vs **ALL FRAMES** (quick browse, ★ favorites filter, single-frame download with EXIF-like capture info).
 - Every camera body renders differently on the same film: per-body sharpness, vignette, and flash behaviour profiles (`camera_character` in `assets/cameras.json`; verified by `test/camera-diff.mjs`). Lens distortion ships at **0 for every body today** — the plastic fisheye bulge warped straight lines, so the viewfinder stays rectilinear; the barrel map in the engine is kept for a future wide-angle pack.
-- The Pro block in Settings says **COMING SOON**: the Pro APK is still being built, so nothing is purchasable today. The Patreon link goes in when the creator page exists.
+- Settings carries the real purchase block: **GET PRO** opens the Payhip product, and a code entered there unlocks this browser (verified online, kept offline, refunded codes lock again). Nothing else in the app ever checks a purchase.
 
-Native APK needs Android SDK/Java on the build machine (not installed on this Windows box yet) → Capacitor wrap later, or wrap the PWA as a TWA.
+A native wrapper (Capacitor/TWA) can reuse the same engine and the same Payhip code later — it is not needed for selling today.
 - iOS path: Mac/Xcode Cloud at submission time.

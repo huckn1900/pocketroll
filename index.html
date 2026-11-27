@@ -401,18 +401,25 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .item .d.op{color:var(--dimmer);margin-top:3px}
 .badge{font-size:8px;letter-spacing:.1em;color:var(--dim);border:1px solid #4a4238;border-radius:4px;padding:3px 6px;align-self:center;white-space:nowrap}
 .badge.heritage{color:#ff8a3d;border-color:#7a5a3a}
-/* license tiers: free demo shows 5+5; locked profiles preview but need the Pro APK.
+/* license tiers: free demo shows 5+5; locked profiles preview but unlock with a Pro code.
    Round 36 dropped the standalone PRO tag — a card states its tier inside its single status
    badge (UNLOCKED · PRO / LOCKED · PRO), so the film's name keeps the widest line. A locked
    card is only lightly quieted: its text still has to be readable, not ghosted. */
 .item.locked{opacity:.85}
+/* GET PRO is a real purchase button now (Payhip, one-time): the red only ever means the
+   shutter, the counter, shooting feedback — and here, the one action that starts a purchase. */
 .getpro{display:block;width:100%;margin-top:12px;background:var(--red);color:#fff;border-radius:10px;padding:12px;
   text-align:center;text-decoration:none;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.14em;
-  box-shadow:0 2px 0 #8f3524}
-/* The Pro APK is not on sale yet, so this block is a state, not a purchase link: it uses the
-   same locked vocabulary as a LOCKED · PRO card (ink panel, amber text), and it presses
-   nothing. */
-.getpro.soon{background:#3a3126;color:#c9a45a;border:1px solid #7a5a3a;box-shadow:0 2px 0 #2a2118;cursor:default}
+  box-shadow:0 2px 0 #8f3524;cursor:pointer;border:0}
+/* the code entry is an ink panel in the locked-card border language; whatever the check
+   concludes is said in #proStatus, never as a new state chip */
+.coderow{display:flex;gap:8px;margin-top:10px}
+.coderow input{flex:1;min-width:0;background:#3a3126;color:#efe6d2;border:1px solid #7a5a3a;border-radius:10px;
+  padding:11px 12px;font-family:'PC Mono',ui-monospace,monospace;font-size:var(--fs-micro);letter-spacing:.12em}
+.coderow input::placeholder{color:#8a7658}
+/* the check button sits beside the field, not across it: .darkbtn is a full-width
+   settings button by default, and in this row it must size to its label */
+.coderow .darkbtn{flex:0 0 auto;width:auto;margin-top:0;padding:11px 16px}
 .prohint{font-family:'PC Mono',ui-monospace,monospace;font-size:9px;color:var(--sub);text-align:center;margin-top:5px}
 .darkbtn[disabled]{opacity:.55;cursor:default}
 .darkbtn.locked{background:#3a3126;border-color:#7a5a3a;color:#c9a45a;box-shadow:0 2px 0 #2a2118}
@@ -1178,11 +1185,12 @@ footer{font-size:10px}
         the roll, the body, or any setting -->
     <button class="darkbtn small" id="openManual">USER MANUAL — the full booklet: load, shoot, develop, keep</button>
     <div class="divide"></div>
-    <!-- business: free web demo → Pro APK (one-time, Patreon) → expansion packs later.
-         The APK is not finished, so nothing here is purchasable today: it says when, not a link. -->
-    <div class="getpro soon">PRO APK · US$6.99 · COMING SOON</div>
-    <div class="prohint">not on sale yet · the Pro APK is still being built · Android first, iOS later · nothing is charged in this web demo</div>
-    <div class="prohint">when it ships it unlocks every finished film stock and camera body, one-time and permanent</div>
+    <!-- business: free web demo → Pro unlock US$4.99 one-time (a Payhip license key) →
+         expansion packs later. Buying happens on Payhip; the code unlocks THIS app. -->
+    <button class="getpro" id="getPro">GET PRO · US$4.99 ONE-TIME</button>
+    <div class="coderow"><input id="proCode" placeholder="ENTER YOUR PRO CODE" autocomplete="off"><button class="darkbtn small" id="verifyCode">CHECK CODE</button></div>
+    <div class="prohint" id="proStatus">buy once · your code arrives with the receipt · enter it here to unlock every finished film and camera</div>
+    <div class="prohint">a code unlocks this browser · it stays working offline · a refunded code locks again</div>
     <div class="prohint" style="margin-top:14px">A SIMPLE CAMERA FOR STORING MEMORIES</div>
   </div>
 </div>
@@ -1419,6 +1427,7 @@ footer{font-size:10px}
 <script src="camera/viewfinder.js"></script>
 <script src="camera/camera-manager.js"></script>
 <script src="camera/capture.js"></script>
+<script src="licensing/license.js"></script>
 <script src="app.js"></script>
 <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>

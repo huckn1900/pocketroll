@@ -956,21 +956,23 @@ function openFrame(r, i){
 /* ---------- modals ---------- */
 /* ---------- web entitlement ----------
    The released free web demo keeps the classic five stocks and five bodies; Pro content is
-   shown but locked, and the full library lives in the paid Pro APK (one-time, via Patreon).
-   Profiles keep their tier, so the business model is untouched. 'all' opens every finished
-   stock and body in the browser so each one's colour science and operation can be tried and
-   calibrated — set it back when that calibration work is done. One gate for both shelves:
-   a profile is a profile. */
+   shown but locked, and the same library unlocks IN THIS app with a purchased licence code:
+   a one-time US$4.99 Payhip license key, verified online and kept working offline. Profiles
+   keep their tier, so the business model is untouched — adding content = adding a profile+tier.
+   One gate for both shelves: a profile is a profile. 'all' opens every finished stock and
+   body in the browser so each one's colour science and operation can be tried and
+   calibrated — set it back when that calibration work is done. */
 const WEB_LICENSE = 'free'; // 'free' = production gate · 'all' = every finished profile loadable
-function entitled(item){ return WEB_LICENSE === 'all' || item.tier === 'free'; }
+let licenseOk = false; // a verified Payhip code unlocks this browser; cached across visits, re-checked online
+function entitled(item){ return WEB_LICENSE === 'all' || item.tier === 'free' || licenseOk; }
 function cameraState(c){ return entitled(c) ? 'avail' : 'lock'; }
 function proHint(){
-  toast('PRO content · the Pro APK is not on sale yet — ⚙ Settings says where it will land');
+  toast('PRO · one-time US$4.99 — buy once on Payhip, then enter your code in ⚙ Settings');
 }
 
 /* ---------- shelf availability semantics ----------
    Three states, never mixed: AVAILABLE (usable right now) / LOCKED (finished, needs
-   the Pro APK — lock icon on the right, PRO tag next to the name only) / COMING SOON
+   the Pro code — lock icon on the right, PRO tag next to the name only) / COMING SOON
    (still in development, not loadable). */
 function filmCat(f){
   if (f.type === 'bw') return 'bw';
@@ -1241,7 +1243,7 @@ function buildLists(){
   });
   const bagGate = $('bagGate');
   if (bagGate) bagGate.textContent = WEB_LICENSE === 'all'
-    ? 'test build · every finished body is open here so its operation can be tried. the released web keeps the free five; PRO bodies unlock in the Pro APK.'
+    ? 'test build · every finished body is open here so its operation can be tried. the released web keeps the free five; PRO bodies unlock with a Pro code.'
     : '';
   buildFilmList();
 }
@@ -1258,7 +1260,7 @@ function buildFilmList(){
      to, so opening everything here never reads as "the web demo is the full library". */
   const gateNote = $('filmGate');
   if (gateNote) gateNote.textContent = WEB_LICENSE === 'all'
-    ? 'test build · every finished stock is open here so the science can be checked. the released web keeps the free five; PRO stocks unlock in the Pro APK.'
+    ? 'test build · every finished stock is open here so the science can be checked. the released web keeps the free five; PRO stocks unlock with a Pro code.'
     : '';
   brands.forEach(brand => {
     const cap = document.createElement('div');
@@ -1382,7 +1384,7 @@ async function openFilmPreview(f){
   let statusLine;
   if (st === 'sel') statusLine = 'IN THE CAMERA NOW';
   else if (st === 'soon') statusLine = 'IN DEVELOPMENT';
-  else if (st === 'lock') statusLine = 'PRO STOCK · UNLOCKS WHEN THE PRO APK SHIPS';
+  else if (st === 'lock') statusLine = 'PRO STOCK · UNLOCKS WITH YOUR PRO CODE';
   else if (st === 'unlock') statusLine = f.status.startsWith('disc') ? 'DISCONTINUED PRO STOCK · OPEN FOR TESTING HERE' : 'PRO STOCK · OPEN FOR TESTING HERE';
   else statusLine = 'AVAILABLE NOW';
   // the lab process belongs with the stock's identity, not buried in a footnote
@@ -1406,12 +1408,12 @@ async function openFilmPreview(f){
     $('pvHint').textContent = f.status.startsWith('disc')
       ? 'historical stock · its original lab process no longer exists, so this is an approximation — open here for testing'
       : f.tier !== 'free'
-      ? 'test build: open here so the science can be checked · in the released web this stock unlocks in the Pro APK'
+      ? 'test build: open here so the science can be checked · in the released web this stock unlocks with a Pro code'
       : `loads a fresh roll in this body · ${rollCapacity()} frames · swapping bodies never resets it`;
   } else if (st === 'lock'){
     btn.textContent = 'UNLOCK WITH PRO'; btn.disabled = false;
     btn.onclick = proHint;
-    $('pvHint').textContent = 'finished stock · unlocks when the Pro APK ships · ⚙ Settings says when it is on sale';
+    $('pvHint').textContent = 'finished stock · unlocks with your Pro code · buy once in ⚙ Settings';
   } else {
     btn.textContent = 'COMING SOON'; btn.disabled = true; btn.onclick = null;
     $('pvHint').textContent = 'preview of the current tuned version · not loadable yet';
@@ -1431,7 +1433,7 @@ const MANUAL_EDITION = '01';
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v39';
+const BUILD = 'pocketroll-v40';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
@@ -1520,6 +1522,23 @@ async function boot(){
   // ask the browser to keep our data; best effort, and the result is stated in the storage note
   if (navigator.storage && navigator.storage.persist) { try { state.persisted = await navigator.storage.persist(); } catch {} }
   checkNewVersion();
+  /* Licence: a code verified once keeps this browser unlocked across visits and offline —
+     the cached grant is applied before anything asks the network. When the network answers
+     it is re-checked honestly: a refunded or unknown code locks the shelves again. */
+  const lic = storedLicense();
+  if (lic) {
+    licenseOk = true; buildLists();
+    const ps = $('proStatus'); if (ps) ps.textContent = 'unlocked · code ' + lic.key;
+    payhipVerify(lic.key).then(r => {
+      if (r.status === 'unknown' || r.status === 'disabled') {
+        licenseOk = false; clearStoredLicense(); buildLists();
+        const ps2 = $('proStatus');
+        if (ps2) ps2.textContent = r.status === 'disabled'
+          ? 'this code was refunded · the camera is back to the free films'
+          : 'that code is no longer recognised · enter the one on your receipt';
+      }
+    });
+  }
   // the finder sleeps when the page goes to the background and wakes on foreground:
   // sensor lifecycle is owned by camera/camera-manager.js
   wireCameraLifecycle();
@@ -1548,6 +1567,34 @@ async function boot(){
   $('openManual').onclick = () => { $('settingsModal').classList.remove('open'); $('manualModal').classList.add('open'); };
   const ed = $('manualEdition');
   if (ed) ed.textContent = 'POCKETROLL 35 · USER MANUAL · EDITION ' + MANUAL_EDITION;
+  /* Pro access, live from here: GET PRO opens the Payhip product (the code arrives with the
+     receipt); CHECK CODE verifies against Payhip — ok unlocks this browser and remembers the
+     code; unknown says so; a refunded code locks again; offline keeps a cached unlock. */
+  $('getPro').onclick = () => {
+    if (!PAYHIP_STORE_URL) { toast('the store opens soon · codes arrive with receipts'); return; }
+    window.open(PAYHIP_STORE_URL, '_blank', 'noopener');
+  };
+  $('verifyCode').onclick = async () => {
+    const code = ($('proCode').value || '').trim();
+    const ps = $('proStatus');
+    if (!code) { ps.textContent = 'type the code from your receipt'; return; }
+    ps.textContent = 'checking…';
+    const r = await payhipVerify(code);
+    if (r.status === 'ok') {
+      licenseOk = true; storeLicense(code.toUpperCase()); buildLists();
+      ps.textContent = 'unlocked · every finished film and body is yours';
+      toast('pro unlocked');
+    } else if (r.status === 'unknown') {
+      ps.textContent = 'no such code · check it against your receipt';
+    } else if (r.status === 'disabled') {
+      licenseOk = false; clearStoredLicense(); buildLists();
+      ps.textContent = 'this code was refunded · the camera is back to the free films';
+    } else if (r.status === 'offline') {
+      ps.textContent = 'no network right now · a code already unlocked keeps working offline';
+    } else {
+      ps.textContent = 'the store is not wired yet · codes become checkable when it opens';
+    }
+  };
   $('doorBtn').onclick = backDoor;
   $('developRoll').onclick = developRoll;
   $('developMain').onclick = developRoll;
@@ -1598,6 +1645,8 @@ async function boot(){
   if (page === 'settings') $('settingsModal').classList.add('open');
   if (page === 'bag') openDeck('camera');
   if (page === 'manual') $('manualModal').classList.add('open');
+  // test hook: ?code=<key> fills the code box in Settings and runs the check like a tap would
+  if (q.get('code')) { $('proCode').value = q.get('code'); $('verifyCode').click(); }
   // test hook: ?preview=<film id> opens that stock's preview page (engine samples)
   const pvId = q.get('preview');
   if (pvId){

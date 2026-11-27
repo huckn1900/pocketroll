@@ -7,13 +7,15 @@
 | Tier | Price | Distribution | Contents |
 |---|---|---|---|
 | **Free Web Demo** | US$0 | https://huckn1900.github.io/pocketroll/ | classic 5 films + 5 cameras, full core ritual (shoot → latent → develop → contact sheet → archive) |
-| **POCKETROLL 35 PRO** | **US$6.99 one-time** | Patreon purchase → downloadable Android APK | full built-in library: all finished film profiles + all camera profiles, all Pro features, permanent — no subscription. Profiles still in development carry `status:"coming"` and show as COMING SOON (not included in Pro until released) |
-| **Expansion Packs** | per pack, optional | future, on demand | Film Packs (new stocks/color science/grain) & Camera Packs (new bodies/imaging character); each purchase permanently unlocks its pack |
+| **POCKETROLL 35 PRO** | **US$4.99 one-time** | Payhip product with auto-generated license key → the code unlocks THIS web app | full finished library: all film profiles + all camera profiles, permanent — no subscription. Profiles still in development carry `status:"coming"` and show as COMING SOON (not included in Pro until released) |
+| **Expansion Packs** | per pack, optional | future, same Payhip product template ($2.49 class) | Film Packs (new stocks/color science/grain) & Camera Packs (new bodies/imaging character); each purchase permanently unlocks its pack |
 
-Flow: **TRY IT** (free web) → **OWN IT** (Pro APK via Patreon) → **EXPAND IT** (content packs).
-The free demo is the storefront: it demonstrates the ritual and locks the rest of the library behind a visible PRO tag + a PRO block in Settings. That block is a STATE, not a link: the Pro APK is still being built, so it reads COMING SOON and nothing is purchasable today.
+Flow: **TRY IT** (free web) → **OWN IT** (one-time Pro unlock on Payhip, code entered in Settings) → **EXPAND IT** (content packs).
+The free demo is the storefront: it demonstrates the ritual and locks the rest of the library behind a visible PRO tag + a PRO block in Settings. That block is now a real purchase: **GET PRO** opens the Payhip product (code arrives with the receipt) and **CHECK CODE** verifies it against Payhip's license API — an honest answer for unknown, refunded or offline states, never silence.
 
-**Platform boundary:** the $6.99 Patreon APK plan covers **Android only** today. iOS needs its own distribution/payment design matching Apple store rules (likely standard IAP, separate price tier) — deferred, do not block Android.
+**Platform boundary:** the Pro unlock lives in the browser, so it covers every platform the web
+app runs on — no APK build, no store fees. A native wrapper (Capacitor/TWA) can reuse the same
+Payhip code later; iOS store rules only matter if a native listing is ever made — deferred, not blocking.
 
 ## Module architecture
 
@@ -26,7 +28,7 @@ pack = adding pack files + entitlement info. Core stays stable.
 
 ```
 pocketroll/
-├── index.html          loads plain scripts in order: storage → film → camera → app.js
+├── index.html          loads plain scripts in order: storage → film → camera → licensing → app.js
 ├── app.js              FilmEngine, profiles/casts, app state, every renderer, boot & wiring
 ├── storage/
 │   ├── database.js     IndexedDB v2 (rolls + scans), openDB/getAll/put/delete, storage estimate
@@ -45,12 +47,12 @@ pocketroll/
 ├── sw.js               shell pre-cache + network-first for code
 ├── scripts/            idempotent profile patches + make-icon.mjs (renders the brand mark)
 ├── icon.svg · icon.png · icon-192.png    the launcher mark, generated — never hand-edited
-└── licensing/          (Pro APK stage) license-manager.js · entitlement-manager.js
+└── licensing/          license.js — Payhip license-key verification (data only; UI copy is app.js/index.html)
 ```
 
 Rules that keep the split honest:
 - Plain scripts sharing one global scope, no bundler — the web demo ships as files, and the
-  service worker serves code network-first. `index.html` loads storage → film → camera → app;
+  service worker serves code network-first. `index.html` loads storage → film → camera → licensing → app;
   nothing runs at load time, only at `boot()`, so load order is readability, not a dependency.
 - `app.js` owns the engine, the state object and every renderer; modules own device and data
   behaviour and call renderers by name. A module never writes DOM copy — that is UI.
@@ -84,9 +86,9 @@ Every content item/pack carries:
   descriptions, drawn by `camera/viewfinder.js`). Selecting a body in the bag selects its finder
   with it; `test/viewfinder-check.mjs` compares what is drawn against what the profile declares
   and refuses marks no source states (see *Camera-specific viewfinder system* below).
-- `buildLists()` shows locked Pro profiles with an amber `PRO` tag; tapping one hints the Pro APK instead of loading (`proHint()`). URL hooks (`?cam=`, `?film=`) bypass gating for testing/development only.
-- Settings carries a **PRO APK · US$6.99 · COMING SOON** block (`.getpro.soon`, the ink-panel/amber vocabulary of a LOCKED · PRO card, nothing presses) plus lines saying it is not on sale yet, Android first, iOS later. When the creator page exists this becomes a real Patreon link and the wording becomes the purchase.
-- License state on the web is fixed to `free` (`state.license` concept); PurchaseVerification for the APK will validate the Patreon purchase and store entitlements locally (offline-capable).
+- `buildLists()` shows locked Pro profiles with an amber `PRO` tag; tapping one hints the Pro code purchase instead of loading (`proHint()`). URL hooks (`?cam=`, `?film=`) bypass gating for testing/development only.
+- Settings carries the real purchase block: `#getPro` (GET PRO · US$4.99 ONE-TIME, opens the Payhip product), a code entry (`#proCode` + `#verifyCode`), and one honest status line `#proStatus`. Payhip auto-generates a license key per sale and mails it with the receipt; the code unlocks this browser.
+- License state: `licensing/license.js` verifies via Payhip's v2 license API (`GET /api/v2/license/verify`, `product-secret-key` header — the per-product secret is documented for public apps; empty answer = not a key, `enabled:false` = refunded). A verified code is cached in localStorage (`pocketroll-license`) and keeps the unlock across visits and offline; on boot it is re-checked and an unknown/refunded code locks the shelves again. `?code=<key>` runs the check for tests. `test/probe-pro.txt` asserts the wiring and that a bad code never changes camera or roll state.
 - **User Manual (`#manualModal`)** — opened from SETTINGS (`#openManual`), which closes the settings page so closing the manual lands back on the camera; `?page=manual` opens it directly for tests. The copy is print in `index.html`: a booklet on the same cream sheet (a dark cover panel carrying **text only** — kicker, name, two tagline lines — with sprocket bands as printed edges, exposure-numbered steps, hairline-divided spec rows, an edition line at the foot). It reuses `.modal/.sheet/.closebtn[data-close]/.divide`, the two type faces and the existing tokens — no new hue, no new layout token, no engine/roll/archive/storage code. The edition number exists in exactly one place: `app.js MANUAL_EDITION`; the markup carries no number. Reading the manual must never change camera or roll state (`test/probe-manual.txt` asserts open → state identical → close → shutter still answers).
 
 ## Film library roadmap (Round⑰, user-defined)

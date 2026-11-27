@@ -185,7 +185,7 @@ check(lic.availChips + lic.selChips === lic.freeFilms && lic.soonChips === lic.s
   `free stocks stay usable (${lic.availChips} available + ${lic.selChips} selected) and the unfinished one stays COMING SOON`,
   `shelf states do not match the tiers (${JSON.stringify(lic)})`);
 check(!lic.gateNote && !lic.bagNote, 'no test-build note in a release build', `gate notes still printing (${JSON.stringify([lic.gateNote, lic.bagNote])})`);
-check(lic.pvBtn === 'UNLOCK WITH PRO' && /Pro APK/.test(lic.pvHint || ''), `a PRO stock offers purchase, not loading: "${lic.pvBtn}"`, `preview button wrong (${lic.pvBtn})`);
+check(lic.pvBtn === 'UNLOCK WITH PRO' && /Pro code/.test(lic.pvHint || ''), `a PRO stock offers purchase, not loading: "${lic.pvBtn}"`, `preview button wrong (${lic.pvBtn})`);
 check(lic.afterUnlock?.film === lic.before?.film && lic.afterUnlock?.rollId === lic.before?.rollId, 'trying a PRO stock leaves the roll in the camera alone', `the roll changed (${JSON.stringify(lic)})`);
 check(lic.afterCamTry?.cam === lic.before?.cam, 'trying a PRO body leaves the camera alone', `the body changed (${JSON.stringify(lic.afterCamTry)})`);
 
