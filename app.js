@@ -1283,7 +1283,7 @@ function buildFilmList(){
     const cap = document.createElement('div');
     cap.className = 'brandcap';
     cap.textContent = group === COL_KEY
-      ? 'CINEMA COLLECTION · ORIGINAL SIMULATIONS INSPIRED BY THE VISUAL LANGUAGE OF FILM'
+      ? 'CINEMA COLLECTION'
       : String(group).toUpperCase();
     fl.appendChild(cap);
     byGroup[group].forEach(f => {
@@ -1296,7 +1296,7 @@ function buildFilmList(){
       const st = shelfState('film', f);
       const el = document.createElement('div');
       el.className = 'item filmitem' + (st === 'sel' ? ' active' : '') + (st === 'lock' ? ' locked' : '');
-      const meta = `<div class="d">${f.iso}${f.iso_sim ? ' ISO · SIM' : ' ISO'} · ${categoryCap(f)}</div>${labLine(f)}`;
+      const meta = `<div class="d">${f.iso}${f.iso_sim ? ' SIM' : ' ISO'} · ${categoryCap(f)}</div>${labLine(f)}`;
       const vibe = vibeFor(f);
       const look = lookSwatches(f);
       el.innerHTML = `<div class="ic">${canSvg(f)}</div>`
@@ -1458,7 +1458,7 @@ const MANUAL_EDITION = '03';
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v42';
+const BUILD = 'pocketroll-v43';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW

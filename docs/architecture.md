@@ -143,6 +143,58 @@ system, not ordinary C-41), **E-6** (transparency), **B&W**, **D-70** (Kodachrom
 approximation). The shelf prints the process beside the ISO and the preview prints it in the
 meta line, so a lab result can never be confused with a filter preset.
 
+## Cinema Collection — a second kind of film stock (user-defined, 2026-11-27)
+
+The film library is two libraries on one shelf:
+
+- **CLASSIC FILM** — real stocks, each labelled with its lab process (C-41 / ECN-2 / E-6 / B&W /
+  D-70), grouped by maker on the shelf.
+- **CINEMA COLLECTION** — original POCKETROLL film stocks inspired by the visual language of
+  films. Not a movie filter, not a post-processing preset: a loadable, shootable, developable
+  roll like any other stock, rendered by our own Film Engine.
+
+Contract for a collection profile in `assets/films.json`:
+
+- `type: "cinema_original"`, `collection: "cinema"`, `version`, `tier` (`pro`), `iso` with
+  `iso_sim: true` — a simulated speed, stated as such (shelf prints `ISO · SIM`, preview prints
+  `SIMULATED ISO`). There is no lab process for a simulation, so `process` is absent and the
+  shelf prints none; `scripts/patch-film-process.mjs` skips collection profiles and refuses a
+  cinema profile without an `inspiration` reference.
+- independent `filter_params` (WB, toe/shoulder curve, `rgb_matrix` with rows summing to 1,
+  split-tone, grain, halation…) derived from a visual study of that film — never a copy of
+  another stock's recipe. Every future collection roll gets its own research and colour
+  development; one shared "cinematic" formula across several rolls is forbidden.
+- `inspiration`: film title + director + cinematographer, framed as inspiration reference only.
+  No frames, stills, posters, official logos or studio branding anywhere in UI or marketing;
+  no implication of endorsement, sponsorship or licensing; legal review is required before any
+  commercial use of a film title. Card artwork follows the existing type/colour/card language —
+  never a poster or screenshot as card background.
+- shelf grouping: collection rolls get their own caption line and their own COLLECTION tab;
+  the CINEMA tab stays reserved for real cinema negative stocks (Vision3, Cinestill). The two
+  never mix — `filmCat()` routes by `collection`, not by brand, and grouping uses the internal
+  `COL_KEY` sentinel, so a profile carries only `collection`, no UI strings.
+- samples are rendered by the engine itself on a neutral body (`NEUTRAL_CAM` + street.jpg) like
+  classic stocks, and the same profile runs through the viewfinder live preview and the
+  capture/develop path — one pipeline, no second filter system.
+- adding a collection roll = adding a profile + parameters + entitlement. Camera Engine, Roll
+  Manager, Archive, storage and UI stay untouched; nothing about a single cinema roll is
+  hard-coded into the interface. All existing behaviour (36-frame roll, latent, darkroom,
+  contact sheet, archive, classic profiles, free/pro gate) is unchanged.
+
+First stock: **HANABI 250** — inspiration: HANA-BI (1997, directed by Takeshi Kitano,
+cinematography Hideo Yamamoto). From a verified visual study (Blu-ray transfer notes, the
+cinematographer's own interviews, scholarly work on Kitano's colours): bright cool daylight exteriors,
+solid blacks kept open with midtones intact, near-neutral warm skin, isolated warm accents (bonfire,
+only heat in the frame — expressed as a mild cool WB gain, a channel response matrix that lets warm hues survive,
+low saturation, a soft shoulder with a slightly lifted toe, warm-highlight / cool-shadow split-tone, and a
+restrained grain amp inferred from a 35mm negative at the period's practical speeds. Grain and
+bloom are our own inference, documented nowhere for the film; profile copy never states them as
+fact. Tuning a profile's parameters bumps its `version`. It is an original colour science; no
+frame, still or grade from the film was copied.
+
+Future directions (not confirmed): In the Mood for Love, Chungking Express, Lost in Translation,
+Paris, Texas. Each would arrive as its own studied profile under the same contract.
+
 ## Photo persistence & backup layer (Round⑨, tightened in Round⑮)
 
 - **Storage**: IndexedDB `pocketroll-db` (version 2) holds two stores — `rolls` and `scans`.
