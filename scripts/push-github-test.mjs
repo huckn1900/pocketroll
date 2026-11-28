@@ -1,9 +1,10 @@
-// Push POCKETROLL's personal test build — everything unlocked — to the private GitHub line.
+// Push POCKETROLL to the private-owner GitHub line. The app itself carries the owner key
+// (SHA-256 checked in app.js), so the GitHub copy needs no licensing edits — only its own
+// cache/build name, so it never collides with production caches and reads as a test build.
 // usage: node scripts/push-github-test.mjs --token <gh PAT> [--repo pocketroll]
-// The GitHub repo is a test build, not a second product: one branch (gh-test) cut from
-// master, differing ONLY in the licensing constants and its own cache name, force-pushed
-// to <repo>/main. GitHub Pages rebuilds from main automatically. Production (Cloudflare)
-// keeps serving master's app.js with the free gate; this file never touches master.
+// The GitHub repo is a test line, not a second product: one branch (gh-test) cut from
+// master, differing only in the build name, force-pushed to <repo>/main. GitHub Pages
+// rebuilds from main automatically. Production (Cloudflare) keeps serving master.
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 
@@ -28,10 +29,9 @@ let app = await readFile(appPath, 'utf8');
 let sw = await readFile(swPath, 'utf8');
 const build = (app.match(/BUILD = 'pocketroll-v(\d+)'/) || [])[1];
 if (!build) throw new Error('no BUILD version in app.js');
-app = app.replace("const WEB_LICENSE = 'free'", "const WEB_LICENSE = 'all'")
-  .replace(/BUILD = 'pocketroll-v(\d+)'/, `BUILD = 'pocketroll-test-${build}'`);
+app = app.replace(/BUILD = 'pocketroll-v(\d+)'/, `BUILD = 'pocketroll-test-${build}'`);
 sw = sw.replace(/CACHE = 'pocketroll-v(\d+)'/, `CACHE = 'pocketroll-test-${build}'`);
-if (!app.includes("const WEB_LICENSE = 'all'")) throw new Error('WEB_LICENSE constant not found');
+if (!app.includes(`BUILD = 'pocketroll-test-${build}'`)) throw new Error('BUILD constant not found');
 await writeFile(appPath, app);
 await writeFile(swPath, sw);
 git(['add', appPath, swPath]);
@@ -56,7 +56,7 @@ let served = '';
 for (let i = 0; i < 8; i++) {
   const res = await fetch(`${site}/app.js?cb=${Date.now()}`);
   const text = await res.text();
-  if (text.includes(`BUILD = 'pocketroll-test-${build}'`) && text.includes("const WEB_LICENSE = 'all'")) {
+  if (text.includes(`BUILD = 'pocketroll-test-${build}'`)) {
     served = `served app.js carries test marker pocketroll-test-${build}`;
     break;
   }

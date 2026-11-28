@@ -962,12 +962,29 @@ function openFrame(r, i){
    One gate for both shelves: a profile is a profile. 'all' opens every finished stock and
    body in the browser so each one's colour science and operation can be tried and
    calibrated — set it back when that calibration work is done. */
-const WEB_LICENSE = 'free'; // 'free' = production gate · 'all' = every finished profile loadable
+let WEB_LICENSE = 'free'; // 'free' = production gate · 'all' = every finished profile loadable
 let licenseOk = false; // a verified Payhip code unlocks this browser; cached across visits, re-checked online
 function entitled(item){ return WEB_LICENSE === 'all' || item.tier === 'free' || licenseOk; }
 function cameraState(c){ return entitled(c) ? 'avail' : 'lock'; }
 function proHint(){
   toast('PRO · one-time US$4.99 — buy once on Payhip, then enter your code in ⚙ Settings');
+}
+/* The owner key: a personal unlock for the owner's own test instances (the GitHub line is
+   one). The URL param `key` is checked against a SHA-256 hash, so the secret itself never
+   ships in served code — a visitor without it keeps the released free tier. A match opens
+   every finished profile in THIS browser and is remembered across visits; it is the owner's
+   working unlock, not a store path — the product still unlocks with a Payhip licence code. */
+const OWNER_KEY_HASH = '0b1a73e81b373b4606fdefef1568a80fc3ef7ef4aa2632ca0799cb34002d8184';
+async function ownerKeyOk(q){
+  const cand = q.get('key') || localStorage.getItem('pocketroll-owner-key');
+  if (!cand) return false;
+  try {
+    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cand));
+    const hex = [...new Uint8Array(d)].map(v => v.toString(16).padStart(2, '0')).join('');
+    if (hex !== OWNER_KEY_HASH) return false;
+    if (q.get('key')) localStorage.setItem('pocketroll-owner-key', cand);
+    return true;
+  } catch { return false; } // no crypto.subtle (insecure context) → stay gated, never guess
 }
 
 /* ---------- shelf availability semantics ----------
@@ -1458,7 +1475,7 @@ const MANUAL_EDITION = '03';
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v43';
+const BUILD = 'pocketroll-v44';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
@@ -1515,10 +1532,13 @@ async function boot(){
     toast('assets load failed: ' + (e && e.message ? e.message : String(e)));
     return;
   }
+  /* The owner key opens this browser before the first shelf is drawn; visitors without
+     it keep seeing the released free tier, and a cached key is re-checked by hash. */
+  const q = new URLSearchParams(location.search);
+  if (await ownerKeyOk(q)) WEB_LICENSE = 'all';
   buildLists();
   /* Nothing stands in for the sensor. The finder waits for the feed, and the leader screen
      says what it is waiting for while profiles, the pending roll and storage are being read. */
-  const q = new URLSearchParams(location.search);
   const cam = state.cameras.find(c => c.id === q.get('cam')) || state.cameras.find(c => c.id === 'trip35');
   const fil = state.films.find(f => f.id === q.get('film')) || state.films.find(f => f.id === 'gold200');
   if (q.get('date') === '1') state.opts.date = true; // test hook: force date stamp for this run
