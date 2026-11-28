@@ -1426,14 +1426,14 @@ async function openFilmPreview(f){
    The booklet itself is print in index.html, not code; only its edition number is written
    here, in one place. Bump it when the camera bag, the film shelf, or the workflows the
    booklet describes change materially — updating a number needs no redesign. */
-const MANUAL_EDITION = '01';
+const MANUAL_EDITION = '02';
 
 /* ---------- build notice ----------
    CACHE in sw.js is bumped on every deploy. The page compares it with the build it was
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v40';
+const BUILD = 'pocketroll-v41';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
