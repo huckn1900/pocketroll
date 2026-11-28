@@ -40,20 +40,11 @@ git(['-c', 'user.name=huckn1900', '-c', 'user.email=huckn1900@gmail.com', 'commi
 git(['checkout', 'master']); // master's app.js keeps the free gate; the variant lives on gh-test
 git(['push', '-f', pushUrl, 'gh-test:main']);
 
-// Wait for the Pages rebuild, then verify the served file really carries the test marker.
-const pages = async () => JSON.parse(await (await fetch(`${api}/pages`, {
-  headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' } })).text());
-const before = (await pages()).last_updated;
-let built = false;
-for (let i = 0; i < 8; i++) {
-  await new Promise(r => setTimeout(r, 15000));
-  const p = await pages();
-  if (p.status === 'built' && p.last_updated > before) { built = true; break; }
-}
-if (!built) throw new Error('Pages did not rebuild within 2 minutes');
-
+// The real gate is the served file. GitHub's pages API reports last_updated unreliably
+// (observed: the content rebuilt while the API still reported the old build), so verify
+// the marker directly instead of trusting the build status.
 let served = '';
-for (let i = 0; i < 8; i++) {
+for (let i = 0; i < 12; i++) {
   const res = await fetch(`${site}/app.js?cb=${Date.now()}`);
   const text = await res.text();
   if (text.includes(`BUILD = 'pocketroll-test-${build}'`)) {
@@ -62,5 +53,5 @@ for (let i = 0; i < 8; i++) {
   }
   await new Promise(r => setTimeout(r, 10000));
 }
-if (!served) throw new Error('served app.js still carries the production marker');
-console.log(JSON.stringify({ pushed: 'gh-test:main', test_build: `pocketroll-test-${build}`, site, built: true, served }, null, 2));
+if (!served) throw new Error('Pages did not serve the test build within 2 minutes');
+console.log(JSON.stringify({ pushed: 'gh-test:main', test_build: `pocketroll-test-${build}`, site, served }, null, 2));

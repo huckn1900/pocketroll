@@ -402,6 +402,25 @@ no shared overlay component. `test/viewfinder-check.mjs` derives its assertions 
 profile's own design — a finder drawn from a guessed universal template passes the eye and fails
 that gate.
 
+## Release surfaces — two pages, one version (user-defined, 2026-11-28)
+
+POCKETROLL ships on two surfaces and they must move together on every version:
+1. **Production release** — https://pocketroll35.pages.dev (Cloudflare Pages, serves `master`).
+   Free gate: the classic five stocks and five bodies; PRO unlocks with the Payhip licence code.
+2. **Personal test line** — https://huckn1900.github.io/pocketroll/ (GitHub Pages, owner only).
+   Same code; `?key=<owner secret>` opens every finished profile, and the match is kept in
+   localStorage. A visitor without the key sees the released free tier. The repo stays PUBLIC:
+   GitHub's Free plan does not support Pages on a private repo (the API rejects it, and flipping
+   to private deletes the site). Only the SHA-256 of the secret ships in app.js
+   (`OWNER_KEY_HASH`), so a public repo leaks nothing.
+
+A release is ONE command: `node scripts/release.mjs --cf-token <cfat> --gh-token <gh PAT>` —
+production first, then the `gh-test` branch (which only renames BUILD/CACHE to
+`pocketroll-test-<n>`, never licensing), and both steps verify their served build marker.
+Never ship one surface alone: a drift means either the owner is calibrating an old build or
+the public is served content the owner has not tried. The two cache names are deliberately
+different (`pocketroll-v<n>` vs `pocketroll-test-<n>`) so one browser can never mix them.
+
 ## Future content updates
 
 New film → new profile JSON only. New camera → same. New pack → pack folder + entitlement. FilmEngine/CameraEngine keep reading configs; no core rewrite.
