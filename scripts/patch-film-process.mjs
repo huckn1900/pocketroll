@@ -29,6 +29,7 @@ const PROCESS = {
 const doc = JSON.parse(fs.readFileSync('assets/films.json', 'utf8'));
 let changed = 0;
 for (const f of doc.films) {
+  if (f.collection === 'cinema') continue; // Cinema Collection is an original simulation — no lab process exists for it, and printing one would be a lie
   const want = PROCESS[f.id];
   if (!want) throw new Error(`no process label for ${f.id}`);
   if (f.process !== want) { f.process = want; changed++; }
@@ -37,11 +38,12 @@ fs.writeFileSync('assets/films.json', JSON.stringify(doc, null, 1));
 
 // sanity: every profile is labelled, and a profile's process must match its type
 const again = JSON.parse(fs.readFileSync('assets/films.json', 'utf8')).films;
-const bad = again.filter(f => !f.process
+const bad = again.filter(f => (f.collection === 'cinema' ? f.type !== 'cinema_original' : !f.process
   || (f.type === 'slide' && !['E-6', 'D-70'].includes(f.process))
   || (f.type === 'bw' && f.process !== 'B&W')
   || (f.type === 'color_negative' && !['C-41', 'ECN-2'].includes(f.process))
   || (f.type === 'motion_negative' && f.process !== 'ECN-2'));
 console.log(`assets/films.json: ${again.length} films, ${changed} process changes`);
 if (bad.length) throw new Error('process/type mismatch: ' + bad.map(f => f.id).join(', '));
-console.log('processes:', [...new Set(again.map(f => f.process))].join(' · '));
+if (again.some(f => f.collection === 'cinema' && !f.inspiration)) throw new Error('cinema collection profile without inspiration reference');
+console.log('processes:', [...new Set(again.filter(f => f.process).map(f => f.process))].join(' · '));

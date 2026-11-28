@@ -23,6 +23,8 @@ const add = {
   provia100f:    { wb:[0.98,1.0,1.03], exposure:-0.05, highlights:0.22, shadows:0.24, rgb_matrix:[0.95,0.03,0.02, 0.02,0.95,0.03, 0.02,0.02,0.96], grain_color:true },
   e100:          { wb:[0.97,1.0,1.05], exposure:-0.05, highlights:0.22, shadows:0.26, rgb_matrix:[0.96,0.02,0.02, 0.02,0.96,0.02, 0.02,0.02,0.96], grain_color:true },
   kodachrome64:  { wb:[1.14,1.0,0.88], exposure:0,    highlights:0.32, shadows:0.28, rgb_matrix:[0.94,0.04,0.02, 0.02,0.93,0.05, 0.04,0.02,0.94], grain_color:true },
+  // Cinema Collection: an original simulation, not a lab stock — values come from the film's own visual study (see the profile's inspiration field), never from another stock's recipe.
+  hanabi:        { wb:[0.86,0.96,1.13], exposure:-0.15, highlights:0.60, shadows:-0.30, rgb_matrix:[0.70,0.18,0.12, 0.06,0.80,0.14, 0.02,0.12,0.86], grain_color:true },
 };
 
 const f = JSON.parse(readFileSync('assets/films.json', 'utf8'));

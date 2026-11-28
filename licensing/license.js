@@ -7,8 +7,8 @@
    The store link and secret key are filled in once the Payhip product exists.
    This module returns data only — every UI line lives in app.js / index.html. */
 const PAYHIP_VERIFY_URL = 'https://payhip.com/api/v2/license/verify';
-const PAYHIP_STORE_URL = '';   // Payhip product page (US$4.99 one-time Pro unlock) — fill when it exists
-const PAYHIP_PRODUCT_SECRET = ''; // Settings ▸ license keys on the Payhip product — fill when it exists
+const PAYHIP_STORE_URL = 'https://payhip.com/b/ajTMF';   // the Pro unlock product, US$4.99 one-time
+const PAYHIP_PRODUCT_SECRET = 'prod_sk_ajTMF_4d92b4f89c817d7503028dbe3e8d2db7df95a149'; // product secret key (Advanced Options ▸ license keys)
 const LICENSE_STORE_KEY = 'pocketroll-license';
 
 function storedLicense(){ try { return JSON.parse(localStorage.getItem(LICENSE_STORE_KEY)) || null; } catch { return null; } }
@@ -27,8 +27,14 @@ async function payhipVerify(rawKey){
       { headers: { 'product-secret-key': PAYHIP_PRODUCT_SECRET } });
     const text = await res.text();
     if (!text) return { status: 'unknown' };
-    const data = JSON.parse(text).data;
-    if (!data) return { status: 'unknown' };
+    let body;
+    try { body = JSON.parse(text); } catch { return { status: 'unknown' }; }
+    /* Docs promise an empty body for a failed check; live behaviour answers
+       {"data":[],"error":true} for a key that does not exist — and [] is truthy in JS, so the
+       not-found test must look at error/array, not !data. {"code":...} is an authentication or
+       parameter problem: two different answers to the user. */
+    const data = body.data;
+    if (!data || Array.isArray(data) || body.error) return body.code ? { status: 'unconfigured' } : { status: 'unknown' };
     return data.enabled ? { status: 'ok', data } : { status: 'disabled' };
   } catch { return { status: 'offline' }; }
 }

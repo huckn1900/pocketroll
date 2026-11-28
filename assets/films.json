@@ -1,5 +1,5 @@
 {
- "note": "15 classic/representative film stocks. filter_params are app-side emulation parameters (approximations derived from documented character of each stock; see docs/research.md sources). status: 'current' still manufactured, 'discontinued' historical.",
+ "note": "Two libraries, one shelf. CLASSIC FILM: real stocks, labelled by their lab process (C-41 / ECN-2 / E-6 / B&W / D-70); filter_params are app-side emulation parameters (approximations derived from documented character of each stock; see docs/research.md sources). status: 'current' still manufactured, 'discontinued' historical. CINEMA COLLECTION: type cinema_original with collection cinema — original simulations built from a study of a film's visual language; no lab process exists for them, film titles appear as inspiration references only, never copied frames. See docs/architecture.md.",
  "films": [
   {
    "id": "trix400",
@@ -1454,6 +1454,46 @@
     "body": "#2b2b2b",
     "band": "#e8c93f",
     "label": "T-MAX"
+   }
+  },
+  {
+   "id": "hanabi",
+   "brand": "PocketRoll",
+   "name": "Hanabi 250",
+   "type": "cinema_original",
+   "collection": "cinema",
+   "version": 1,
+   "iso": 250,
+   "iso_sim": true,
+   "status": "original",
+   "story": "Cold daylight, deep blacks, one warm accent per frame. An original colour simulation from the Cinema Collection, built from a visual study of HANA-BI (1997, directed by Takeshi Kitano, cinematography by Hideo Yamamoto): a muted blue-cyan daylight palette, flat exteriors under hard sun, near-neutral skin tones, and isolated warm accents — bonfire, fireworks, blood — the only heat in the frame. No single frame, still or poster from the film was copied; every parameter here is our own colour science.",
+   "inspiration": "HANA-BI (1997) — directed by Takeshi Kitano, cinematography by Hideo Yamamoto. Inspiration reference only: no film frames, stills, posters, official logos or studio branding are used, and POCKETROLL 35 is not affiliated with, endorsed by, sponsored by or licensed by the filmmakers or any studio. The film title is never used as our product identity without prior legal review.",
+   "filter_params": {
+    "contrast": 1.10,
+    "black_lift": 0.01,
+    "white_point": 0.93,
+    "saturation": 0.62,
+    "grain_size": 1.15,
+    "grain_strength": 0.30,
+    "tint_highlights": "#c9b18b",
+    "tint_shadows": "#20303f",
+    "halation": 0.22,
+    "vignette": 0.12,
+    "fade": 0,
+    "wb": [0.86, 0.96, 1.13],
+    "exposure": -0.15,
+    "highlights": 0.60,
+    "shadows": -0.30,
+    "rgb_matrix": [0.70, 0.18, 0.12, 0.06, 0.80, 0.14, 0.02, 0.12, 0.86],
+    "grain_color": true
+   },
+   "leak_prob": 0,
+   "leak_strength": 0,
+   "tier": "pro",
+   "can": {
+    "body": "#20303d",
+    "band": "#d8c9a9",
+    "label": "HANABI"
    }
   }
  ]

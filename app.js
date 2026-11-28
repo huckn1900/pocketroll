@@ -975,6 +975,10 @@ function proHint(){
    the Pro code — lock icon on the right, PRO tag next to the name only) / COMING SOON
    (still in development, not loadable). */
 function filmCat(f){
+  // Two libraries, one shelf: CLASSIC stocks group by lab category (their real-world identity);
+  // CINEMA COLLECTION profiles are original simulations inspired by a film's visual language,
+  // so they sit in their own tab and are never mixed into Kodak/Fuji/Ilford groups.
+  if (f.collection === 'cinema') return 'collection';
   if (f.type === 'bw') return 'bw';
   if (f.type === 'motion_negative' || f.brand === 'Cinestill') return 'cinema';
   return 'color';
@@ -983,7 +987,9 @@ function filmState(f){
   if (f.status === 'coming') return 'soon';
   return entitled(f) ? 'avail' : 'lock';
 }
-const TYPE_TAG = { bw: 'b&w', slide: 'slide', motion_negative: 'cinema neg', color_negative: 'color neg' };
+/* cinema_original has no lab process — it is an original simulation, not a developed stock —
+   so its tag names the collection; the shelf never prints a lab it does not have. */
+const TYPE_TAG = { bw: 'b&w', slide: 'slide', motion_negative: 'cinema neg', color_negative: 'color neg', cinema_original: 'cinema collection' };
 const canInk = (hex) => { const c = hexToRgb(hex); return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b > 0.45 ? '#241f16' : '#efe6d2'; };
 /* The label is printed INSIDE the band: font size is derived from the band width and
    textLength forces the exact run width, so long names wrap onto two lines like a real
@@ -1250,23 +1256,37 @@ function buildLists(){
 function buildFilmList(){
   const fl = $('filmList'); fl.innerHTML = '';
   document.querySelectorAll('#filmTabs .tab').forEach(t => t.classList.toggle('on', t.dataset.cat === filmCatOn));
+  /* A filter for a collection with no rolls in it yet is not a shelf fact — an empty tab
+     would promise stock that does not exist, so it stays hidden until the first roll ships. */
+  const colTab = document.querySelector('#filmTabs .tab[data-cat="collection"]');
+  if (colTab) colTab.style.display = state.films.some(f => f.collection === 'cinema') ? '' : 'none';
   const visible = state.films.filter(f => filmCatOn === 'all' || filmCat(f) === filmCatOn);
-  const byBrand = {};
-  visible.forEach(f => { (byBrand[f.brand] = byBrand[f.brand] || []).push(f); });
-  const brands = Object.keys(byBrand).sort((a, b) => byBrand[b].length - byBrand[a].length || a.localeCompare(b));
+  /* A stock groups by its maker; a Cinema Collection roll groups by its collection — it must
+     never sit under a Kodak or Ilford caption, because it is not that maker's film. The
+     sentinel key lives only inside this function; profiles carry collection, not this string. */
+  const COL_KEY = '__cinema collection__';
+  const byGroup = {};
+  visible.forEach(f => { const key = f.collection === 'cinema' ? COL_KEY : f.brand; (byGroup[key] = byGroup[key] || []).push(f); });
+  const groups = Object.keys(byGroup).sort((a, b) => byGroup[b].length - byGroup[a].length || a.localeCompare(b));
+  const makers = groups.filter(g => g !== COL_KEY);
   const capline = $('filmBrands');
-  if (capline) capline.textContent = brands.join(' · ');
+  if (capline) capline.textContent = filmCatOn === 'collection'
+    ? 'original simulations inspired by the visual language of film · no movie frames, stills, posters or grades used · not affiliated with, endorsed by, or licensed by any studio or filmmaker'
+    : makers.join(' · ');
   /* A test build has to say so: the shelf still shows which catalog tier each stock belongs
      to, so opening everything here never reads as "the web demo is the full library". */
   const gateNote = $('filmGate');
   if (gateNote) gateNote.textContent = WEB_LICENSE === 'all'
     ? 'test build · every finished stock is open here so the science can be checked. the released web keeps the free five; PRO stocks unlock with a Pro code.'
     : '';
-  brands.forEach(brand => {
+  groups.forEach(group => {
     const cap = document.createElement('div');
-    cap.className = 'brandcap'; cap.textContent = brand.toUpperCase();
+    cap.className = 'brandcap';
+    cap.textContent = group === COL_KEY
+      ? 'CINEMA COLLECTION · ORIGINAL SIMULATIONS INSPIRED BY THE VISUAL LANGUAGE OF FILM'
+      : String(group).toUpperCase();
     fl.appendChild(cap);
-    byBrand[brand].forEach(f => {
+    byGroup[group].forEach(f => {
       /* The card leads with the film, not with its purchase status: the name is the loudest
          thing on the card, the identity line under it states ISO, the ISO label and the
          category once (see labLine, which never repeats a category), a short line describes
@@ -1276,7 +1296,7 @@ function buildFilmList(){
       const st = shelfState('film', f);
       const el = document.createElement('div');
       el.className = 'item filmitem' + (st === 'sel' ? ' active' : '') + (st === 'lock' ? ' locked' : '');
-      const meta = `<div class="d">${f.iso} ISO · ${categoryCap(f)}</div>${labLine(f)}`;
+      const meta = `<div class="d">${f.iso}${f.iso_sim ? ' ISO · SIM' : ' ISO'} · ${categoryCap(f)}</div>${labLine(f)}`;
       const vibe = vibeFor(f);
       const look = lookSwatches(f);
       el.innerHTML = `<div class="ic">${canSvg(f)}</div>`
@@ -1388,7 +1408,12 @@ async function openFilmPreview(f){
   else if (st === 'unlock') statusLine = f.status.startsWith('disc') ? 'DISCONTINUED PRO STOCK · OPEN FOR TESTING HERE' : 'PRO STOCK · OPEN FOR TESTING HERE';
   else statusLine = 'AVAILABLE NOW';
   // the lab process belongs with the stock's identity, not buried in a footnote
-  $('pvMeta').textContent = `${f.iso} · ${TYPE_TAG[f.type]} · ${statusLine}${f.process ? ` · PROCESS ${f.process}` : ''} · samples rendered by the POCKETROLL engine on a neutral body`;
+  $('pvMeta').textContent = `${f.iso_sim ? `${f.iso} · SIMULATED ISO` : `${f.iso}`} · ${TYPE_TAG[f.type]} · ${statusLine}${f.process ? ` · PROCESS ${f.process}` : ''} · samples rendered by the POCKETROLL engine on a neutral body`;
+  /* A Cinema Collection roll names what inspired it and what we do not use — no footage, no
+     grade, no affiliation. Real stocks have no inspiration line; the empty note stays hidden. */
+  $('pvInsp').textContent = f.collection === 'cinema' && f.inspiration
+    ? `INSPIRATION · ${f.inspiration} · an original POCKETROLL simulation of its visual language — no frames, stills, posters or grades from the film are used · not affiliated with, endorsed by or licensed by the film, its makers or any studio`
+    : '';
   $('pvStory').textContent = f.story || '';
   renderParamBars(f);
   /* Previewing and loading are different acts, so the page says which one it is doing before
@@ -1426,14 +1451,14 @@ async function openFilmPreview(f){
    The booklet itself is print in index.html, not code; only its edition number is written
    here, in one place. Bump it when the camera bag, the film shelf, or the workflows the
    booklet describes change materially — updating a number needs no redesign. */
-const MANUAL_EDITION = '02';
+const MANUAL_EDITION = '03';
 
 /* ---------- build notice ----------
    CACHE in sw.js is bumped on every deploy. The page compares it with the build it was
    shipped with, so a stale cached app says a newer one exists instead of quietly staying
    behind — the user reloads on purpose rather than serving old code forever. BUILD and
    CACHE must be equal in any shipped commit: bump the two together, never apart. */
-const BUILD = 'pocketroll-v41';
+const BUILD = 'pocketroll-v42';
 async function checkNewVersion(){
   try {
     const res = await fetch('sw.js?cb=' + Date.now(), { cache: 'no-store' }); // a query bypasses the SW
@@ -1592,7 +1617,7 @@ async function boot(){
     } else if (r.status === 'offline') {
       ps.textContent = 'no network right now · a code already unlocked keeps working offline';
     } else {
-      ps.textContent = 'the store is not wired yet · codes become checkable when it opens';
+      ps.textContent = 'the store could not check codes right now · try again later';
     }
   };
   $('doorBtn').onclick = backDoor;
