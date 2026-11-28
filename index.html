@@ -639,6 +639,9 @@ footer{text-align:center;font-size:8px;letter-spacing:.22em;color:var(--sub);mar
 .tab{font-family:'PC Cond',sans-serif;font-size:10px;letter-spacing:.12em;padding:8px 12px;border-radius:8px;
   background:#2e2822;border:1px solid #4a4238;color:var(--dim);cursor:pointer;text-align:center}
 .tab.on{background:var(--dark);border-color:#cfc5b4;color:#e8dcc9}
+/* the film shelf carries five tabs including COLLECTION — at phone width they flow to a
+   second line instead of being clipped off the page; the base .tabs stays flex elsewhere */
+#filmTabs{flex-wrap:wrap}
 /* The archive tab row is three equal columns flush with the record cards below it. The
    favourites filter is a filter, not a fourth page, so it rides the row under BY ROLLS — same
    width, same left edge as the tab above it — instead of floating to the sheet's right edge

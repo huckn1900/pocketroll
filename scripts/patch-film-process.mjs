@@ -38,7 +38,7 @@ fs.writeFileSync('assets/films.json', JSON.stringify(doc, null, 1));
 
 // sanity: every profile is labelled, and a profile's process must match its type
 const again = JSON.parse(fs.readFileSync('assets/films.json', 'utf8')).films;
-const bad = again.filter(f => (f.collection === 'cinema' ? f.type !== 'cinema_original' : !f.process
+const bad = again.filter(f => (f.collection === 'cinema' ? f.type !== 'cinema_original' : !f.process)
   || (f.type === 'slide' && !['E-6', 'D-70'].includes(f.process))
   || (f.type === 'bw' && f.process !== 'B&W')
   || (f.type === 'color_negative' && !['C-41', 'ECN-2'].includes(f.process))
